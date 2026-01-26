@@ -44,11 +44,6 @@ func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageReques
 	return mapper.MapToSendImageResponse(out), nil
 }
 
-// SendFile implements [gatewayv1.MessageServer].
-func (m *MessageService) SendFile(context.Context, *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
-	panic("unimplemented")
-}
-
 // SendDocument implements threadv1.MessageServer.
 func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
 	out, err := m.messager.SendDocument(ctx, mapper.MapToSendDocumentRequest(in))
@@ -58,4 +53,9 @@ func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocument
 	}
 
 	return mapper.MapToSendDocumentResponse(out), nil
+}
+
+// SendFile implements [gatewayv1.MessageServer].
+func (m *MessageService) SendFile(context.Context, *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
+	panic("unimplemented")
 }

@@ -9,9 +9,12 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+// Interface guard
+var _ Auther = (*AuthService)(nil)
+
 // Auther defines the behavior for session validation.
 type Auther interface {
-	ResolveAuth(ctx context.Context) (*authv1.Authorization, error)
+	Inspect(ctx context.Context) (*authv1.Authorization, error)
 }
 
 type AuthService struct {
@@ -22,8 +25,8 @@ func NewAuthService(client *imauth.Client) *AuthService {
 	return &AuthService{client: client}
 }
 
-// ResolveAuth transparently redirects all incoming metadata to the auth service.
-func (s *AuthService) ResolveAuth(ctx context.Context) (*authv1.Authorization, error) {
+// Inspect transparently redirects all incoming metadata to the auth service.
+func (s *AuthService) Inspect(ctx context.Context) (*authv1.Authorization, error) {
 	// [METADATA_EXTRACTION] Capture all incoming headers
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {

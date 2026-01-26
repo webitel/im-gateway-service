@@ -12,7 +12,6 @@ import (
 	grpcsrv "github.com/webitel/im-gateway-service/infra/server/grpc"
 	grpchandler "github.com/webitel/im-gateway-service/internal/handler/grpc"
 	"github.com/webitel/im-gateway-service/internal/service"
-	"github.com/webitel/im-gateway-service/internal/store/postgres"
 )
 
 func NewApp(cfg *config.Config) *fx.App {
@@ -27,7 +26,6 @@ func NewApp(cfg *config.Config) *fx.App {
 		webiteldi.Module,
 		pubsub.Module,
 		tls.Module,
-		postgres.Module,
 		service.Module,
 		grpcsrv.Module,
 		grpchandler.Module,

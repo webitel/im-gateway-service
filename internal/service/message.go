@@ -37,7 +37,7 @@ func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, authC
 
 // SendText handles plain text message delivery
 func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error) {
-	auth, err := m.auther.ResolveAuth(ctx)
+	auth, err := m.auther.Inspect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 
 // SendImage handles image gallery delivery
 func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error) {
-	auth, err := m.auther.ResolveAuth(ctx)
+	auth, err := m.auther.Inspect(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 
 // SendDocument handles file/attachment delivery
 func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error) {
-	auth, err := m.auther.ResolveAuth(ctx)
+	auth, err := m.auther.Inspect(ctx)
 	if err != nil {
 		return nil, err
 	}
