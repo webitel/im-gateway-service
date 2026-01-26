@@ -1,6 +1,7 @@
 package server
 
 import (
+	webiteldi "github.com/webitel/im-gateway-service/infra/client/di"
 	"github.com/webitel/im-gateway-service/infra/pubsub"
 	"github.com/webitel/im-gateway-service/infra/tls"
 	"go.uber.org/fx"
@@ -23,6 +24,7 @@ func NewApp(cfg *config.Config) *fx.App {
 		),
 		fx.Invoke(func(discovery discovery.DiscoveryProvider) error { return nil }),
 
+		webiteldi.Module,
 		pubsub.Module,
 		tls.Module,
 		postgres.Module,

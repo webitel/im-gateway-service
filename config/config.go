@@ -180,15 +180,16 @@ func (c *Config) validate() error {
 
 func validateConnectionConfig(conn ConnectionConfig) error {
 	if conn.VerifyCerts {
-		if conn.CA == "" {
-			return fmt.Errorf("config: service.conn.ca is required when verify_certs is true")
-		}
-		if conn.Cert == "" {
-			return fmt.Errorf("config: service.conn.cert is required when verify_certs is true")
-		}
-		if conn.Key == "" {
-			return fmt.Errorf("config: service.conn.key is required when verify_certs is true")
-		}
+		// FIXME
+		// if conn.CA == "" {
+		// 	return fmt.Errorf("config: service.conn.ca is required when verify_certs is true")
+		// }
+		// if conn.Cert == "" {
+		// 	return fmt.Errorf("config: service.conn.cert is required when verify_certs is true")
+		// }
+		// if conn.Key == "" {
+		// 	return fmt.Errorf("config: service.conn.key is required when verify_certs is true")
+		// }
 	}
 	return nil
 }

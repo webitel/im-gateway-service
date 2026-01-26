@@ -209,6 +209,8 @@ github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529 h1:nn5Wsu0esKSJiIVhscUt
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
+github.com/sony/gobreaker v1.0.0 h1:feX5fGGXSl3dYd4aHZItw+FpHLvvoaqkawKjVNiFMNQ=
+github.com/sony/gobreaker v1.0.0/go.mod h1:ZKptC7FHNvhBz7dN2LGjPVBz2sZJmc0/PkyDJOjmxWY=
 github.com/spf13/afero v1.15.0 h1:b/YBCLWAJdFWJTN9cLhiXXcD7mzKn9Dm86dNnfyQw1I=
 github.com/spf13/afero v1.15.0/go.mod h1:NC2ByUVxtQs4b3sIUphxK0NioZnmxgyCrfzeuq8lxMg=
 github.com/spf13/cast v1.10.0 h1:h2x0u2shc1QuLHfxi+cTJvs30+ZAHOGRic8uyGTDWxY=
@@ -243,6 +245,8 @@ github.com/webitel/webitel-go-kit/infra/discovery v0.0.0-20251224105820-8d9bcb90
 github.com/webitel/webitel-go-kit/infra/discovery v0.0.0-20251224105820-8d9bcb902593/go.mod h1:Uib3qB6XhOoytxFHrD8Jj5GWXIDIz2IjDVxcW7SWENE=
 github.com/webitel/webitel-go-kit/infra/otel v0.0.0-20251222125635-d60448d23a82 h1:8Bha1AuR9h15yvwbP+lPrizChqhLMlRJLq0E5LJq1nU=
 github.com/webitel/webitel-go-kit/infra/otel v0.0.0-20251222125635-d60448d23a82/go.mod h1:tbGmdVdDdUbfsI2wpOoMj7dlmgwaKQFmIoAbaWPS7j4=
+github.com/webitel/webitel-go-kit/infra/transport v0.0.0-20260120140602-6f20efe1524e h1:7oU0htys/6uYa8CxhA/3UllwgWCUHf507dLVDpzD5S0=
+github.com/webitel/webitel-go-kit/infra/transport v0.0.0-20260120140602-6f20efe1524e/go.mod h1:pDNLCygkIoDlz0m9pj9p9961FqtNqINLXJq1vtUDs2k=
 github.com/webitel/webitel-go-kit/pkg/errors v0.0.0-20251222125635-d60448d23a82 h1:0WuyeTkUyUmPAWKjvNtRfuLJzzzKeVDlTjj8tzG2g1Q=
 github.com/webitel/webitel-go-kit/pkg/errors v0.0.0-20251222125635-d60448d23a82/go.mod h1:/6hKNQ+DiFi5A+auMQmixhiWzHz8g38RblGi3GjNfuw=
 github.com/webitel/webitel-go-kit/pkg/interceptors v0.0.0-20251224105820-8d9bcb902593 h1:XQ5uSIGSwDsXR/xa7Xfq+x7iBLWXBgJKlG539zOHN2g=
