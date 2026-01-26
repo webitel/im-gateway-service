@@ -1,0 +1,22 @@
+package service
+
+import (
+	"go.uber.org/fx"
+)
+
+var Module = fx.Module(
+	"service",
+
+	fx.Provide(
+		// Domain services
+		fx.Annotate(
+			NewMessageService,
+			fx.As(new(Messager)),
+		),
+
+		fx.Annotate(
+			NewAuthService,
+			fx.As(new(Auther)),
+		),
+	),
+)

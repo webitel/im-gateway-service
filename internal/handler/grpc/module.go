@@ -1,20 +1,21 @@
 package grpc
 
 import (
+	impb "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	grpcsrv "github.com/webitel/im-gateway-service/infra/server/grpc"
 	"go.uber.org/fx"
 )
 
 var Module = fx.Module("grpc",
 	fx.Provide(
-	//NewMessageService, provide your service here
+		NewMessageService,
 	),
-	fx.Invoke(RegisterService),
+	fx.Invoke(RegisterMessageService),
 )
 
-func RegisterService(
+func RegisterMessageService(
 	server *grpcsrv.Server,
-	// service *MessageService, set your service here
+	service *MessageService,
 ) {
-	// register your gRPC service here
+	impb.RegisterMessageServer(server.Server, service)
 }
