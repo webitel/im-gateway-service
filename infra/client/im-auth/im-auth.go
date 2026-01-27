@@ -70,16 +70,6 @@ func (c *Client) Logout(ctx context.Context, in *authv1.LogoutRequest, opts ...g
 	return resp, err
 }
 
-func (c *Client) GetAuthorizations(ctx context.Context, in *authv1.GetAuthorizationRequest, opts ...grpc.CallOption) (*authv1.AuthorizationList, error) {
-	var resp *authv1.AuthorizationList
-	err := c.rpc.Execute(ctx, func(api authv1.AccountClient) error {
-		var err error
-		resp, err = api.GetAuthorizations(ctx, in, opts...)
-		return err
-	})
-	return resp, err
-}
-
 func (c *Client) RegisterDevice(ctx context.Context, in *authv1.RegisterDeviceRequest, opts ...grpc.CallOption) (*authv1.RegisterDeviceResponse, error) {
 	var resp *authv1.RegisterDeviceResponse
 	err := c.rpc.Execute(ctx, func(api authv1.AccountClient) error {
