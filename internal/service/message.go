@@ -43,10 +43,12 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 	}
 
 	req := &threadv1.SendTextRequest{
-		From:     m.mapAuthContactToPeer(auth.Contact),
+		From: m.mapAuthContactToPeer(&authv1.AuthContact{
+			Id: auth.ContactID,
+		}),
 		To:       m.mapPeerToProto(in.To),
 		Body:     in.Body,
-		DomainId: auth.Dc,
+		DomainId: auth.DC,
 	}
 
 	resp, err := m.threader.SendText(ctx, req)
@@ -77,13 +79,15 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 	}
 
 	req := &threadv1.SendImageRequest{
-		From: m.mapAuthContactToPeer(auth.Contact),
-		To:   m.mapPeerToProto(in.To),
+		From: m.mapAuthContactToPeer(&authv1.AuthContact{
+			Id: auth.ContactID,
+		}),
+		To: m.mapPeerToProto(in.To),
 		Image: &threadv1.ImageRequest{
 			Images: images,
 			Body:   in.Image.Body,
 		},
-		DomainId: auth.Dc,
+		DomainId: auth.DC,
 	}
 
 	resp, err := m.threader.SendImage(ctx, req)
@@ -117,13 +121,15 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	}
 
 	req := &threadv1.SendDocumentRequest{
-		From: m.mapAuthContactToPeer(auth.Contact),
-		To:   m.mapPeerToProto(in.To),
+		From: m.mapAuthContactToPeer(&authv1.AuthContact{
+			Id: auth.ContactID,
+		}),
+		To: m.mapPeerToProto(in.To),
 		Document: &threadv1.DocumentRequest{
 			Documents: docs,
 			Body:      in.Document.Body,
 		},
-		DomainId: auth.Dc,
+		DomainId: auth.DC,
 	}
 
 	resp, err := m.threader.SendDocument(ctx, req)
