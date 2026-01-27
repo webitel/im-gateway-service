@@ -3,7 +3,7 @@ package mapper
 import (
 	"strconv"
 
-	impb "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 

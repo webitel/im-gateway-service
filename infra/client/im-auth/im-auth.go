@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-const ServiceName string = "im-auth-service"
+const ServiceName string = "im-account-service"
 
 // [INTERFACE_GUARD] Now correctly matches the CLIENT interface.
 var _ authv1.AccountClient = (*Client)(nil)

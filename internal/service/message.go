@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	authv1 "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
@@ -42,16 +41,16 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		return nil, err
 	}
 
-	req := &threadv1.SendTextRequest{
-		From: m.mapAuthContactToPeer(&authv1.AuthContact{
-			Id: auth.ContactID,
-		}),
+	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{
+				ContactId: auth.ContactID,
+			},
+		},
 		To:       m.mapPeerToProto(in.To),
 		Body:     in.Body,
 		DomainId: auth.DC,
-	}
-
-	resp, err := m.threader.SendText(ctx, req)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -78,19 +77,19 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 		}
 	}
 
-	req := &threadv1.SendImageRequest{
-		From: m.mapAuthContactToPeer(&authv1.AuthContact{
-			Id: auth.ContactID,
-		}),
+	resp, err := m.threader.SendImage(ctx, &threadv1.SendImageRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{
+				ContactId: auth.ContactID,
+			},
+		},
 		To: m.mapPeerToProto(in.To),
 		Image: &threadv1.ImageRequest{
 			Images: images,
 			Body:   in.Image.Body,
 		},
 		DomainId: auth.DC,
-	}
-
-	resp, err := m.threader.SendImage(ctx, req)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -120,19 +119,19 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		}
 	}
 
-	req := &threadv1.SendDocumentRequest{
-		From: m.mapAuthContactToPeer(&authv1.AuthContact{
-			Id: auth.ContactID,
-		}),
+	resp, err := m.threader.SendDocument(ctx, &threadv1.SendDocumentRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{
+				ContactId: auth.ContactID,
+			},
+		},
 		To: m.mapPeerToProto(in.To),
 		Document: &threadv1.DocumentRequest{
 			Documents: docs,
 			Body:      in.Document.Body,
 		},
 		DomainId: auth.DC,
-	}
-
-	resp, err := m.threader.SendDocument(ctx, req)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -143,28 +142,16 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	}, nil
 }
 
-// --- Mappers ---
-
-func (m *MessageService) mapAuthContactToPeer(c *authv1.AuthContact) *threadv1.Peer {
-	if c == nil {
-		return nil
-	}
-	return &threadv1.Peer{
-		Kind: &threadv1.Peer_ContactId{ContactId: c.Id},
-	}
-}
-
 func (m *MessageService) mapPeerToProto(p shared.Peer) *threadv1.Peer {
 	peer := &threadv1.Peer{}
-	idStr := p.ID.String()
 
 	switch p.Type {
 	case shared.PeerContact:
-		peer.Kind = &threadv1.Peer_ContactId{ContactId: idStr}
+		peer.Kind = &threadv1.Peer_ContactId{ContactId: p.ID.String()}
 	case shared.PeerGroup:
-		peer.Kind = &threadv1.Peer_GroupId{GroupId: idStr}
+		peer.Kind = &threadv1.Peer_GroupId{GroupId: p.ID.String()}
 	case shared.PeerChannel:
-		peer.Kind = &threadv1.Peer_ChannelId{ChannelId: idStr}
+		peer.Kind = &threadv1.Peer_ChannelId{ChannelId: p.ID.String()}
 	default:
 		m.logger.Warn("mapping unknown peer type", slog.String("type", p.Type.String()))
 	}
