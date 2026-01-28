@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	authv1 "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	authv1 "github.com/webitel/im-gateway-service/gen/go/auth/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"

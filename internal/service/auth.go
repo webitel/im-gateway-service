@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	authv1 "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	authv1 "github.com/webitel/im-gateway-service/gen/go/auth/v1"
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	"github.com/webitel/im-gateway-service/internal/domain/model"
 	"google.golang.org/grpc/metadata"

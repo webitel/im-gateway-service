@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: api/auth/v1/service_account.proto
+// source: service/auth/v1/service_account.proto
 
-package gatewayv1
+package authv1
 
 import (
 	context "context"
@@ -19,11 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Account_Token_FullMethodName            = "/webitel.im.api.auth.v1.Account/Token"
-	Account_Logout_FullMethodName           = "/webitel.im.api.auth.v1.Account/Logout"
-	Account_Inspect_FullMethodName          = "/webitel.im.api.auth.v1.Account/Inspect"
-	Account_RegisterDevice_FullMethodName   = "/webitel.im.api.auth.v1.Account/RegisterDevice"
-	Account_UnregisterDevice_FullMethodName = "/webitel.im.api.auth.v1.Account/UnregisterDevice"
+	Account_Token_FullMethodName            = "/webitel.im.service.auth.v1.Account/Token"
+	Account_Logout_FullMethodName           = "/webitel.im.service.auth.v1.Account/Logout"
+	Account_Inspect_FullMethodName          = "/webitel.im.service.auth.v1.Account/Inspect"
+	Account_RegisterDevice_FullMethodName   = "/webitel.im.service.auth.v1.Account/RegisterDevice"
+	Account_UnregisterDevice_FullMethodName = "/webitel.im.service.auth.v1.Account/UnregisterDevice"
 )
 
 // AccountClient is the client API for Account service.
@@ -258,7 +258,7 @@ func _Account_UnregisterDevice_Handler(srv interface{}, ctx context.Context, dec
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Account_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "webitel.im.api.auth.v1.Account",
+	ServiceName: "webitel.im.service.auth.v1.Account",
 	HandlerType: (*AccountServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -283,5 +283,5 @@ var Account_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/auth/v1/service_account.proto",
+	Metadata: "service/auth/v1/service_account.proto",
 }

@@ -1,0 +1,19 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package
+      value: github.com/webitel/protos/gen/go/im/auth/v1;authv1
+
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.34.1
+    out: ../gen/go/auth/v1
+    opt:
+      - module=github.com/webitel/protos/gen/go/im/auth/v1
+  - remote: buf.build/grpc/go:v1.5.1
+    out: ../gen/go/auth/v1
+    opt:
+      - module=github.com/webitel/protos/gen/go/im/auth/v1
+
+inputs:
+  - directory: "../../protos/im"
