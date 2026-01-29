@@ -3,17 +3,24 @@ package mapper
 import (
 	"github.com/google/uuid"
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	"github.com/webitel/im-gateway-service/infra/server/grpc/interceptors"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-func MapToSendTextRequest(in *impb.SendTextRequest) *dto.SendTextRequest {
+func MapToSendTextRequest(in *impb.SendTextRequest, from *interceptors.Identity) *dto.SendTextRequest {
 	if in == nil {
 		return nil
 	}
+	fromID, _ := uuid.Parse(from.ContactID)
 	return &dto.SendTextRequest{
-		To:   MapPeerFromProto(in.GetTo()),
-		Body: in.GetBody(),
+		To: MapPeerFromProto(in.GetTo()),
+		From: shared.Peer{
+			ID:   fromID,
+			Type: shared.PeerContact,
+		},
+		DomainID: from.DomainID,
+		Body:     in.GetBody(),
 	}
 }
 

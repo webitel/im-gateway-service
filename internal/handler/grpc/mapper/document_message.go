@@ -3,11 +3,14 @@ package mapper
 import (
 	"strconv"
 
+	"github.com/google/uuid"
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	"github.com/webitel/im-gateway-service/infra/server/grpc/interceptors"
+	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentRequest {
+func MapToSendDocumentRequest(in *impb.SendDocumentRequest, from *interceptors.Identity) *dto.SendDocumentRequest {
 	if in == nil {
 		return nil
 	}
@@ -27,10 +30,15 @@ func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentReq
 			})
 		}
 	}
-
+	fromID, _ := uuid.Parse(from.ContactID)
 	return &dto.SendDocumentRequest{
-		To:       MapPeerFromProto(in.GetTo()),
+		To: MapPeerFromProto(in.GetTo()),
+		From: shared.Peer{
+			ID:   fromID,
+			Type: shared.PeerContact,
+		},
 		Document: docReq,
+		DomainID: from.DomainID,
 	}
 }
 
