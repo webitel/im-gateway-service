@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -23,128 +24,76 @@ type Messager interface {
 type MessageService struct {
 	logger   *slog.Logger
 	threader *imthread.Client
-	auther   Auther
 }
 
-func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, authClient Auther) *MessageService {
+func NewMessageService(logger *slog.Logger, threadClient *imthread.Client) *MessageService {
 	return &MessageService{
 		logger:   logger,
 		threader: threadClient,
-		auther:   authClient,
 	}
 }
 
 // SendText handles plain text message delivery
 func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error) {
-	auth, err := m.auther.Inspect(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
-		From: &threadv1.Peer{
-			Kind: &threadv1.Peer_ContactId{
-				ContactId: auth.ContactID,
-			},
-		},
+		From:     m.mapFromPeer(in.From),
 		To:       m.mapPeerToProto(in.To),
 		Body:     in.Body,
-		DomainId: auth.DC,
+		DomainId: in.DomainID,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.SendTextResponse{
-		To: in.To,
-		ID: m.parseUUID(resp.GetId()),
-	}, nil
+	return &dto.SendTextResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
 }
 
 // SendImage handles image gallery delivery
 func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error) {
-	auth, err := m.auther.Inspect(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	images := make([]*threadv1.ImageInput, len(in.Image.Images))
-	for i, img := range in.Image.Images {
-		images[i] = &threadv1.ImageInput{
-			Id:       img.URL,
-			Link:     img.URL,
-			MimeType: img.MimeType,
-		}
-	}
-
 	resp, err := m.threader.SendImage(ctx, &threadv1.SendImageRequest{
-		From: &threadv1.Peer{
-			Kind: &threadv1.Peer_ContactId{
-				ContactId: auth.ContactID,
-			},
-		},
-		To: m.mapPeerToProto(in.To),
+		From:     m.mapFromPeer(in.From),
+		To:       m.mapPeerToProto(in.To),
+		DomainId: in.DomainID,
 		Image: &threadv1.ImageRequest{
-			Images: images,
 			Body:   in.Image.Body,
+			Images: m.mapImages(in.Image.Images),
 		},
-		DomainId: auth.DC,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.SendImageResponse{
-		To: in.To,
-		ID: m.parseUUID(resp.GetId()),
-	}, nil
+	return &dto.SendImageResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
 }
 
 // SendDocument handles file/attachment delivery
 func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error) {
-	auth, err := m.auther.Inspect(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	docs := make([]*threadv1.DocumentInput, len(in.Document.Documents))
-	for i, doc := range in.Document.Documents {
-		size := doc.Size
-		docs[i] = &threadv1.DocumentInput{
-			Id:        doc.URL,
-			Url:       doc.URL,
-			FileName:  doc.Name,
-			MimeType:  doc.MimeType,
-			SizeBytes: &size,
-		}
-	}
-
 	resp, err := m.threader.SendDocument(ctx, &threadv1.SendDocumentRequest{
-		From: &threadv1.Peer{
-			Kind: &threadv1.Peer_ContactId{
-				ContactId: auth.ContactID,
-			},
-		},
-		To: m.mapPeerToProto(in.To),
+		From:     m.mapFromPeer(in.From),
+		To:       m.mapPeerToProto(in.To),
+		DomainId: in.DomainID,
 		Document: &threadv1.DocumentRequest{
-			Documents: docs,
 			Body:      in.Document.Body,
+			Documents: m.mapDocuments(in.Document.Documents),
 		},
-		DomainId: auth.DC,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.SendDocumentResponse{
-		To: in.To,
-		ID: m.parseUUID(resp.GetId()),
-	}, nil
+	return &dto.SendDocumentResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
+}
+
+// --- Internal Mappers ---
+
+func (m *MessageService) mapFromPeer(p shared.Peer) *threadv1.Peer {
+	return &threadv1.Peer{
+		Kind: &threadv1.Peer_ContactId{ContactId: p.ID.String()},
+	}
 }
 
 func (m *MessageService) mapPeerToProto(p shared.Peer) *threadv1.Peer {
 	peer := &threadv1.Peer{}
-
 	switch p.Type {
 	case shared.PeerContact:
 		peer.Kind = &threadv1.Peer_ContactId{ContactId: p.ID.String()}
@@ -156,6 +105,40 @@ func (m *MessageService) mapPeerToProto(p shared.Peer) *threadv1.Peer {
 		m.logger.Warn("mapping unknown peer type", slog.String("type", p.Type.String()))
 	}
 	return peer
+}
+
+func (m *MessageService) mapImages(src []*dto.Image) []*threadv1.ImageInput {
+	res := make([]*threadv1.ImageInput, len(src))
+	for i, img := range src {
+		if img == nil {
+			continue
+		}
+		res[i] = &threadv1.ImageInput{
+			Id:       fmt.Sprintf("%d", img.ID),
+			Name:     img.Name,
+			Link:     img.URL,
+			MimeType: img.MimeType,
+		}
+	}
+	return res
+}
+
+func (m *MessageService) mapDocuments(src []*dto.Document) []*threadv1.DocumentInput {
+	res := make([]*threadv1.DocumentInput, len(src))
+	for i, doc := range src {
+		if doc == nil {
+			continue
+		}
+		size := doc.Size
+		res[i] = &threadv1.DocumentInput{
+			Id:        fmt.Sprintf("%d", doc.ID),
+			Url:       doc.URL,
+			FileName:  doc.Name,
+			MimeType:  doc.MimeType,
+			SizeBytes: &size,
+		}
+	}
+	return res
 }
 
 func (m *MessageService) parseUUID(id string) uuid.UUID {

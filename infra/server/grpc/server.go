@@ -19,8 +19,10 @@ import (
 	intrcp "github.com/webitel/webitel-go-kit/pkg/interceptors"
 
 	"github.com/webitel/im-gateway-service/config"
+	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	"github.com/webitel/im-gateway-service/infra/server/grpc/interceptors"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
+	"github.com/webitel/im-gateway-service/internal/service"
 )
 
 var Module = fx.Module("grpc_server",
@@ -31,10 +33,21 @@ var Module = fx.Module("grpc_server",
 	),
 )
 
-func ProvideServer(conf *config.Config, logger *slog.Logger, tls *infratls.Config, lc fx.Lifecycle) (*Server, error) {
+// ProvideServer is the fx constructor for the gRPC server.
+// It injects necessary dependencies like Auther and Contacter for the Auth Interceptor.
+func ProvideServer(
+	conf *config.Config,
+	logger *slog.Logger,
+	tlsConf *infratls.Config,
+	auther service.Auther,
+	contacter *imcontact.Client,
+	lc fx.Lifecycle,
+) (*Server, error) {
 	srv, err := New(conf.Service.Address, func(c *Config) error {
-		c.TLS = tls.Server.Clone()
+		c.TLS = tlsConf.Server.Clone()
 		c.Logger = logger
+		c.Auther = auther
+		c.Contacter = contacter
 
 		return nil
 	})
@@ -69,7 +82,6 @@ func ProvideServer(conf *config.Config, logger *slog.Logger, tls *infratls.Confi
 
 type Server struct {
 	*grpc.Server
-
 	Addr     string
 	host     string
 	port     int
@@ -78,63 +90,79 @@ type Server struct {
 }
 
 type Config struct {
-	TLS    *tls.Config
-	Logger *slog.Logger
+	// Settings
+	TLS *tls.Config
+
+	// Dependencies
+	Logger    *slog.Logger
+	Auther    service.Auther
+	Contacter *imcontact.Client
 }
 
 type Option func(*Config) error
 
-// New provides a new gRPC server.
+// New initializes a new gRPC server with the provided options.
 func New(addr string, opts ...Option) (*Server, error) {
 	var (
 		conf    Config
 		grpcTLS credentials.TransportCredentials
 	)
+
+	// Apply options to configuration
 	for _, opt := range opts {
 		if err := opt(&conf); err != nil {
 			return nil, err
 		}
 	}
 
+	// Setup logger
 	log := conf.Logger
 	if log == nil {
 		log = slog.Default()
 	}
 
+	// Default address if empty
 	if addr == "" {
 		addr = ":0"
 	}
 
+	// Configure TLS if provided
 	if conf.TLS != nil {
 		grpcTLS = credentials.NewTLS(conf.TLS)
 	}
 
+	// Initialize proto-validator
 	validator, err := protovalidate.New()
 	if err != nil {
 		return nil, err
 	}
 
+	// Initialize gRPC server with interceptor chain
 	s := grpc.NewServer(
 		grpc.Creds(grpcTLS),
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.ChainUnaryInterceptor(
 			intrcp.UnaryServerErrorInterceptor(),
-			interceptors.NewUnaryAuthInterceptor(),
+			// Injected Auth Interceptor with required business logic clients
+			interceptors.NewUnaryAuthInterceptor(conf.Auther, *conf.Contacter, log),
 			validatemiddleware.UnaryServerInterceptor(validator),
 		),
 	)
 
+	// Start TCP listener
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
 
+	// Resolve actual host and port
 	h, p, err := net.SplitHostPort(l.Addr().String())
 	if err != nil {
 		return nil, err
 	}
 	port, _ := strconv.Atoi(p)
 
+	// Fallback for IPv6 wildcard
 	if h == "::" {
 		h = publicAddr()
 	}
@@ -149,18 +177,21 @@ func New(addr string, opts ...Option) (*Server, error) {
 	}, nil
 }
 
+// Listen starts the gRPC server.
 func (s *Server) Listen() error {
 	return s.Serve(s.listener)
 }
 
+// Shutdown gracefully stops the gRPC server and closes the listener.
 func (s *Server) Shutdown() error {
-	s.log.Debug("receive shutdown grpc")
+	s.log.Debug("receiving shutdown signal for grpc server")
 	err := s.listener.Close()
 	s.Server.GracefulStop()
 
 	return err
 }
 
+// Host returns the public host address.
 func (s *Server) Host() string {
 	if e, ok := os.LookupEnv("PROXY_GRPC_HOST"); ok {
 		return e
@@ -169,9 +200,12 @@ func (s *Server) Host() string {
 	return s.host
 }
 
+// Port returns the server listening port.
 func (s *Server) Port() int {
 	return s.port
 }
+
+// --- Network Helpers ---
 
 func publicAddr() string {
 	interfaces, err := net.Interfaces()
@@ -198,7 +232,6 @@ func publicAddr() string {
 			if isPublicIP(ip) {
 				return ip.String()
 			}
-			// process IP address
 		}
 	}
 
