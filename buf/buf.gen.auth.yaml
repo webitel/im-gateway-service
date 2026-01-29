@@ -3,17 +3,23 @@ managed:
   enabled: true
   override:
     - file_option: go_package
-      value: github.com/webitel/protos/gen/go/im/auth/v1;authv1
+      value: "github.com/webitel/im-gateway-service/gen/go/auth/v1;auth"
+  disable:
+    - module: buf.build/googleapis/googleapis
+    - module: buf.build/bufbuild/protovalidate
 
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.34.1
-    out: ../gen/go/auth/v1
+    out: ../gen/go/auth
     opt:
-      - module=github.com/webitel/protos/gen/go/im/auth/v1
+      - module=github.com/webitel/im-gateway-service/gen/go/auth
+
   - remote: buf.build/grpc/go:v1.5.1
-    out: ../gen/go/auth/v1
+    out: ../gen/go/auth
+    include_imports: true
     opt:
-      - module=github.com/webitel/protos/gen/go/im/auth/v1
+      - module=github.com/webitel/im-gateway-service/gen/go/auth
 
 inputs:
   - directory: "../../protos/im"
+ 

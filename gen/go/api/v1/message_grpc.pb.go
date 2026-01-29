@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: api/thread/v1/message.proto
+// source: api/v1/message.proto
 
-package gatewayv1
+package api
 
 import (
 	context "context"
@@ -19,9 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Message_SendText_FullMethodName  = "/webitel.im.gateway.v1.Message/SendText"
-	Message_SendFile_FullMethodName  = "/webitel.im.gateway.v1.Message/SendFile"
-	Message_SendImage_FullMethodName = "/webitel.im.gateway.v1.Message/SendImage"
+	Message_SendText_FullMethodName  = "/webitel.im.api.v1.Message/SendText"
+	Message_SendFile_FullMethodName  = "/webitel.im.api.v1.Message/SendFile"
+	Message_SendImage_FullMethodName = "/webitel.im.api.v1.Message/SendImage"
 )
 
 // MessageClient is the client API for Message service.
@@ -188,7 +188,7 @@ func _Message_SendImage_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Message_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "webitel.im.gateway.v1.Message",
+	ServiceName: "webitel.im.api.v1.Message",
 	HandlerType: (*MessageServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -205,5 +205,5 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/thread/v1/message.proto",
+	Metadata: "api/v1/message.proto",
 }

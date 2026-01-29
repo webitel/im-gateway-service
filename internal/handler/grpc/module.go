@@ -1,7 +1,7 @@
 package grpc
 
 import (
-	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	impb "github.com/webitel/im-gateway-service/gen/go/api/v1"
 	grpcsrv "github.com/webitel/im-gateway-service/infra/server/grpc"
 	"go.uber.org/fx"
 )

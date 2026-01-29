@@ -14,7 +14,7 @@ volumes:
 services:
   postgres-master:
     image: registry-1.docker.io/bitnami/postgresql:latest
-    container_name: postgres-im-gateway-master
+    container_name: postgres-im-master
     networks:
       - webitel
     ports:
@@ -52,7 +52,7 @@ services:
 
   postgres-replica:
     image: registry-1.docker.io/bitnami/postgresql:latest
-    container_name: postgres-im-gateway-replica
+    container_name: postgres-im-replica
     networks:
       - webitel
     ports:
@@ -118,7 +118,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
-    container_name: im-gateway-rabbit
+    container_name: im-rabbit
     restart: unless-stopped
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
@@ -147,7 +147,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: im-gateway-redis
+    container_name: im-redis
     command: redis-server --requirepass webitel --maxmemory 512mb --maxmemory-policy allkeys-lru
     restart: unless-stopped
     networks:
@@ -181,7 +181,7 @@ services:
     networks:
       - webitel
     ports:
-      - "10155:10155"
+      - "10154:10154"
     volumes:
       - ./config/config.yaml:/config/config.yaml:ro
     depends_on:

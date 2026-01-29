@@ -45,3 +45,4 @@ env
 debug
 
 .vscode
+deploy/docker/config/config.yaml

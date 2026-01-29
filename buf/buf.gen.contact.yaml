@@ -3,22 +3,22 @@ managed:
   enabled: true
   override:
     - file_option: go_package
-      value: "github.com/webitel/im-gateway-service/gen/go/thread/v1;thread"
+      value: "github.com/webitel/im-gateway-service/gen/go/contact/v1;contact"
   disable:
     - module: buf.build/googleapis/googleapis
     - module: buf.build/bufbuild/protovalidate
 
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.34.1
-    out: ../gen/go/thread
+    out: ../gen/go/contact
     opt:
-      - module=github.com/webitel/im-gateway-service/gen/go/thread
+      - module=github.com/webitel/im-gateway-service/gen/go/contact
 
   - remote: buf.build/grpc/go:v1.5.1
-    out: ../gen/go/thread
+    out: ../gen/go/contact
     include_imports: true
     opt:
-      - module=github.com/webitel/im-gateway-service/gen/go/thread
+      - module=github.com/webitel/im-gateway-service/gen/go/contact
 
 inputs:
   - directory: "../../protos/im"
