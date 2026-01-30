@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: api/v1/contact.proto
+// source: api/gateway/v1/contact.proto
 
 package api
 
@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Contacts_Search_FullMethodName = "/webitel.im.api.v1.Contacts/Search"
+	Contacts_Search_FullMethodName = "/webitel.im.api.gateway.v1.Contacts/Search"
 )
 
 // ContactsClient is the client API for Contacts service.
@@ -116,7 +116,7 @@ func _Contacts_Search_Handler(srv interface{}, ctx context.Context, dec func(int
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Contacts_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "webitel.im.api.v1.Contacts",
+	ServiceName: "webitel.im.api.gateway.v1.Contacts",
 	HandlerType: (*ContactsServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -125,5 +125,5 @@ var Contacts_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/contact.proto",
+	Metadata: "api/gateway/v1/contact.proto",
 }

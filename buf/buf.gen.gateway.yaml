@@ -3,22 +3,22 @@ managed:
   enabled: true
   override:
     - file_option: go_package
-      value: "github.com/webitel/im-gateway-service/gen/go/api/v1;api"
+      value: "github.com/webitel/im-gateway-service/gen/go/gateway/v1;api"
   disable:
     - module: buf.build/googleapis/googleapis
     - module: buf.build/bufbuild/protovalidate
 
 plugins:
   - remote: buf.build/protocolbuffers/go:v1.34.1
-    out: ../gen/go/api
+    out: ../gen/go/gateway
     opt:
-      - module=github.com/webitel/im-gateway-service/gen/go/api
+      - module=github.com/webitel/im-gateway-service/gen/go/gateway
 
   - remote: buf.build/grpc/go:v1.5.1
-    out: ../gen/go/api
+    out: ../gen/go/gateway
     include_imports: true
     opt:
-      - module=github.com/webitel/im-gateway-service/gen/go/api
+      - module=github.com/webitel/im-gateway-service/gen/go/gateway
 
 inputs:
   - directory: "../../protos/im"

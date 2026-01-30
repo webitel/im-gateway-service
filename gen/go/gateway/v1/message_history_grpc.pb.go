@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: api/v1/message_history.proto
+// source: api/gateway/v1/message_history.proto
 
 package api
 
@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	History_SearchThreadMessagesHistory_FullMethodName = "/webitel.im.api.v1.History/SearchThreadMessagesHistory"
+	History_SearchThreadMessagesHistory_FullMethodName = "/webitel.im.api.gateway.v1.History/SearchThreadMessagesHistory"
 )
 
 // HistoryClient is the client API for History service.
@@ -110,7 +110,7 @@ func _History_SearchThreadMessagesHistory_Handler(srv interface{}, ctx context.C
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var History_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "webitel.im.api.v1.History",
+	ServiceName: "webitel.im.api.gateway.v1.History",
 	HandlerType: (*HistoryServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -119,5 +119,5 @@ var History_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v1/message_history.proto",
+	Metadata: "api/gateway/v1/message_history.proto",
 }
