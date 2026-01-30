@@ -7,6 +7,7 @@ import (
 
 	authv1 "github.com/webitel/im-gateway-service/gen/go/auth/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
+	infratls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
 	"google.golang.org/grpc"
@@ -20,15 +21,16 @@ var _ authv1.AccountClient = (*Client)(nil)
 type Client struct {
 	logger *slog.Logger
 	rpc    *rpc.Client[authv1.AccountClient]
+	tls *infratls.Config
 }
 
 // New initializes a resilient gRPC client for the Auth service.
-func New(logger *slog.Logger, discovery discovery.DiscoveryProvider) (*Client, error) {
+func New(logger *slog.Logger, discovery discovery.DiscoveryProvider,tls *infratls.Config) (*Client, error) {
 	factory := func(conn *grpc.ClientConn) authv1.AccountClient {
 		return authv1.NewAccountClient(conn)
 	}
 
-	c, err := webitel.New(logger, discovery, ServiceName, factory)
+	c, err := webitel.New(logger, discovery, ServiceName, tls,factory)
 	if err != nil {
 		return nil, fmt.Errorf("[im-auth-client] initialization failed: %w", err)
 	}

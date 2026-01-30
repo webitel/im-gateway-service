@@ -7,6 +7,7 @@ import (
 
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
+	infratls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
 	"google.golang.org/grpc"
@@ -21,17 +22,18 @@ type Client struct {
 	logger *slog.Logger
 	// [GENERIC_RPC] Underlying go-kit RPC client using the generated MessageClient stub
 	rpc *rpc.Client[threadv1.MessageClient]
+	tls *infratls.Config
 }
 
 // New initializes a resilient gRPC client for the Message service.
-func New(logger *slog.Logger, discovery discovery.DiscoveryProvider) (*Client, error) {
+func New(logger *slog.Logger, discovery discovery.DiscoveryProvider,tls *infratls.Config) (*Client, error) {
 	// [FACTORY] Helper to instantiate the gRPC stub upon connection
 	factory := func(conn *grpc.ClientConn) threadv1.MessageClient {
 		return threadv1.NewMessageClient(conn)
 	}
 
 	// [INIT] Create the base gRPC client with discovery and circuit breaker
-	c, err := webitel.New(logger, discovery, ServiceName, factory)
+	c, err := webitel.New(logger, discovery, ServiceName,tls, factory)
 	if err != nil {
 		return nil, fmt.Errorf("[im-thread-client] initialization failed: %w", err)
 	}
