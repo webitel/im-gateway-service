@@ -7,8 +7,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/webitel/webitel-go-kit/pkg/errors"
-
 	impb "github.com/webitel/im-gateway-service/gen/go/contact/v1" // ADDED FOR SEARCH
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -59,10 +57,13 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
 		},
 		To:       to,
 		Body:     in.Body,
-		DomainId: in.DomainID,
+		DomainId: identity.GetDomainID(),
 	})
 	if err != nil {
 		return nil, err
@@ -88,7 +89,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		},
 		To:       to,
-		DomainId: in.DomainID,
+		DomainId: identity.GetDomainID(),
 		Image: &threadv1.ImageRequest{
 			Body:   in.Image.Body,
 			Images: m.mapImages(in.Image.Images),
@@ -118,7 +119,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		},
 		To:       to,
-		DomainId: in.DomainID,
+		DomainId: identity.GetDomainID(),
 		Document: &threadv1.DocumentRequest{
 			Body:      in.Document.Body,
 			Documents: m.mapDocuments(in.Document.Documents),
@@ -145,25 +146,36 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 		Subjects: []string{p.ID},
 		IssId:    []string{p.Issuer},
 		DomainId: domainID,
-		Size:     2,
+		Size:     1,
+		Page:     1,
 	})
 	// IF ERROR OR NOT FOUND, FALLBACK TO ORIGINAL ID BUT LOG WARNING
 	if err != nil {
-		return nil, err
+		m.logger.Error("contact service search failed", slog.String("id", p.IDString()), slog.Any("err", err))
+		return nil, fmt.Errorf("resolve recipient: %w", err)
 	}
 
-	if len(res.GetContacts()) == 0 {
-		return nil, errors.NotFound("resolve recipient: not found")
-	}
-
-	if len(res.GetContacts()) > 1 {
-		return nil, errors.Internal("resolve recipient: too many contacts found")
+	if len(res.Contacts) == 0 {
+		m.logger.Warn("contact not found in registry, using raw peer id", slog.String("id", p.IDString()))
+		return nil, nil
 	}
 
 	// [SUCCESS] RETURN PEER WITH RESOLVED CONTACT ID
 	return &threadv1.Peer{
-		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].GetId()},
+		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].Id},
+		Identity: &threadv1.Identity{
+			Name: coalesceString(res.Contacts[0].Name, res.Contacts[0].Username, "Unknown"),
+		},
 	}, nil
+}
+
+func coalesceString(args ...string) string {
+	for _, s := range args {
+		if s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 func (m *MessageService) mapImages(src []*dto.Image) []*threadv1.ImageInput {

@@ -30,14 +30,15 @@ type Authorizer interface {
 }
 
 // Identity stores the resolved domain ownership and contact ID
-type Identity interface {
+type Identifier interface {
 	GetContactID() string
 	GetDomainID() int64
+	GetName() string
 }
 
 // GetIdentity is a helper to extract the identity from context safely.
-func GetIdentityFromContext(ctx context.Context) (Identity, bool) {
-	id, ok := ctx.Value(AuthContextKey).(Identity)
+func GetIdentityFromContext(ctx context.Context) (Identifier, bool) {
+	id, ok := ctx.Value(AuthContextKey).(Identifier)
 
 	return id, ok
 }

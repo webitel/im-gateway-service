@@ -27,9 +27,11 @@ func MapPeerFromProto(pb *impb.Peer) shared.Peer {
 		p.ID = kind.Contact.Sub
 		p.Issuer = kind.Contact.Iss
 		p.Type = shared.PeerContact
+
 	case *impb.Peer_GroupId:
 		p.ID = kind.GroupId
 		p.Type = shared.PeerGroup
+
 	case *impb.Peer_ChannelId:
 		p.ID = kind.ChannelId
 		p.Type = shared.PeerChannel
