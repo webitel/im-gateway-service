@@ -30,7 +30,7 @@ const (
 // integrated into the Webitel ecosystem (e.g., Telegram, Viber, WebChat).
 type ContactsClient interface {
 	// Search retrieves a paginated list of contacts based on filters and search queries.
-	Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchList, error)
+	Search(ctx context.Context, in *SearchContactRequest, opts ...grpc.CallOption) (*ContactList, error)
 }
 
 type contactsClient struct {
@@ -41,9 +41,9 @@ func NewContactsClient(cc grpc.ClientConnInterface) ContactsClient {
 	return &contactsClient{cc}
 }
 
-func (c *contactsClient) Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchList, error) {
+func (c *contactsClient) Search(ctx context.Context, in *SearchContactRequest, opts ...grpc.CallOption) (*ContactList, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SearchList)
+	out := new(ContactList)
 	err := c.cc.Invoke(ctx, Contacts_Search_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func (c *contactsClient) Search(ctx context.Context, in *SearchRequest, opts ...
 // integrated into the Webitel ecosystem (e.g., Telegram, Viber, WebChat).
 type ContactsServer interface {
 	// Search retrieves a paginated list of contacts based on filters and search queries.
-	Search(context.Context, *SearchRequest) (*SearchList, error)
+	Search(context.Context, *SearchContactRequest) (*ContactList, error)
 	mustEmbedUnimplementedContactsServer()
 }
 
@@ -70,7 +70,7 @@ type ContactsServer interface {
 // pointer dereference when methods are called.
 type UnimplementedContactsServer struct{}
 
-func (UnimplementedContactsServer) Search(context.Context, *SearchRequest) (*SearchList, error) {
+func (UnimplementedContactsServer) Search(context.Context, *SearchContactRequest) (*ContactList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Search not implemented")
 }
 func (UnimplementedContactsServer) mustEmbedUnimplementedContactsServer() {}
@@ -95,7 +95,7 @@ func RegisterContactsServer(s grpc.ServiceRegistrar, srv ContactsServer) {
 }
 
 func _Contacts_Search_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchRequest)
+	in := new(SearchContactRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func _Contacts_Search_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: Contacts_Search_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ContactsServer).Search(ctx, req.(*SearchRequest))
+		return srv.(ContactsServer).Search(ctx, req.(*SearchContactRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
