@@ -157,7 +157,7 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error
 	contact := auth.GetContact()
 	return &Identity{
 		ContactID: contact.GetId(),
-		DomainID:  auth.GetDc(),
+		DomainID:  contact.GetDc(),
 		Name:      coalesceName(contact),
 	}, nil
 }
