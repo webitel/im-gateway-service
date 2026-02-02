@@ -25,7 +25,7 @@ type HistoryDocument struct {
 	Name      string `json:"name"`
 	Mime      string `json:"mime"`
 	Size      int64  `json:"size"`
-	CreatedAt int64  `json:"created_at"` 
+	CreatedAt int64  `json:"created_at"`
 	URL       string `json:"url"`
 }
 
@@ -41,17 +41,17 @@ type HistoryImage struct {
 }
 
 type HistoryMessage struct {
-	ID         string                 `json:"id"`
-	ThreadID   string                 `json:"thread_id"`
-	SenderID   string                 `json:"sender_id"`
-	ReceiverID string                 `json:"receiver_id"`
-	Type       int32                  `json:"type"`
-	Body       string                 `json:"body"`
-	Metadata   map[string]any `json:"metadata,omitempty"`
-	CreatedAt  int64                  `json:"created_at"`
-	UpdatedAt  int64                  `json:"updated_at"`
-	Documents  []HistoryDocument             `json:"documents,omitempty"`
-	Images     []HistoryImage                `json:"images,omitempty"`
+	ID         string            `json:"id"`
+	ThreadID   string            `json:"thread_id"`
+	SenderID   string            `json:"sender_id"`
+	ReceiverID string            `json:"receiver_id"`
+	Type       int32             `json:"type"`
+	Body       string            `json:"body"`
+	Metadata   map[string]any    `json:"metadata,omitempty"`
+	CreatedAt  int64             `json:"created_at"`
+	UpdatedAt  int64             `json:"updated_at"`
+	Documents  []HistoryDocument `json:"documents,omitempty"`
+	Images     []HistoryImage    `json:"images,omitempty"`
 }
 
 type Cursors struct {
@@ -64,9 +64,15 @@ type Paging struct {
 }
 
 type SearchMessageHistoryResponse struct {
-	Messages   []HistoryMessage      `json:"messages"`
-	NextCursor *HistoryMessageCursor `json:"next_cursor,omitempty"`
-	Next       bool                  `json:"next"`
-	From       []string              `json:"from,omitempty"`
-	Paging     Paging                `json:"paging"`
+	Messages       []HistoryMessage      `json:"messages"`
+	NextCursor     *HistoryMessageCursor `json:"next_cursor,omitempty"`
+	Next           bool                  `json:"next"`
+	Paging         Paging                `json:"paging"`
+	MessageSenders []*MessageSender      `json:"message_senders"`
+}
+
+type MessageSender struct {
+	Subject string `json:"subject"`
+	Issuer  string `json:"issuer"`
+	Type    string `json:"type"`
 }

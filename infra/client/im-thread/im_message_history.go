@@ -59,7 +59,7 @@ func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryP
 // Returns:
 //  - *dto.SearchMessageHistoryResponse: search result
 //  - error: any error encountered during the search operation
-func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error) {
+func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []string, error) {
 	log := c.logger.With(
 		slog.Int("domain_id", int(searchQuery.DomainID)),
 		slog.Uint64("size", uint64(searchQuery.Size)),
@@ -102,12 +102,12 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 			slog.Any("error", err),
 			slog.Any("request", searchQuery),
 		)
-		return nil, err
+		return nil, nil, err
 	}
 
 	respDto := ToSearchHistoryResponseDTO(response) 
 
-	return respDto, nil
+	return respDto, response.GetFrom(), nil
 }
 
 // Close gracefully shuts down the underlying gRPC connection pool.
@@ -139,7 +139,6 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 		Messages:   mapMessages(resp.Messages),
 		NextCursor: mapCursor(resp.NextCursor),
 		Next:       resp.Next,
-		From:       resp.From,
 		Paging: dto.Paging{
 			Cursors: dto.Cursors{
 				After:  mapCursor(resp.Paging.GetCursors().GetAfter()),
