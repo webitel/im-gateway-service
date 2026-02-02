@@ -142,7 +142,8 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 
 	// [LOOKUP] FIND INTERNAL CONTACT VIA CONTACTS SERVICE
 	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
-		Subjects: []string{p.ID.String()},
+		Subjects: []string{p.ID},
+		IssId:    []string{p.Issuer},
 		DomainId: domainID,
 		Size:     2,
 	})
