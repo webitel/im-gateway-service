@@ -1,15 +1,16 @@
 package server
 
 import (
-	webiteldi "github.com/webitel/im-gateway-service/infra/client/di"
-	"github.com/webitel/im-gateway-service/infra/pubsub"
-	"github.com/webitel/im-gateway-service/infra/tls"
 	"go.uber.org/fx"
 
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 
 	"github.com/webitel/im-gateway-service/config"
+	defaultauth "github.com/webitel/im-gateway-service/infra/auth/standard"
+	webiteldi "github.com/webitel/im-gateway-service/infra/client/di"
+	"github.com/webitel/im-gateway-service/infra/pubsub"
 	grpcsrv "github.com/webitel/im-gateway-service/infra/server/grpc"
+	"github.com/webitel/im-gateway-service/infra/tls"
 	grpchandler "github.com/webitel/im-gateway-service/internal/handler/grpc"
 	"github.com/webitel/im-gateway-service/internal/service"
 )
@@ -22,8 +23,8 @@ func NewApp(cfg *config.Config) *fx.App {
 			ProvideSD,
 		),
 		fx.Invoke(func(discovery discovery.DiscoveryProvider) error { return nil }),
-
 		webiteldi.Module,
+		defaultauth.Module,
 		pubsub.Module,
 		tls.Module,
 		service.Module,

@@ -19,10 +19,9 @@ import (
 	intrcp "github.com/webitel/webitel-go-kit/pkg/interceptors"
 
 	"github.com/webitel/im-gateway-service/config"
-	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
+	"github.com/webitel/im-gateway-service/infra/auth"
 	"github.com/webitel/im-gateway-service/infra/server/grpc/interceptors"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/im-gateway-service/internal/service"
 )
 
 var Module = fx.Module("grpc_server",
@@ -39,15 +38,13 @@ func ProvideServer(
 	conf *config.Config,
 	logger *slog.Logger,
 	tlsConf *infratls.Config,
-	auther service.Auther,
-	contacter *imcontact.Client,
+	auther auth.Authorizer,
 	lc fx.Lifecycle,
 ) (*Server, error) {
 	srv, err := New(conf.Service.Address, func(c *Config) error {
 		c.TLS = tlsConf.Server.Clone()
 		c.Logger = logger
 		c.Auther = auther
-		c.Contacter = contacter
 
 		return nil
 	})
@@ -94,9 +91,8 @@ type Config struct {
 	TLS *tls.Config
 
 	// Dependencies
-	Logger    *slog.Logger
-	Auther    service.Auther
-	Contacter *imcontact.Client
+	Logger *slog.Logger
+	Auther auth.Authorizer
 }
 
 type Option func(*Config) error
@@ -144,7 +140,7 @@ func New(addr string, opts ...Option) (*Server, error) {
 		grpc.ChainUnaryInterceptor(
 			intrcp.UnaryServerErrorInterceptor(),
 			// Injected Auth Interceptor with required business logic clients
-			interceptors.NewUnaryAuthInterceptor(conf.Auther, *conf.Contacter, log),
+			interceptors.NewUnaryAuthInterceptor(conf.Auther),
 			validatemiddleware.UnaryServerInterceptor(validator),
 		),
 	)
