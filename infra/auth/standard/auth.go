@@ -135,14 +135,23 @@ func (da *Authorizer) resolveSchemaIdentity(ctx context.Context, md metadata.MD)
 }
 
 func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error) {
-	auth, err := da.auther.Inspect(ctx, &authv1pb.InspectRequest{})
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errors.Forbidden("metadata required for user identity resolve")
+	}
+
+	auth, err := da.auther.Inspect(metadata.NewOutgoingContext(ctx, md), &authv1pb.InspectRequest{})
 	if err != nil {
 		return nil, err
 	}
 
+	if auth.GetContact() == nil {
+		return nil, errors.Forbidden("no contact info in authorization")
+	}
+
 	return &Identity{
-		ContactID: auth.Contact.Id,
-		DomainID:  auth.Dc,
+		ContactID: auth.GetContact().GetId(),
+		DomainID:  auth.GetContact().GetDc(),
 	}, nil
 }
 

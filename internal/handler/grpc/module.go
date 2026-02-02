@@ -18,8 +18,12 @@ var Module = fx.Module("grpc",
 	),
 	fx.Provide(
 		NewContactService,
+		NewBotService,
 	),
-	fx.Invoke(RegisterContactService),
+	fx.Invoke(
+		RegisterContactService,
+		RegisterBotService,
+	),
 )
 
 func RegisterMessageService(
@@ -35,4 +39,8 @@ func RegisterHistoryMessageService(server *grpcsrv.Server, service *MessageHisto
 
 func RegisterContactService(server *grpcsrv.Server, service *ContactService) {
 	impb.RegisterContactsServer(server, service)
+}
+
+func RegisterBotService(server *grpcsrv.Server, service *BotService) {
+	impb.RegisterBotsServer(server, service)
 }

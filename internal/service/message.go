@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	impb "github.com/webitel/im-gateway-service/gen/go/contact/v1" // ADDED FOR SEARCH
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -17,9 +19,9 @@ import (
 )
 
 // INTERFACE GUARD
-var _ Messager = (*MessageService)(nil)
+var _ Messenger = (*MessageService)(nil)
 
-type Messager interface {
+type Messenger interface {
 	SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error)
 	SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error)
 	SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error)
@@ -142,22 +144,24 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
 		Subjects: []string{p.ID.String()},
 		DomainId: domainID,
+		Size:     2,
 	})
-
 	// IF ERROR OR NOT FOUND, FALLBACK TO ORIGINAL ID BUT LOG WARNING
 	if err != nil {
-		m.logger.Error("contact service search failed", slog.String("id", p.ID.String()), slog.Any("err", err))
-		return nil, fmt.Errorf("resolve recipient: %w", err)
+		return nil, err
 	}
 
-	if len(res.Contacts) == 0 {
-		m.logger.Warn("contact not found in registry, using raw peer id", slog.String("id", p.ID.String()))
-		return nil, nil
+	if len(res.GetContacts()) == 0 {
+		return nil, errors.NotFound("resolve recipient: not found")
+	}
+
+	if len(res.GetContacts()) > 1 {
+		return nil, errors.Internal("resolve recipient: too many contacts found")
 	}
 
 	// [SUCCESS] RETURN PEER WITH RESOLVED CONTACT ID
 	return &threadv1.Peer{
-		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].Id},
+		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].GetId()},
 	}, nil
 }
 
