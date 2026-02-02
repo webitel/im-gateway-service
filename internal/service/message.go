@@ -6,7 +6,9 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	"github.com/webitel/im-gateway-service/infra/auth"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
@@ -35,8 +37,14 @@ func NewMessageService(logger *slog.Logger, threadClient *imthread.Client) *Mess
 
 // SendText handles plain text message delivery
 func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
 	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
-		From:     m.mapFromPeer(in.From),
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+		},
 		To:       m.mapPeerToProto(in.To),
 		Body:     in.Body,
 		DomainId: in.DomainID,
@@ -50,8 +58,14 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 
 // SendImage handles image gallery delivery
 func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
 	resp, err := m.threader.SendImage(ctx, &threadv1.SendImageRequest{
-		From:     m.mapFromPeer(in.From),
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+		},
 		To:       m.mapPeerToProto(in.To),
 		DomainId: in.DomainID,
 		Image: &threadv1.ImageRequest{
@@ -68,8 +82,14 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 
 // SendDocument handles file/attachment delivery
 func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
 	resp, err := m.threader.SendDocument(ctx, &threadv1.SendDocumentRequest{
-		From:     m.mapFromPeer(in.From),
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+		},
 		To:       m.mapPeerToProto(in.To),
 		DomainId: in.DomainID,
 		Document: &threadv1.DocumentRequest{
