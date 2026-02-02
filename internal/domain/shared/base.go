@@ -4,6 +4,7 @@
 package shared
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,8 +20,12 @@ const (
 )
 
 type Peer struct {
-	ID   uuid.UUID `json:"id" db:"id"`
-	Type PeerType  `json:"type" db:"type"`
+	ID   int64    `json:"id" db:"id"`
+	Type PeerType `json:"type" db:"type"`
+}
+
+func (p *Peer) IDString() string {
+	return strconv.Itoa(int(p.ID))
 }
 
 type BaseModel struct {
