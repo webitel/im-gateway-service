@@ -1,7 +1,6 @@
 package mapper
 
 import (
-	"fmt"
 	"strconv"
 
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
@@ -27,12 +26,6 @@ func MapToSendImageRequest(in *impb.SendImageRequest) *dto.SendImageRequest {
 			})
 		}
 	}
-
-	a := &dto.SendImageRequest{
-		To:    MapPeerFromProto(in.GetTo()),
-		Image: imgReq,
-	}
-	fmt.Println(a)
 
 	return &dto.SendImageRequest{
 		To:    MapPeerFromProto(in.GetTo()),
