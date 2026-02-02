@@ -99,10 +99,7 @@ type Option func(*Config) error
 
 // New initializes a new gRPC server with the provided options.
 func New(addr string, opts ...Option) (*Server, error) {
-	var (
-		conf    Config
-		grpcTLS credentials.TransportCredentials
-	)
+	var conf Config
 
 	// Apply options to configuration
 	for _, opt := range opts {
@@ -122,20 +119,13 @@ func New(addr string, opts ...Option) (*Server, error) {
 		addr = ":0"
 	}
 
-	// Configure TLS if provided
-	if conf.TLS != nil {
-		grpcTLS = credentials.NewTLS(conf.TLS)
-	}
-
 	// Initialize proto-validator
 	validator, err := protovalidate.New()
 	if err != nil {
 		return nil, err
 	}
 
-	// Initialize gRPC server with interceptor chain
-	s := grpc.NewServer(
-		grpc.Creds(grpcTLS),
+	serverOpts := []grpc.ServerOption{
 		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.ChainUnaryInterceptor(
 			intrcp.UnaryServerErrorInterceptor(),
@@ -143,7 +133,15 @@ func New(addr string, opts ...Option) (*Server, error) {
 			interceptors.NewUnaryAuthInterceptor(conf.Auther),
 			validatemiddleware.UnaryServerInterceptor(validator),
 		),
-	)
+	}
+
+	// Configure TLS if provided
+	if conf.TLS != nil {
+		serverOpts = append(serverOpts, grpc.Creds(credentials.NewTLS(conf.TLS)))
+	}
+
+	// Initialize gRPC server with interceptor chain
+	s := grpc.NewServer(serverOpts...)
 
 	// Start TCP listener
 	l, err := net.Listen("tcp", addr)

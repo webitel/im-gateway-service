@@ -79,16 +79,15 @@ func (da *Authorizer) SetIdentity(ctx context.Context) (context.Context, error) 
 // resolveIdentity determines identification path based on connection type and headers
 func (da *Authorizer) resolveIdentity(ctx context.Context) (*Identity, error) {
 	if client, ok := peer.FromContext(ctx); ok && client.AuthInfo != nil {
-		return da.resolveServiceIdentity(ctx, client.AuthInfo)
+		if tlsInfo, ok := client.AuthInfo.(credentials.TLSInfo); ok && len(tlsInfo.State.PeerCertificates) > 0 {
+			return da.resolveServiceIdentity(ctx)
+		}
 	}
+
 	return da.resolveUserIdentity(ctx)
 }
 
-func (da *Authorizer) resolveServiceIdentity(ctx context.Context, authInfo credentials.AuthInfo) (*Identity, error) {
-	if authInfo.AuthType() != "tls" {
-		return nil, errors.Forbidden("invalid auth provider type")
-	}
-
+func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (*Identity, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, errors.Forbidden("metadata required for internal identity resolve")

@@ -24,26 +24,21 @@ func ProvideTLSConfig(cfg *config.Config) (*Config, error) {
 	var (
 		connConfig = cfg.Service.Connection
 		conf       = &Config{}
-		authType   = tls.RequireAndVerifyClientCert
 		err        error
 	)
 
-	if !connConfig.VerifyCerts && connConfig.TLS.Cert == "" && connConfig.TLS.Key == "" {
+	if !connConfig.VerifyCerts {
 		conf.Server = nil
 		conf.Client = nil
 		return conf, nil
 	}
 
-	if !connConfig.VerifyCerts {
-		authType = tls.NoClientCert
-	}
-
-	conf.Server, err = Load(connConfig.TLS, authType)
+	conf.Server, err = Load(connConfig.TLS, tls.VerifyClientCertIfGiven)
 	if err != nil {
 		return nil, err
 	}
 
-	conf.Client, err = Load(connConfig.Client, tls.NoClientCert)
+	conf.Client, err = Load(connConfig.Client, tls.RequireAndVerifyClientCert)
 	if err != nil {
 		return nil, err
 	}
