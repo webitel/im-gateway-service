@@ -133,9 +133,9 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 
 // [INTERNAL] resolveRecipient maps shared.Peer to threadv1.Peer and performs contact lookup if necessary
 func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer) (*threadv1.Peer, error) {
-	// IF PEER IS NOT A CONTACT (GROUP/CHANNEL), USE ORIGINAL ID
+	// NOT IMPLEMENTED
 	if p.Type != shared.PeerContact {
-		return m.mapPeerToProto(p), nil
+		return nil, nil
 	}
 
 	// [LOOKUP] FIND INTERNAL CONTACT VIA CONTACTS SERVICE
@@ -152,29 +152,13 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer) (*
 
 	if len(res.Contacts) == 0 {
 		m.logger.Warn("contact not found in registry, using raw peer id", slog.String("id", p.ID.String()))
-		return m.mapPeerToProto(p), nil
+		return nil, nil
 	}
 
 	// [SUCCESS] RETURN PEER WITH RESOLVED CONTACT ID
 	return &threadv1.Peer{
 		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].Id},
 	}, nil
-}
-
-func (m *MessageService) mapPeerToProto(p shared.Peer) *threadv1.Peer {
-	peer := &threadv1.Peer{}
-	switch p.Type {
-	case shared.PeerContact:
-		peer.Kind = &threadv1.Peer_ContactId{ContactId: p.ID.String()}
-	case shared.PeerGroup:
-		peer.Kind = &threadv1.Peer_GroupId{GroupId: p.ID.String()}
-	case shared.PeerChannel:
-		peer.Kind = &threadv1.Peer_ChannelId{ChannelId: p.ID.String()}
-	default:
-		m.logger.Warn("mapping unknown peer type", slog.String("type", p.Type.String()))
-		peer.Kind = &threadv1.Peer_ContactId{ContactId: p.ID.String()}
-	}
-	return peer
 }
 
 func (m *MessageService) mapImages(src []*dto.Image) []*threadv1.ImageInput {
