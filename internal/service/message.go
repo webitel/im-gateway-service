@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	impb "github.com/webitel/im-gateway-service/gen/go/contact/v1" // ADDED FOR SEARCH
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -16,7 +18,10 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-// INTERFACE GUARD
+const (
+	NoNameRecepient = "Unknown Recepient"
+)
+
 var _ Messenger = (*MessageService)(nil)
 
 type Messenger interface {
@@ -41,19 +46,16 @@ func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, conta
 
 // SendText handles plain text message delivery
 func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error) {
-	// [AUTH] EXTRACT CALLER IDENTITY
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	// [RESOLVE] TARGET PEER IDENTITY
 	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
 	if err != nil {
 		return nil, err
 	}
 
-	// [DISPATCH] SEND TO THREAD SERVICE
 	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
@@ -136,33 +138,47 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 
 // [INTERNAL] resolveRecipient maps shared.Peer to threadv1.Peer and performs contact lookup if necessary
 func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, domainID int32) (*threadv1.Peer, error) {
-	// NOT IMPLEMENTED
-	if p.Type != shared.PeerContact {
-		return nil, nil
-	}
+	switch p.Type {
+	case shared.PeerGroup:
+		return &threadv1.Peer{
+			Kind: &threadv1.Peer_GroupId{GroupId: p.ID},
+		}, nil
 
-	// [LOOKUP] FIND INTERNAL CONTACT VIA CONTACTS SERVICE
+	case shared.PeerChannel:
+		return &threadv1.Peer{
+			Kind: &threadv1.Peer_ChannelId{ChannelId: p.ID},
+		}, nil
+	case shared.PeerContact:
+		return m.resolveContact(ctx, p.ID, p.Issuer, domainID)
+	default:
+		return nil, errors.New("unknown receiver peer type")
+	}
+}
+
+func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, domainID int32) (*threadv1.Peer, error) {
 	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
-		Subjects: []string{p.ID},
-		IssId:    []string{p.Issuer},
+		Subjects: []string{sub},
+		IssId:    []string{iss},
 		DomainId: domainID,
-		Size:     1,
+		Size:     2,
 		Page:     1,
 	})
-	// IF ERROR OR NOT FOUND, FALLBACK TO ORIGINAL ID BUT LOG WARNING
 	if err != nil {
 		return nil, fmt.Errorf("resolve recipient: %w", err)
 	}
 
-	if len(res.Contacts) == 0 {
-		return nil, nil
+	if len(res.GetContacts()) == 0 {
+		return nil, errors.NotFound("recipient contact not found")
 	}
 
-	// [SUCCESS] RETURN PEER WITH RESOLVED CONTACT ID
+	if len(res.GetContacts()) > 1 {
+		return nil, errors.NotFound("too many recipients found")
+	}
+	contact := res.GetContacts()[0]
 	return &threadv1.Peer{
-		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].Id},
+		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
-			Name: coalesceString(res.Contacts[0].Name, res.Contacts[0].Username, "Unknown"),
+			Name: coalesceString(contact.GetName(), contact.GetUsername(), NoNameRecepient),
 		},
 	}, nil
 }
