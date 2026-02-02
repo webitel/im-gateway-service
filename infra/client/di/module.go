@@ -13,18 +13,28 @@ var Module = fx.Module(
 	"webitel_clients",
 
 	// [CONSTRUCTOR] Provides the resilient contact client
-	fx.Provide(imthread.New),
+	fx.Provide(imthread.New, imthread.NewMessageHistoryClient),
 	fx.Provide(imauth.New),
 	fx.Provide(imcontact.New),
 
 	// [LIFECYCLE] Ensures the gRPC connection pool is closed gracefully on app shutdown
-	fx.Invoke(func(lc fx.Lifecycle, client *imthread.Client) {
-		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
-				return client.Close()
-			},
-		})
-	}),
+	fx.Invoke(
+		func(lc fx.Lifecycle, client *imthread.Client) {
+			lc.Append(fx.Hook{
+				OnStop: func(ctx context.Context) error {
+					return client.Close()
+				},
+			})
+		},
+
+		func(lc fx.Lifecycle, client *imthread.MessageHistoryClient) {
+			lc.Append(fx.Hook{
+				OnStop: func(ctx context.Context) error {
+					return client.Close()
+				},
+			})
+		},
+	),
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imauth.Client) {
 		lc.Append(fx.Hook{

@@ -18,5 +18,10 @@ var Module = fx.Module(
 			NewAuthService,
 			fx.As(new(Auther)),
 		),
+
+		fx.Annotate(
+			NewMessageHistory,
+			fx.As(new(MessageHistorySearcher)),
+		),
 	),
 )
