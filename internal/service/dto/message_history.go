@@ -47,7 +47,7 @@ type HistoryMessage struct {
 	ReceiverID string                 `json:"receiver_id"`
 	Type       int32                  `json:"type"`
 	Body       string                 `json:"body"`
-	Metadata   map[string]interface{} `json:"metadata,omitempty"` // Аналог google.protobuf.Any
+	Metadata   map[string]any `json:"metadata,omitempty"`
 	CreatedAt  int64                  `json:"created_at"`
 	UpdatedAt  int64                  `json:"updated_at"`
 	Documents  []HistoryDocument             `json:"documents,omitempty"`
