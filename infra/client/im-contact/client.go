@@ -22,14 +22,14 @@ type Client struct {
 	tls *infratls.Config
 }
 
-func New(logger *slog.Logger, discovery discovery.DiscoveryProvider,tls *infratls.Config) (*Client, error) {
+func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
 	// [FACTORY] Required by go-kit to instantiate the gRPC stub
 	factory := func(conn *grpc.ClientConn) contactv1.ContactsClient {
 		return contactv1.NewContactsClient(conn)
 	}
 
 	// [INIT] Initialize the shared RPC client wrapper
-	c, err := webitel.New(logger, discovery, ServiceName,tls, factory)
+	c, err := webitel.New(logger, discovery, ServiceName, tls, factory)
 	if err != nil {
 		return nil, fmt.Errorf("[im-contact-client] initialization failed: %w", err)
 	}
@@ -50,6 +50,54 @@ func (c *Client) SearchContact(ctx context.Context, req *contactv1.SearchContact
 
 		var err error
 		resp, err = api.SearchContact(ctx, req)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) CreateContact(ctx context.Context, req *contactv1.CreateContactRequest) (*contactv1.Contact, error) {
+	var resp *contactv1.Contact
+
+	err := c.rpc.Execute(ctx, func(api contactv1.ContactsClient) error {
+		c.logger.Debug("CONTACTS.SEARCH_CONTACT", slog.Any("req", req))
+
+		var err error
+
+		resp, err = api.CreateContact(ctx, req)
+
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) DeleteContact(ctx context.Context, req *contactv1.DeleteContactRequest) (*contactv1.Contact, error) {
+	var resp *contactv1.Contact
+
+	err := c.rpc.Execute(ctx, func(api contactv1.ContactsClient) error {
+		c.logger.Debug("CONTACTS.SEARCH_CONTACT", slog.Any("req", req))
+
+		var err error
+
+		resp, err = api.DeleteContact(ctx, req)
+
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) UpdateContact(ctx context.Context, req *contactv1.UpdateContactRequest) (*contactv1.Contact, error) {
+	var resp *contactv1.Contact
+
+	err := c.rpc.Execute(ctx, func(api contactv1.ContactsClient) error {
+		c.logger.Debug("CONTACTS.SEARCH_CONTACT", slog.Any("req", req))
+
+		var err error
+
+		resp, err = api.UpdateContact(ctx, req)
+
 		return err
 	})
 

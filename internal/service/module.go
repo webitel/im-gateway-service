@@ -20,6 +20,11 @@ var Module = fx.Module(
 		),
 
 		fx.Annotate(
+			NewContactService,
+			fx.As(new(Contacter)),
+		),
+
+		fx.Annotate(
 			NewMessageHistory,
 			fx.As(new(MessageHistorySearcher)),
 		),
