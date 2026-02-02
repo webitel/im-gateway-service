@@ -48,7 +48,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 	}
 
 	// [RESOLVE] TARGET PEER IDENTITY
-	to, err := m.resolveRecipient(ctx, in.To)
+	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, in.To)
+	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, in.To)
+	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 // --- Internal Helpers & Mappers ---
 
 // [INTERNAL] resolveRecipient maps shared.Peer to threadv1.Peer and performs contact lookup if necessary
-func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer) (*threadv1.Peer, error) {
+func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, domainID int32) (*threadv1.Peer, error) {
 	// NOT IMPLEMENTED
 	if p.Type != shared.PeerContact {
 		return nil, nil
@@ -141,7 +141,7 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer) (*
 	// [LOOKUP] FIND INTERNAL CONTACT VIA CONTACTS SERVICE
 	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
 		Subjects: []string{p.ID.String()},
-		DomainId: int32(p.ID.Domain()),
+		DomainId: domainID,
 	})
 
 	// IF ERROR OR NOT FOUND, FALLBACK TO ORIGINAL ID BUT LOG WARNING
