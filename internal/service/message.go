@@ -151,12 +151,10 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 	})
 	// IF ERROR OR NOT FOUND, FALLBACK TO ORIGINAL ID BUT LOG WARNING
 	if err != nil {
-		m.logger.Error("contact service search failed", slog.String("id", p.IDString()), slog.Any("err", err))
 		return nil, fmt.Errorf("resolve recipient: %w", err)
 	}
 
 	if len(res.Contacts) == 0 {
-		m.logger.Warn("contact not found in registry, using raw peer id", slog.String("id", p.IDString()))
 		return nil, nil
 	}
 
