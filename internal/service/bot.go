@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
+
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -21,6 +23,7 @@ const (
 
 type Botter interface {
 	CreateBot(ctx context.Context, in *dto.CreateBotRequest) (*dto.Bot, error)
+	UpdateBot(ctx context.Context, in *dto.UpdateBotRequest) (*dto.Bot, error)
 	DeleteBot(ctx context.Context, in *dto.DeleteBotRequest) (*dto.Bot, error)
 }
 
@@ -50,6 +53,29 @@ func (m *BotService) CreateBot(ctx context.Context, in *dto.CreateBotRequest) (*
 		Metadata: in.Metadata,
 		Subject:  in.SchemaID,
 		DomainId: int32(identity.GetDomainID()),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return m.toBot(resp), nil
+}
+
+func (m *BotService) UpdateBot(ctx context.Context, in *dto.UpdateBotRequest) (*dto.Bot, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.contactClient.PatchContact(ctx, &contactv1.PatchContactRequest{
+		Name:     in.Name,
+		Username: in.Username,
+		Metadata: in.Metadata,
+		Subject:  in.SchemaID,
+		DomainId: int32(identity.GetDomainID()),
+		FieldMask: &fieldmaskpb.FieldMask{
+			Paths: in.Fields,
+		},
 	})
 	if err != nil {
 		return nil, err

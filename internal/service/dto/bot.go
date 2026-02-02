@@ -16,6 +16,15 @@ type CreateBotRequest struct {
 	Metadata map[string]string
 }
 
+type UpdateBotRequest struct {
+	ID       string
+	Username string
+	Name     string
+	SchemaID string
+	Metadata map[string]string
+	Fields   []string
+}
+
 type DeleteBotRequest struct {
 	ID string
 }

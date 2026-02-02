@@ -18,6 +18,21 @@ func MapToCreateBotRequest(in *impb.CreateBotRequest) *dto.CreateBotRequest {
 	}
 }
 
+func MapToUpdateBotRequest(in *impb.UpdateBotRequest) *dto.UpdateBotRequest {
+	if in == nil {
+		return nil
+	}
+
+	return &dto.UpdateBotRequest{
+		ID:       in.GetId(),
+		Username: in.GetUsername(),
+		Name:     in.GetName(),
+		SchemaID: in.GetSchemaId(),
+		Metadata: in.GetMetadata(),
+		Fields:   in.FieldMask.GetPaths(),
+	}
+}
+
 func MapToDeleteBotRequest(in *impb.DeleteBotRequest) *dto.DeleteBotRequest {
 	if in == nil {
 		return nil

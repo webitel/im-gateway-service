@@ -18,6 +18,15 @@ type BotService struct {
 	botter service.Botter
 }
 
+func (b *BotService) UpdateBot(ctx context.Context, request *impb.UpdateBotRequest) (*impb.Bot, error) {
+	bot, err := b.botter.UpdateBot(ctx, mapper.MapToUpdateBotRequest(request))
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToBot(bot), nil
+}
+
 func (b *BotService) CreateBot(ctx context.Context, request *impb.CreateBotRequest) (*impb.Bot, error) {
 	bot, err := b.botter.CreateBot(ctx, mapper.MapToCreateBotRequest(request))
 	if err != nil {
