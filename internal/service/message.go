@@ -7,14 +7,16 @@ import (
 
 	"github.com/google/uuid"
 
+	impb "github.com/webitel/im-gateway-service/gen/go/contact/v1" // ADDED FOR SEARCH
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
+	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-// Interface guard
+// INTERFACE GUARD
 var _ Messager = (*MessageService)(nil)
 
 type Messager interface {
@@ -24,28 +26,39 @@ type Messager interface {
 }
 
 type MessageService struct {
-	logger   *slog.Logger
-	threader *imthread.Client
+	logger    *slog.Logger
+	threader  *imthread.Client
+	contacter *imcontact.Client
 }
 
-func NewMessageService(logger *slog.Logger, threadClient *imthread.Client) *MessageService {
+func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client) *MessageService {
 	return &MessageService{
-		logger:   logger,
-		threader: threadClient,
+		logger:    logger,
+		threader:  threadClient,
+		contacter: contacter,
 	}
 }
 
 // SendText handles plain text message delivery
 func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error) {
+	// [AUTH] EXTRACT CALLER IDENTITY
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
+	// [RESOLVE] TARGET PEER IDENTITY
+	to, err := m.resolveRecipient(ctx, in.To)
+	if err != nil {
+		return nil, err
+	}
+
+	// [DISPATCH] SEND TO THREAD SERVICE
 	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		},
-		To:       m.mapPeerToProto(in.To),
+		To:       to,
 		Body:     in.Body,
 		DomainId: in.DomainID,
 	})
@@ -62,11 +75,17 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
+	to, err := m.resolveRecipient(ctx, in.To)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := m.threader.SendImage(ctx, &threadv1.SendImageRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		},
-		To:       m.mapPeerToProto(in.To),
+		To:       to,
 		DomainId: in.DomainID,
 		Image: &threadv1.ImageRequest{
 			Body:   in.Image.Body,
@@ -86,11 +105,17 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
+	to, err := m.resolveRecipient(ctx, in.To)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := m.threader.SendDocument(ctx, &threadv1.SendDocumentRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		},
-		To:       m.mapPeerToProto(in.To),
+		To:       to,
 		DomainId: in.DomainID,
 		Document: &threadv1.DocumentRequest{
 			Body:      in.Document.Body,
@@ -104,12 +129,36 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	return &dto.SendDocumentResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
 }
 
-// --- Internal Mappers ---
+// --- Internal Helpers & Mappers ---
 
-func (m *MessageService) mapFromPeer(p shared.Peer) *threadv1.Peer {
-	return &threadv1.Peer{
-		Kind: &threadv1.Peer_ContactId{ContactId: p.ID.String()},
+// [INTERNAL] resolveRecipient maps shared.Peer to threadv1.Peer and performs contact lookup if necessary
+func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer) (*threadv1.Peer, error) {
+	// IF PEER IS NOT A CONTACT (GROUP/CHANNEL), USE ORIGINAL ID
+	if p.Type != shared.PeerContact {
+		return m.mapPeerToProto(p), nil
 	}
+
+	// [LOOKUP] FIND INTERNAL CONTACT VIA CONTACTS SERVICE
+	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
+		Subjects: []string{p.ID.String()},
+		DomainId: int32(p.ID.Domain()),
+	})
+
+	// IF ERROR OR NOT FOUND, FALLBACK TO ORIGINAL ID BUT LOG WARNING
+	if err != nil {
+		m.logger.Error("contact service search failed", slog.String("id", p.ID.String()), slog.Any("err", err))
+		return nil, fmt.Errorf("resolve recipient: %w", err)
+	}
+
+	if len(res.Contacts) == 0 {
+		m.logger.Warn("contact not found in registry, using raw peer id", slog.String("id", p.ID.String()))
+		return m.mapPeerToProto(p), nil
+	}
+
+	// [SUCCESS] RETURN PEER WITH RESOLVED CONTACT ID
+	return &threadv1.Peer{
+		Kind: &threadv1.Peer_ContactId{ContactId: res.Contacts[0].Id},
+	}, nil
 }
 
 func (m *MessageService) mapPeerToProto(p shared.Peer) *threadv1.Peer {
@@ -123,40 +172,41 @@ func (m *MessageService) mapPeerToProto(p shared.Peer) *threadv1.Peer {
 		peer.Kind = &threadv1.Peer_ChannelId{ChannelId: p.ID.String()}
 	default:
 		m.logger.Warn("mapping unknown peer type", slog.String("type", p.Type.String()))
+		peer.Kind = &threadv1.Peer_ContactId{ContactId: p.ID.String()}
 	}
 	return peer
 }
 
 func (m *MessageService) mapImages(src []*dto.Image) []*threadv1.ImageInput {
-	res := make([]*threadv1.ImageInput, len(src))
-	for i, img := range src {
+	res := make([]*threadv1.ImageInput, 0, len(src))
+	for _, img := range src {
 		if img == nil {
 			continue
 		}
-		res[i] = &threadv1.ImageInput{
+		res = append(res, &threadv1.ImageInput{
 			Id:       fmt.Sprintf("%d", img.ID),
 			Name:     img.Name,
 			Link:     img.URL,
 			MimeType: img.MimeType,
-		}
+		})
 	}
 	return res
 }
 
 func (m *MessageService) mapDocuments(src []*dto.Document) []*threadv1.DocumentInput {
-	res := make([]*threadv1.DocumentInput, len(src))
-	for i, doc := range src {
+	res := make([]*threadv1.DocumentInput, 0, len(src))
+	for _, doc := range src {
 		if doc == nil {
 			continue
 		}
 		size := doc.Size
-		res[i] = &threadv1.DocumentInput{
+		res = append(res, &threadv1.DocumentInput{
 			Id:        fmt.Sprintf("%d", doc.ID),
 			Url:       doc.URL,
 			FileName:  doc.Name,
 			MimeType:  doc.MimeType,
 			SizeBytes: &size,
-		}
+		})
 	}
 	return res
 }
