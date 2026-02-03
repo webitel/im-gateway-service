@@ -33,5 +33,10 @@ var Module = fx.Module(
 			NewBotService,
 			fx.As(new(Botter)),
 		),
+
+		fx.Annotate(
+			NewThread,
+			fx.As(new(ThreadSearcher)),
+		),
 	),
 )
