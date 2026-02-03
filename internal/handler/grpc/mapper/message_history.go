@@ -85,8 +85,8 @@ func toProtoMessages(messages []dto.HistoryMessage) []*pb.HistoryMessage {
 		protoMsgs[i] = &pb.HistoryMessage{
 			Id:         m.ID,
 			ThreadId:  m.ThreadID,
-			SenderId:  m.SenderID,
-			ReceiverId: m.ReceiverID,
+			Sender:  toProtoMessageSender(m.Sender),
+			Receiver: toProtoMessageSender(m.Receiver),
 			Type:       m.Type,
 			Body:       m.Body,
 			Metadata:   md,
@@ -196,8 +196,8 @@ func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
 //
 // Returns:
 //  - A MessageSender with the given subject, issuer, and type.
-func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageSender {
-	return &pb.MessageSender{
+func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
+	return &pb.MessageParticipant{
 		Subject: ms.Subject,
 		Issuer:  ms.Issuer,
 		Type:    ms.Type,
@@ -211,9 +211,9 @@ func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageSender {
 //
 // Returns:
 //  - A slice of MessageSenders with the given subjects, issuers, and types.
-func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.MessageSender {
+func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.MessageParticipant {
 	var (
-		pbMessageSenderList = make([]*pb.MessageSender, 0, len(msList))
+		pbMessageSenderList = make([]*pb.MessageParticipant, 0, len(msList))
 	)
 	
 	for _, ms := range msList {

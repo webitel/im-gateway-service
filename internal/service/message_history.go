@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+	"maps"
+	"slices"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
@@ -28,6 +30,7 @@ type (
 // Args:
 //  - logger: logger for the service
 //  - historyClient: client for the Message History service
+//	- contactClient: client for the Contact service
 //
 // Returns:
 //  - A new instance of MessageHistorySearcher
@@ -46,71 +49,89 @@ func NewMessageHistory(logger *slog.Logger, historyClient *imthread.MessageHisto
 //  - searchQuery: search query for the message history
 //
 // Returns:
-//  - *dto.SearchMessageHistoryResponse: search result
+//  - response: search result
 //  - error: any error encountered during the search operation
 func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)  {
 	log := s.logger.With(
 		slog.String("op", "messageHistory.Search"),
 		slog.Int("domain_id", int(searchQuery.DomainID)),
+		slog.Any("threads", searchQuery.ThreadIDs),
 	)
-	
+
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
-	if err != nil {
-		log.Error("failed to fetch message history from provider",
-			slog.Any("err", err),
-		)
-		return nil, err
-	}
+    if err != nil {
+        log.Error("failed to fetch message history", slog.Any("err", err))
+        return nil, err
+    }
 
-	externalParticipants, err := s.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Fields: []string{"issuer_id", "type", "subject_id"},
-		DomainId: searchQuery.DomainID,
-		Size: int32(len(fromInternal)),
-		Ids: fromInternal,
-	})	
+	participantIDs := s.collectUniqueIDs(response.Messages, fromInternal)
 
-	if err != nil {
-		log.Error("failed to fetch participants external information",
-			slog.Any("error", err),
-		)
-		return nil, err
-	}
+	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, participantIDs)
+    if err != nil {
+        log.Error("failed to fetch participants info", slog.Any("err", err))
+        return nil, err
+    }
 
-	response.MessageSenders = mapContactListToMessageSenderList(externalParticipants.GetContacts())
+	s.enrichResponse(response, fromInternal, identityMap)
 
 	return response, nil
 }
 
-// mapContactListToMessageSenderList maps a list of contacts to a list of message senders.
-//
-// Args:
-//  - contacts: A list of contacts to be mapped.
-//
-// Returns:
-//  - A list of message senders with the given subjects, issuers, and types.
-func mapContactListToMessageSenderList(contacts []*contact.Contact) []*dto.MessageSender {
-	var (
-		messageSenderList = make([]*dto.MessageSender, 0, len(contacts))
-	)
-
-	for _, contact := range contacts {
-		messageSenderList = append(messageSenderList, mapContactToMessageSender(contact))
+// collectUniqueIDs takes a slice of messages and a slice of internalIDs and returns a slice of unique IDs.
+// It collects all the IDs from the messages and internalIDs and returns a slice of unique IDs.
+// The returned slice will contain all the IDs from the messages and internalIDs, without any duplicates.
+func (s *messageHistory) collectUniqueIDs(messages []dto.HistoryMessage, internalIDs []string) []string {
+	uniqueMap := make(map[string]struct{})
+	for _, id := range internalIDs {
+		uniqueMap[id] = struct{}{}
 	}
 
-	return messageSenderList
+	for _, m := range messages {
+		if m.ReceiverID != "" {uniqueMap[m.ReceiverID] = struct{}{}}
+		if m.SenderID != "" {uniqueMap[m.SenderID] = struct{}{}}
+	}
+
+	return slices.Collect(maps.Keys(uniqueMap))
 }
 
-// mapContactToMessageSender maps a contact to a message sender.
-//
-// Args:
-//  - contact: The contact to be mapped.
-//
-// Returns:
-//  - A message sender with the given subject, issuer, and type.
-func mapContactToMessageSender(contact *contact.Contact) *dto.MessageSender {
-	return &dto.MessageSender{
-		Subject: contact.GetSubject(),
-		Issuer:  contact.GetIssId(),
-		Type:    contact.GetType(),
+// fetchParticipantMap fetches the participant map for the given domain ID and IDs.
+// It returns a map of IDs to MessageSender objects from the imap.
+// If there are no IDs provided, it returns an empty map and no error.
+// If there is an error while fetching the participants, it returns an error.
+func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32, ids []string) (map[string]*dto.MessageSender, error) {
+	if len(ids) == 0 {
+		return nil, nil
 	}
+
+	external, err := s.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
+        Fields:   []string{"id", "issuer_id", "type", "subject_id"},
+        DomainId: domainID,
+        Size:     int32(len(ids)),
+        Ids:      ids,
+    })
+    if err != nil {
+        return nil, err
+    }
+
+	res := make(map[string]*dto.MessageSender, len(external.GetContacts()))
+    for _, p := range external.GetContacts() {
+        res[p.Id] = dto.NewMessageSender(p.GetSubject(), p.GetIssId(), p.GetType())
+    }
+    return res, nil
+}
+
+// enrichResponse enriches the search message history response by replacing the receiver and sender IDs
+// with the corresponding message sender objects from the imap.
+func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, internal []string, imap map[string]*dto.MessageSender) {
+	resp.MessageSenders = make([]*dto.MessageSender, 0, len(internal))
+    for _, id := range internal {
+        if ms, ok := imap[id]; ok {
+            resp.MessageSenders = append(resp.MessageSenders, ms)
+        }
+    }
+
+    for _, m := range resp.Messages {
+        m.Receiver = imap[m.ReceiverID]
+        m.Sender = imap[m.SenderID]
+    }
 }

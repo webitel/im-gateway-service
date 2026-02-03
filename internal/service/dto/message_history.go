@@ -52,6 +52,9 @@ type HistoryMessage struct {
 	UpdatedAt  int64             `json:"updated_at"`
 	Documents  []HistoryDocument `json:"documents,omitempty"`
 	Images     []HistoryImage    `json:"images,omitempty"`
+
+	Receiver *MessageSender `json:"receiver"`
+	Sender   *MessageSender `json:"sender"`
 }
 
 type Cursors struct {
@@ -75,4 +78,12 @@ type MessageSender struct {
 	Subject string `json:"subject"`
 	Issuer  string `json:"issuer"`
 	Type    string `json:"type"`
+}
+
+func NewMessageSender(sub, iss, senderType string) *MessageSender {
+	return &MessageSender{
+		Subject: sub,
+		Issuer:  iss,
+		Type:    senderType,
+	}
 }
