@@ -13,11 +13,12 @@ var _ impb.MessageServer = (*MessageService)(nil)
 
 type MessageService struct {
 	impb.UnimplementedMessageServer
+
 	logger   *slog.Logger
-	messager service.Messager
+	messager service.Messenger
 }
 
-func NewMessageService(logger *slog.Logger, messager service.Messager) *MessageService {
+func NewMessageService(logger *slog.Logger, messager service.Messenger) *MessageService {
 	return &MessageService{
 		logger:   logger,
 		messager: messager,
@@ -37,7 +38,6 @@ func (m *MessageService) SendText(ctx context.Context, in *impb.SendTextRequest)
 func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageRequest) (*impb.SendImageResponse, error) {
 	out, err := m.messager.SendImage(ctx, mapper.MapToSendImageRequest(in))
 	if err != nil {
-		m.logger.Error("failed to send image", "error", err)
 		return nil, err
 	}
 
@@ -48,7 +48,6 @@ func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageReques
 func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
 	out, err := m.messager.SendDocument(ctx, mapper.MapToSendDocumentRequest(in))
 	if err != nil {
-		m.logger.Error("failed to send document", "error", err)
 		return nil, err
 	}
 

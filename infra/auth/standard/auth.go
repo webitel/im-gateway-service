@@ -31,9 +31,13 @@ var Module = fx.Module(
 	),
 )
 
+// INTERFACE GUARD
+var _ interfaces.Identifier = (*Identity)(nil)
+
 type Identity struct {
 	ContactID string
 	DomainID  int64
+	Name      string
 }
 
 func (i *Identity) GetContactID() string {
@@ -42,6 +46,10 @@ func (i *Identity) GetContactID() string {
 
 func (i *Identity) GetDomainID() int64 {
 	return i.DomainID
+}
+
+func (i *Identity) GetName() string {
+	return i.Name
 }
 
 type Authorizer struct {
@@ -131,19 +139,40 @@ func (da *Authorizer) resolveSchemaIdentity(ctx context.Context, md metadata.MD)
 	return &Identity{
 		ContactID: res.GetContacts()[0].Id,
 		DomainID:  domainID,
+		Name:      coalesceName(res.GetContacts()[0]),
 	}, nil
 }
 
 func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error) {
-	auth, err := da.auther.Inspect(ctx, &authv1pb.InspectRequest{})
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errors.Forbidden("metadata required for user identity resolve")
+	}
+
+	auth, err := da.auther.Inspect(metadata.NewOutgoingContext(ctx, md), &authv1pb.InspectRequest{})
 	if err != nil {
 		return nil, err
 	}
 
+	contact := auth.GetContact()
 	return &Identity{
-		ContactID: auth.Contact.Id,
-		DomainID:  auth.Dc,
+		ContactID: contact.GetId(),
+		DomainID:  contact.GetDc(),
+		Name:      coalesceName(contact),
 	}, nil
+}
+
+func coalesceName(c interface {
+	GetName() string
+	GetUsername() string
+}) string {
+	if s := c.GetName(); s != "" {
+		return s
+	}
+	if s := c.GetUsername(); s != "" {
+		return s
+	}
+	return "Unknown"
 }
 
 // --- Internal Helpers ---

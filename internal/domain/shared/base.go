@@ -19,8 +19,9 @@ const (
 )
 
 type Peer struct {
-	ID   uuid.UUID `json:"id" db:"id"`
-	Type PeerType  `json:"type" db:"type"`
+	ID     string
+	Issuer string
+	Type   PeerType
 }
 
 type BaseModel struct {

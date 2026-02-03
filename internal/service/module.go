@@ -11,7 +11,7 @@ var Module = fx.Module(
 		// Domain services
 		fx.Annotate(
 			NewMessageService,
-			fx.As(new(Messager)),
+			fx.As(new(Messenger)),
 		),
 
 		fx.Annotate(
@@ -27,6 +27,11 @@ var Module = fx.Module(
 		fx.Annotate(
 			NewMessageHistory,
 			fx.As(new(MessageHistorySearcher)),
+		),
+
+		fx.Annotate(
+			NewBotService,
+			fx.As(new(Botter)),
 		),
 	),
 )
