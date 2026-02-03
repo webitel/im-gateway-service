@@ -53,7 +53,7 @@ func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMe
 		Messages:    toProtoMessages(res.Messages),
 		NextCursor:  toProtoCursor(res.NextCursor),
 		Next:        res.Next,
-		From:        res.From,
+		From:        toProtoMessageSenderList(res.MessageSenders),
 		Paging: &pb.Paging{
 			Cursors: &pb.Cursors{
 				After:  toProtoCursor(res.Paging.Cursors.After),
@@ -85,8 +85,8 @@ func toProtoMessages(messages []dto.HistoryMessage) []*pb.HistoryMessage {
 		protoMsgs[i] = &pb.HistoryMessage{
 			Id:         m.ID,
 			ThreadId:  m.ThreadID,
-			SenderId:  m.SenderID,
-			ReceiverId: m.ReceiverID,
+			Sender:  toProtoMessageSender(m.Sender),
+			Receiver: toProtoMessageSender(m.Receiver),
 			Type:       m.Type,
 			Body:       m.Body,
 			Metadata:   md,
@@ -187,4 +187,38 @@ func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
 	}
 
 	return dst, nil
+}
+
+// toProtoMessageSender maps a MessageSender to a MessageSender.
+//
+// Args:
+//  - ms: The MessageSender to be mapped.
+//
+// Returns:
+//  - A MessageSender with the given subject, issuer, and type.
+func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
+	return &pb.MessageParticipant{
+		Subject: ms.Subject,
+		Issuer:  ms.Issuer,
+		Type:    ms.Type,
+	}
+}
+
+// toProtoMessageSenderList maps a slice of MessageSendDTOs to a slice of MessageSenders.
+//
+// Args:
+//  - msList: The slice of MessageSendDTOs to be mapped.
+//
+// Returns:
+//  - A slice of MessageSenders with the given subjects, issuers, and types.
+func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.MessageParticipant {
+	var (
+		pbMessageSenderList = make([]*pb.MessageParticipant, 0, len(msList))
+	)
+	
+	for _, ms := range msList {
+		pbMessageSenderList = append(pbMessageSenderList, toProtoMessageSender(ms))
+	}
+
+	return pbMessageSenderList
 }
