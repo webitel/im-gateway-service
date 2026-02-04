@@ -7,39 +7,25 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentRequest {
-	if in == nil {
-		return nil
-	}
-
-	var docReq dto.DocumentRequest
-	if pbDoc := in.GetDocument(); pbDoc != nil {
-		docReq.Body = pbDoc.GetBody()
-		docReq.Documents = make([]*dto.Document, 0, len(pbDoc.GetDocuments()))
-
-		for _, doc := range pbDoc.GetDocuments() {
-			id, _ := strconv.ParseInt(doc.GetId(), 10, 64)
-			docReq.Documents = append(docReq.Documents, &dto.Document{
-				ID:       id,
-				Name:     doc.GetFileName(),
-				MimeType: doc.GetMimeType(),
-				Size:     doc.GetSizeBytes(),
-			})
-		}
-	}
-
-	return &dto.SendDocumentRequest{
-		To:       MapPeerFromProto(in.GetTo()),
-		Document: docReq,
-	}
+// goverter:converter
+// goverter:output:file ./generated/document_message.go
+// goverter:matchIgnoreCase
+// goverter:extend MapPeerFromProto
+// goverter:extend StringToInt64
+type MessageMapper interface {
+	// goverter:useZeroValueOnPointerInconsistency
+	// goverter:map FileName Name
+	// goverter:map SizeBytes Size
+	MapToDocument(in *impb.DocumentInput) *dto.Document
+	// goverter:useZeroValueOnPointerInconsistency
+	// goverter:ignoreUnexported
+	// goverter:ignore From
+	// goverter:ignore DomainID
+	MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentRequest
+	MapToSendDocumentResponse(out *dto.SendDocumentResponse) *impb.SendDocumentResponse
 }
 
-func MapToSendDocumentResponse(out *dto.SendDocumentResponse) *impb.SendDocumentResponse {
-	if out == nil {
-		return nil
-	}
-	return &impb.SendDocumentResponse{
-		Id: out.ID.String(),
-		To: MapPeerToProto(out.To),
-	}
+func StringToInt64(s string) int64 {
+	i, _ := strconv.ParseInt(s, 10, 64)
+	return i
 }

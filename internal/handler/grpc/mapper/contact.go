@@ -5,49 +5,29 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-func MapToSearchContactRequest(in *impb.SearchContactRequest) *dto.SearchContactRequest {
-	if in == nil {
-		return nil
-	}
+// goverter:converter
+// goverter:matchIgnoreCase
+// goverter:extend Int32ToInt
+// goverter:extend IntToInt32
+// goverter:output:file ./generated/contact.go
+type ContactMapper interface {
+	// goverter:ignore AppID
+	// goverter:ignore IssID
+	// goverter:ignore IDs
+	// goverter:ignore DomainID
+	ToSearchContactRequest(*impb.SearchContactRequest) *dto.SearchContactRequest
 
-	return &dto.SearchContactRequest{
-		Page:     int(in.GetPage()),
-		Size:     int(in.GetSize()),
-		Q:        in.GetQ(),
-		Sort:     in.GetSort(),
-		Fields:   in.GetFields(),
-		Type:     in.GetType(),
-		Subjects: in.GetSubjects(),
-	}
+	// goverter:ignoreUnexported
+	ToContactList(in *dto.ContactList) *impb.ContactList
+
+	// goverter:ignoreUnexported
+	ToContact(*dto.Contact) *impb.Contact
 }
 
-func MapToContact(in *dto.Contact) *impb.Contact {
-	return &impb.Contact{
-		IssId:     in.IssID,
-		AppId:     in.AppID,
-		Type:      in.Type,
-		Name:      in.Type,
-		Username:  in.Username,
-		Metadata:  in.Metadata,
-		CreatedAt: in.CreatedAt,
-		UpdatedAt: in.UpdatedAt,
-		Subject:   in.Subject,
-	}
+func Int32ToInt(i int32) int {
+	return int(i)
 }
 
-func MapToContactList(in *dto.ContactList) *impb.ContactList {
-	if in == nil {
-		return nil
-	}
-
-	out := &impb.ContactList{
-		Page:  int32(in.Page),
-		Size:  int32(in.Size),
-		Next:  in.Next,
-		Items: make([]*impb.Contact, len(in.Items)),
-	}
-	for i, item := range in.Items {
-		out.Items[i] = MapToContact(item)
-	}
-	return out
+func IntToInt32(i int) int32 {
+	return int32(i)
 }
