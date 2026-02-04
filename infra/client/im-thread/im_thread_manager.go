@@ -8,7 +8,6 @@ import (
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
-	"github.com/webitel/im-gateway-service/internal/service/dto"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
 	"google.golang.org/grpc"
@@ -41,13 +40,11 @@ func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider,
 	}, err
 }
 
-func (c *ThreadClient) Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) (*threadv1.SearchThreadResponse, error) {
+func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadSearchRequest) (*threadv1.SearchThreadResponse, error) {
 	log := c.logger.With(
-		slog.Any("domain_ids", searchQuery.DomainIDs),
-		slog.Any("member_ids", searchQuery.MemberIDs),
+		slog.Any("domain_ids", searchQuery.DomainIds),
+		slog.Any("member_ids", searchQuery.MemberIds),
 	)
-
-	request := c.converter.DTOToThreadV1Request(searchQuery)
 
 	var (
 		err error
@@ -55,7 +52,7 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *dto.ThreadSearch
 	)
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
-		resp, err = tmc.Search(ctx, request)
+		resp, err = tmc.Search(ctx, searchQuery)
 		return err
 	})
 

@@ -4,18 +4,29 @@
 package generated
 
 import (
-	v1 "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
-	v11 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	v11 "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	v1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	shared "github.com/webitel/im-gateway-service/internal/domain/shared"
 	mapper "github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	dto "github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
 type ThreadConverterImpl struct{}
 
-func (c *ThreadConverterImpl) DTOToExternalParticipantProto(source *dto.ExternalParticipantDTO) *v1.ExternalParticipant {
-	var pApiExternalParticipant *v1.ExternalParticipant
+func (c *ThreadConverterImpl) DTOKindsToThreadV1Kinds(source []dto.ThreadKind) []v1.ThreadKind {
+	var threadThreadKindList []v1.ThreadKind
 	if source != nil {
-		var apiExternalParticipant v1.ExternalParticipant
+		threadThreadKindList = make([]v1.ThreadKind, len(source))
+		for i := 0; i < len(source); i++ {
+			threadThreadKindList[i] = mapper.FromDTOToThreadV1Kind(source[i])
+		}
+	}
+	return threadThreadKindList
+}
+func (c *ThreadConverterImpl) DTOToExternalParticipantProto(source *dto.ExternalParticipantDTO) *v11.ExternalParticipant {
+	var pApiExternalParticipant *v11.ExternalParticipant
+	if source != nil {
+		var apiExternalParticipant v11.ExternalParticipant
 		apiExternalParticipant.Issuer = (*source).Issuer
 		apiExternalParticipant.Subject = (*source).Subject
 		apiExternalParticipant.Type = (*source).Type
@@ -23,20 +34,20 @@ func (c *ThreadConverterImpl) DTOToExternalParticipantProto(source *dto.External
 	}
 	return pApiExternalParticipant
 }
-func (c *ThreadConverterImpl) DTOToProto(source []*dto.ThreadDTO) []*v1.Thread {
-	var pApiThreadList []*v1.Thread
+func (c *ThreadConverterImpl) DTOToProto(source []*dto.ThreadDTO) []*v11.Thread {
+	var pApiThreadList []*v11.Thread
 	if source != nil {
-		pApiThreadList = make([]*v1.Thread, len(source))
+		pApiThreadList = make([]*v11.Thread, len(source))
 		for i := 0; i < len(source); i++ {
 			pApiThreadList[i] = c.pDtoThreadDTOToPApiThread(source[i])
 		}
 	}
 	return pApiThreadList
 }
-func (c *ThreadConverterImpl) DTOToThreadDirectSettingsProto(source *dto.ThreadDirectSettingsDTO) *v1.ThreadDirectSettings {
-	var pApiThreadDirectSettings *v1.ThreadDirectSettings
+func (c *ThreadConverterImpl) DTOToThreadDirectSettingsProto(source *dto.ThreadDirectSettingsDTO) *v11.ThreadDirectSettings {
+	var pApiThreadDirectSettings *v11.ThreadDirectSettings
 	if source != nil {
-		var apiThreadDirectSettings v1.ThreadDirectSettings
+		var apiThreadDirectSettings v11.ThreadDirectSettings
 		apiThreadDirectSettings.Id = (*source).ID
 		apiThreadDirectSettings.DomainId = (*source).DomainID
 		apiThreadDirectSettings.CreatedAt = (*source).CreatedAt
@@ -46,65 +57,17 @@ func (c *ThreadConverterImpl) DTOToThreadDirectSettingsProto(source *dto.ThreadD
 	}
 	return pApiThreadDirectSettings
 }
-func (c *ThreadConverterImpl) DTOToThreadMemberProto(source *dto.ThreadMemberDTO) *v1.ThreadMember {
-	var pApiThreadMember *v1.ThreadMember
+func (c *ThreadConverterImpl) DTOToThreadMemberProto(source *dto.ThreadMemberDTO) *v11.ThreadMember {
+	var pApiThreadMember *v11.ThreadMember
 	if source != nil {
-		var apiThreadMember v1.ThreadMember
+		var apiThreadMember v11.ThreadMember
 		apiThreadMember.Member = c.DTOToExternalParticipantProto((*source).Member)
 		apiThreadMember.DirectSettings = c.DTOToThreadDirectSettingsProto((*source).DirectSettings)
 		pApiThreadMember = &apiThreadMember
 	}
 	return pApiThreadMember
 }
-func (c *ThreadConverterImpl) DTOToThreadV1Request(source *dto.ThreadSearchRequestDTO) *v11.ThreadSearchRequest {
-	var pThreadThreadSearchRequest *v11.ThreadSearchRequest
-	if source != nil {
-		var threadThreadSearchRequest v11.ThreadSearchRequest
-		if (*source).Fields != nil {
-			threadThreadSearchRequest.Fields = make([]string, len((*source).Fields))
-			for i := 0; i < len((*source).Fields); i++ {
-				threadThreadSearchRequest.Fields[i] = (*source).Fields[i]
-			}
-		}
-		if (*source).IDs != nil {
-			threadThreadSearchRequest.Ids = make([]string, len((*source).IDs))
-			for j := 0; j < len((*source).IDs); j++ {
-				threadThreadSearchRequest.Ids[j] = (*source).IDs[j]
-			}
-		}
-		if (*source).DomainIDs != nil {
-			threadThreadSearchRequest.DomainIds = make([]int32, len((*source).DomainIDs))
-			for k := 0; k < len((*source).DomainIDs); k++ {
-				threadThreadSearchRequest.DomainIds[k] = (*source).DomainIDs[k]
-			}
-		}
-		if (*source).Kinds != nil {
-			threadThreadSearchRequest.Kinds = make([]v11.ThreadKind, len((*source).Kinds))
-			for l := 0; l < len((*source).Kinds); l++ {
-				threadThreadSearchRequest.Kinds[l] = mapper.FromDTOToThreadV1Kind((*source).Kinds[l])
-			}
-		}
-		if (*source).Owners != nil {
-			threadThreadSearchRequest.Owners = make([]string, len((*source).Owners))
-			for m := 0; m < len((*source).Owners); m++ {
-				threadThreadSearchRequest.Owners[m] = (*source).Owners[m]
-			}
-		}
-		threadThreadSearchRequest.Q = (*source).Q
-		if (*source).MemberIDs != nil {
-			threadThreadSearchRequest.MemberIds = make([]string, len((*source).MemberIDs))
-			for n := 0; n < len((*source).MemberIDs); n++ {
-				threadThreadSearchRequest.MemberIds[n] = (*source).MemberIDs[n]
-			}
-		}
-		threadThreadSearchRequest.Size = (*source).Size
-		threadThreadSearchRequest.Sort = (*source).Sort
-		threadThreadSearchRequest.Page = (*source).Page
-		pThreadThreadSearchRequest = &threadThreadSearchRequest
-	}
-	return pThreadThreadSearchRequest
-}
-func (c *ThreadConverterImpl) ProtoThreadSearchRequestToDTO(source *v1.ThreadSearchRequest) *dto.ThreadSearchRequestDTO {
+func (c *ThreadConverterImpl) ProtoThreadSearchRequestToDTO(source *v11.ThreadSearchRequest) *dto.ThreadSearchRequestDTO {
 	var pDtoThreadSearchRequestDTO *dto.ThreadSearchRequestDTO
 	if source != nil {
 		var dtoThreadSearchRequestDTO dto.ThreadSearchRequestDTO
@@ -133,16 +96,16 @@ func (c *ThreadConverterImpl) ProtoThreadSearchRequestToDTO(source *v1.ThreadSea
 			}
 		}
 		if (*source).Owners != nil {
-			dtoThreadSearchRequestDTO.Owners = make([]string, len((*source).Owners))
+			dtoThreadSearchRequestDTO.Owners = make([]shared.Peer, len((*source).Owners))
 			for m := 0; m < len((*source).Owners); m++ {
-				dtoThreadSearchRequestDTO.Owners[m] = (*source).Owners[m]
+				dtoThreadSearchRequestDTO.Owners[m] = mapper.PeerIdentityToSharedPeer((*source).Owners[m])
 			}
 		}
 		dtoThreadSearchRequestDTO.Q = (*source).Q
 		if (*source).MemberIds != nil {
-			dtoThreadSearchRequestDTO.MemberIDs = make([]string, len((*source).MemberIds))
+			dtoThreadSearchRequestDTO.MemberIDs = make([]shared.Peer, len((*source).MemberIds))
 			for n := 0; n < len((*source).MemberIds); n++ {
-				dtoThreadSearchRequestDTO.MemberIDs[n] = (*source).MemberIds[n]
+				dtoThreadSearchRequestDTO.MemberIDs[n] = mapper.PeerIdentityToSharedPeer((*source).MemberIds[n])
 			}
 		}
 		dtoThreadSearchRequestDTO.Size = (*source).Size
@@ -152,10 +115,10 @@ func (c *ThreadConverterImpl) ProtoThreadSearchRequestToDTO(source *v1.ThreadSea
 	}
 	return pDtoThreadSearchRequestDTO
 }
-func (c *ThreadConverterImpl) ProtoToDTO(source v1.ThreadKind) dto.ThreadKind {
+func (c *ThreadConverterImpl) ProtoToDTO(source v11.ThreadKind) dto.ThreadKind {
 	return mapper.ToThreadKind(source)
 }
-func (c *ThreadConverterImpl) ThreadV1ListToThreadDTOList(source []*v11.Thread) []*dto.ThreadDTO {
+func (c *ThreadConverterImpl) ThreadV1ListToThreadDTOList(source []*v1.Thread) []*dto.ThreadDTO {
 	var pDtoThreadDTOList []*dto.ThreadDTO
 	if source != nil {
 		pDtoThreadDTOList = make([]*dto.ThreadDTO, len(source))
@@ -165,7 +128,7 @@ func (c *ThreadConverterImpl) ThreadV1ListToThreadDTOList(source []*v11.Thread) 
 	}
 	return pDtoThreadDTOList
 }
-func (c *ThreadConverterImpl) ThreadV1ToThreadDTO(source *v11.Thread) *dto.ThreadDTO {
+func (c *ThreadConverterImpl) ThreadV1ToThreadDTO(source *v1.Thread) *dto.ThreadDTO {
 	var pDtoThreadDTO *dto.ThreadDTO
 	if source != nil {
 		var dtoThreadDTO dto.ThreadDTO
@@ -202,7 +165,7 @@ func (c *ThreadConverterImpl) ThreadV1ToThreadDTO(source *v11.Thread) *dto.Threa
 	}
 	return pDtoThreadDTO
 }
-func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v11.ThreadMember) *dto.ThreadMemberDTO {
+func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v1.ThreadMember) *dto.ThreadMemberDTO {
 	var pDtoThreadMemberDTO *dto.ThreadMemberDTO
 	if source != nil {
 		var dtoThreadMemberDTO dto.ThreadMemberDTO
@@ -213,10 +176,10 @@ func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v11.ThreadMember) *dto.T
 	}
 	return pDtoThreadMemberDTO
 }
-func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *v1.Thread {
-	var pApiThread *v1.Thread
+func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *v11.Thread {
+	var pApiThread *v11.Thread
 	if source != nil {
-		var apiThread v1.Thread
+		var apiThread v11.Thread
 		apiThread.Id = (*source).ID
 		apiThread.DomainId = (*source).DomainID
 		apiThread.CreatedAt = (*source).CreatedAt
@@ -224,13 +187,13 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 		apiThread.Kind = mapper.FromThreadKind((*source).Kind)
 		apiThread.Owner = c.DTOToExternalParticipantProto((*source).Owner)
 		if (*source).Admins != nil {
-			apiThread.Admins = make([]*v1.ExternalParticipant, len((*source).Admins))
+			apiThread.Admins = make([]*v11.ExternalParticipant, len((*source).Admins))
 			for i := 0; i < len((*source).Admins); i++ {
 				apiThread.Admins[i] = c.DTOToExternalParticipantProto((*source).Admins[i])
 			}
 		}
 		if (*source).MemberIDs != nil {
-			apiThread.MemberIds = make([]*v1.ExternalParticipant, len((*source).MemberIDs))
+			apiThread.MemberIds = make([]*v11.ExternalParticipant, len((*source).MemberIDs))
 			for j := 0; j < len((*source).MemberIDs); j++ {
 				apiThread.MemberIds[j] = c.DTOToExternalParticipantProto((*source).MemberIDs[j])
 			}
@@ -238,7 +201,7 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 		apiThread.Subject = (*source).Subject
 		apiThread.Description = (*source).Description
 		if (*source).Members != nil {
-			apiThread.Members = make([]*v1.ThreadMember, len((*source).Members))
+			apiThread.Members = make([]*v11.ThreadMember, len((*source).Members))
 			for k := 0; k < len((*source).Members); k++ {
 				apiThread.Members[k] = c.DTOToThreadMemberProto((*source).Members[k])
 			}
@@ -247,7 +210,7 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 	}
 	return pApiThread
 }
-func (c *ThreadConverterImpl) pThreadThreadDirectSettingsToPDtoThreadDirectSettingsDTO(source *v11.ThreadDirectSettings) *dto.ThreadDirectSettingsDTO {
+func (c *ThreadConverterImpl) pThreadThreadDirectSettingsToPDtoThreadDirectSettingsDTO(source *v1.ThreadDirectSettings) *dto.ThreadDirectSettingsDTO {
 	var pDtoThreadDirectSettingsDTO *dto.ThreadDirectSettingsDTO
 	if source != nil {
 		var dtoThreadDirectSettingsDTO dto.ThreadDirectSettingsDTO

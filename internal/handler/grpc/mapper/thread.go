@@ -3,6 +3,7 @@ package mapper
 import (
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -66,8 +67,16 @@ func StringToParticipant(id string) dto.ExternalParticipantDTO {
     }
 }
 
+func PeerIdentityToSharedPeer(source *impb.PeerIdentity) shared.Peer {
+	return shared.Peer{
+		ID:     source.Sub,
+		Issuer: source.Iss,
+		Type:   shared.PeerContact,
+	}
+}
+
 // goverter:converter
-// goverter:extend ToThreadKind StringToParticipant
+// goverter:extend ToThreadKind StringToParticipant PeerIdentityToSharedPeer
 // goverter:extend FromThreadKind
 // goverter:extend FromDTOToThreadV1Kind
 // goverter:extend FromThreadV1KindToDTOKind
@@ -81,13 +90,12 @@ type ThreadConverter interface {
     DTOToThreadMemberProto(source *dto.ThreadMemberDTO) *impb.ThreadMember
 
 	ProtoThreadSearchRequestToDTO(source *impb.ThreadSearchRequest) *dto.ThreadSearchRequestDTO
-	DTOToProto(source []*dto.ThreadDTO) []*impb.Thread
-
-	DTOToThreadV1Request(source *dto.ThreadSearchRequestDTO) *threadv1.ThreadSearchRequest
+	DTOToProto(source []*dto.ThreadDTO) []*impb.Thread	
 	
 	// goverter:map Id Member
     ToThreadMemberDTO(source *threadv1.ThreadMember) *dto.ThreadMemberDTO
 	ThreadV1ToThreadDTO(source *threadv1.Thread) *dto.ThreadDTO
 	ThreadV1ListToThreadDTOList(source []*threadv1.Thread) []*dto.ThreadDTO
+	DTOKindsToThreadV1Kinds(source []dto.ThreadKind) []threadv1.ThreadKind
 }
 

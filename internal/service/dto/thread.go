@@ -1,5 +1,7 @@
 package dto
 
+import "github.com/webitel/im-gateway-service/internal/domain/shared"
+
 type ThreadKind int
 
 const (
@@ -50,9 +52,9 @@ type (
 		IDs       []string
 		DomainIDs []int32
 		Kinds     []ThreadKind
-		Owners    []string
+		Owners    []shared.Peer
 		Q         string
-		MemberIDs []string
+		MemberIDs []shared.Peer
 		Size      int32
 		Sort      string
 		Page      int32
