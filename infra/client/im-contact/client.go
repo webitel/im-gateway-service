@@ -108,7 +108,6 @@ func (c *Client) UpdateContact(ctx context.Context, req *contactv1.UpdateContact
 
 func (c *Client) PatchContact(ctx context.Context, req *contactv1.PatchContactRequest) (*contactv1.Contact, error) {
 	var resp *contactv1.Contact
-
 	err := c.rpc.Execute(ctx, func(api contactv1.ContactsClient) error {
 		c.logger.Debug("CONTACTS.SEARCH_CONTACT", slog.Any("req", req))
 

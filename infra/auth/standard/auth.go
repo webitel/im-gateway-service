@@ -13,7 +13,6 @@ import (
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
-	authv1pb "github.com/webitel/im-gateway-service/gen/go/auth/v1"
 	contactv1pb "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	interfaces "github.com/webitel/im-gateway-service/infra/auth"
 	authclient "github.com/webitel/im-gateway-service/infra/client/im-auth"
@@ -137,9 +136,9 @@ func (da *Authorizer) resolveSchemaIdentity(ctx context.Context, md metadata.MD)
 	}
 
 	return &Identity{
-		ContactID: res.GetContacts()[0].Id,
+		ContactID: res.GetContacts()[0].GetId(),
 		DomainID:  domainID,
-		Name:      coalesceName(res.GetContacts()[0]),
+		Name:      coalesce(res.GetContacts()[0].GetName(), res.GetContacts()[0].GetUsername()),
 	}, nil
 }
 
@@ -149,28 +148,27 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error
 		return nil, errors.Forbidden("metadata required for user identity resolve")
 	}
 
-	auth, err := da.auther.Inspect(metadata.NewOutgoingContext(ctx, md), &authv1pb.InspectRequest{})
+	auth, err := da.auther.Inspect(metadata.NewOutgoingContext(ctx, md))
 	if err != nil {
 		return nil, err
 	}
 
-	contact := auth.GetContact()
+	contact := auth.Contact
+	if contact == nil {
+		return nil, errors.Forbidden("no contact info in authorization")
+	}
 	return &Identity{
-		ContactID: contact.GetId(),
-		DomainID:  contact.GetDc(),
-		Name:      coalesceName(contact),
+		ContactID: contact.Id,
+		DomainID:  auth.Dc,
+		Name:      coalesce(contact.Name, contact.GivenName, contact.Username),
 	}, nil
 }
 
-func coalesceName(c interface {
-	GetName() string
-	GetUsername() string
-}) string {
-	if s := c.GetName(); s != "" {
-		return s
-	}
-	if s := c.GetUsername(); s != "" {
-		return s
+func coalesce(str ...string) string {
+	for _, s := range str {
+		if s != "" {
+			return s
+		}
 	}
 	return "Unknown"
 }

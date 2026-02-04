@@ -15,8 +15,8 @@ var Module = fx.Module(
 		),
 
 		fx.Annotate(
-			NewAuthService,
-			fx.As(new(Auther)),
+			NewAccountService,
+			fx.As(new(Accounter)),
 		),
 
 		fx.Annotate(
