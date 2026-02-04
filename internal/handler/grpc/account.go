@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper/generated"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
@@ -74,5 +75,7 @@ func NewAccountService(logger *slog.Logger, accounter service.Accounter) *Accoun
 	return &AccountService{
 		logger:    logger,
 		accounter: accounter,
+		inMapper:  &generated.AccountToDtoMapperImpl{},
+		outMapper: &generated.AccountToPbMapperImpl{},
 	}
 }
