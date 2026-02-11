@@ -13,7 +13,7 @@ import (
 //  - req: The SearchMessageHistoryRequest to be mapped.
 //
 // Returns:
-//  - A SearchMessageHistoryRequestDTO with the given fields, IDs, thread IDs, sender IDs, receiver IDs, types, domain ID, cursor, and size.
+//  - A SearchMessageHistoryRequestDTO with the given fields, IDs, thread IDs, sender IDs, receiver IDs, types, cursor, and size.
 func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *dto.SearchMessageHistoryRequest {
 	var cursor *dto.HistoryMessageCursor
 	if req.Cursor != nil {
@@ -31,7 +31,6 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 		SenderIDs:   req.GetSenderIds(),
 		ReceiverIDs: req.GetReceiverIds(),
 		Types:       req.GetTypes(),
-		DomainID:    req.GetDomainId(),
 		Cursor:      cursor,
 		Size:        req.GetSize(),
 	}

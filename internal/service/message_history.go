@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
+	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 
@@ -54,9 +55,15 @@ func NewMessageHistory(logger *slog.Logger, historyClient *imthread.MessageHisto
 func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)  {
 	log := s.logger.With(
 		slog.String("op", "messageHistory.Search"),
-		slog.Int("domain_id", int(searchQuery.DomainID)),
 		slog.Any("threads", searchQuery.ThreadIDs),
 	)
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+	searchQuery.DomainID = int32(identity.GetDomainID())
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
     if err != nil {

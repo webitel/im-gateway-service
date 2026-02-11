@@ -20,8 +20,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Account_Token_FullMethodName            = "/webitel.im.api.gateway.v1.Account/Token"
-	Account_Logout_FullMethodName           = "/webitel.im.api.gateway.v1.Account/Logout"
 	Account_Inspect_FullMethodName          = "/webitel.im.api.gateway.v1.Account/Inspect"
+	Account_Logout_FullMethodName           = "/webitel.im.api.gateway.v1.Account/Logout"
 	Account_RegisterDevice_FullMethodName   = "/webitel.im.api.gateway.v1.Account/RegisterDevice"
 	Account_UnregisterDevice_FullMethodName = "/webitel.im.api.gateway.v1.Account/UnregisterDevice"
 )
@@ -32,12 +32,13 @@ const (
 //
 // End-User Account Service
 type AccountClient interface {
-	// Access Token Request
+	// // Authorization Request. Part of OAuth flow
+	// rpc Auth(AuthRequest) returns (AuthResponse);
 	Token(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*Authorization, error)
+	// Inspect current Authorization credentials
+	Inspect(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*Authorization, error)
 	// Logout Device Request
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
-	// Inspect Token Request
-	Inspect(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*Authorization, error)
 	// Register device to receive PUSH notifications
 	RegisterDevice(ctx context.Context, in *RegisterDeviceRequest, opts ...grpc.CallOption) (*RegisterDeviceResponse, error)
 	// Deletes a device by its token, stops sending PUSH-notifications to it.
@@ -62,20 +63,20 @@ func (c *accountClient) Token(ctx context.Context, in *TokenRequest, opts ...grp
 	return out, nil
 }
 
-func (c *accountClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+func (c *accountClient) Inspect(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*Authorization, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(LogoutResponse)
-	err := c.cc.Invoke(ctx, Account_Logout_FullMethodName, in, out, cOpts...)
+	out := new(Authorization)
+	err := c.cc.Invoke(ctx, Account_Inspect_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *accountClient) Inspect(ctx context.Context, in *InspectRequest, opts ...grpc.CallOption) (*Authorization, error) {
+func (c *accountClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(Authorization)
-	err := c.cc.Invoke(ctx, Account_Inspect_FullMethodName, in, out, cOpts...)
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, Account_Logout_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +109,13 @@ func (c *accountClient) UnregisterDevice(ctx context.Context, in *UnregisterDevi
 //
 // End-User Account Service
 type AccountServer interface {
-	// Access Token Request
+	// // Authorization Request. Part of OAuth flow
+	// rpc Auth(AuthRequest) returns (AuthResponse);
 	Token(context.Context, *TokenRequest) (*Authorization, error)
+	// Inspect current Authorization credentials
+	Inspect(context.Context, *InspectRequest) (*Authorization, error)
 	// Logout Device Request
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
-	// Inspect Token Request
-	Inspect(context.Context, *InspectRequest) (*Authorization, error)
 	// Register device to receive PUSH notifications
 	RegisterDevice(context.Context, *RegisterDeviceRequest) (*RegisterDeviceResponse, error)
 	// Deletes a device by its token, stops sending PUSH-notifications to it.
@@ -131,11 +133,11 @@ type UnimplementedAccountServer struct{}
 func (UnimplementedAccountServer) Token(context.Context, *TokenRequest) (*Authorization, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Token not implemented")
 }
-func (UnimplementedAccountServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
-}
 func (UnimplementedAccountServer) Inspect(context.Context, *InspectRequest) (*Authorization, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Inspect not implemented")
+}
+func (UnimplementedAccountServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
 func (UnimplementedAccountServer) RegisterDevice(context.Context, *RegisterDeviceRequest) (*RegisterDeviceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterDevice not implemented")
@@ -182,24 +184,6 @@ func _Account_Token_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Account_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LogoutRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AccountServer).Logout(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Account_Logout_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AccountServer).Logout(ctx, req.(*LogoutRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Account_Inspect_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InspectRequest)
 	if err := dec(in); err != nil {
@@ -214,6 +198,24 @@ func _Account_Inspect_Handler(srv interface{}, ctx context.Context, dec func(int
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AccountServer).Inspect(ctx, req.(*InspectRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Account_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Account_Logout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServer).Logout(ctx, req.(*LogoutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -266,12 +268,12 @@ var Account_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Account_Token_Handler,
 		},
 		{
-			MethodName: "Logout",
-			Handler:    _Account_Logout_Handler,
-		},
-		{
 			MethodName: "Inspect",
 			Handler:    _Account_Inspect_Handler,
+		},
+		{
+			MethodName: "Logout",
+			Handler:    _Account_Logout_Handler,
 		},
 		{
 			MethodName: "RegisterDevice",

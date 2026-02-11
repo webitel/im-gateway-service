@@ -50,11 +50,9 @@ type (
 	ThreadSearchRequestDTO struct {
 		Fields    []string
 		IDs       []string
-		DomainIDs []int32
 		Kinds     []ThreadKind
 		Owners    []shared.Peer
 		Q         string
-		MemberIDs []shared.Peer
 		Size      int32
 		Sort      string
 		Page      int32

@@ -25,12 +25,8 @@ const (
 // ThreadManagementClient is the client API for ThreadManagement service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// Thread service provides operations for managing
-// and interacting with threads.
 type ThreadManagementClient interface {
-	// Searches threads using filtering, sorting,
-	// and pagination parameters.
+	// Search threads with filters
 	Search(ctx context.Context, in *ThreadSearchRequest, opts ...grpc.CallOption) (*SearchThreadResponse, error)
 }
 
@@ -55,12 +51,8 @@ func (c *threadManagementClient) Search(ctx context.Context, in *ThreadSearchReq
 // ThreadManagementServer is the server API for ThreadManagement service.
 // All implementations must embed UnimplementedThreadManagementServer
 // for forward compatibility.
-//
-// Thread service provides operations for managing
-// and interacting with threads.
 type ThreadManagementServer interface {
-	// Searches threads using filtering, sorting,
-	// and pagination parameters.
+	// Search threads with filters
 	Search(context.Context, *ThreadSearchRequest) (*SearchThreadResponse, error)
 	mustEmbedUnimplementedThreadManagementServer()
 }

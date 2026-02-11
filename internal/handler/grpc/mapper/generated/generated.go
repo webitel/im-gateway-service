@@ -83,31 +83,19 @@ func (c *ThreadConverterImpl) ProtoThreadSearchRequestToDTO(source *v11.ThreadSe
 				dtoThreadSearchRequestDTO.IDs[j] = (*source).Ids[j]
 			}
 		}
-		if (*source).DomainIds != nil {
-			dtoThreadSearchRequestDTO.DomainIDs = make([]int32, len((*source).DomainIds))
-			for k := 0; k < len((*source).DomainIds); k++ {
-				dtoThreadSearchRequestDTO.DomainIDs[k] = (*source).DomainIds[k]
-			}
-		}
 		if (*source).Kinds != nil {
 			dtoThreadSearchRequestDTO.Kinds = make([]dto.ThreadKind, len((*source).Kinds))
-			for l := 0; l < len((*source).Kinds); l++ {
-				dtoThreadSearchRequestDTO.Kinds[l] = mapper.ToThreadKind((*source).Kinds[l])
+			for k := 0; k < len((*source).Kinds); k++ {
+				dtoThreadSearchRequestDTO.Kinds[k] = mapper.ToThreadKind((*source).Kinds[k])
 			}
 		}
 		if (*source).Owners != nil {
 			dtoThreadSearchRequestDTO.Owners = make([]shared.Peer, len((*source).Owners))
-			for m := 0; m < len((*source).Owners); m++ {
-				dtoThreadSearchRequestDTO.Owners[m] = mapper.PeerIdentityToSharedPeer((*source).Owners[m])
+			for l := 0; l < len((*source).Owners); l++ {
+				dtoThreadSearchRequestDTO.Owners[l] = mapper.PeerIdentityToSharedPeer((*source).Owners[l])
 			}
 		}
 		dtoThreadSearchRequestDTO.Q = (*source).Q
-		if (*source).MemberIds != nil {
-			dtoThreadSearchRequestDTO.MemberIDs = make([]shared.Peer, len((*source).MemberIds))
-			for n := 0; n < len((*source).MemberIds); n++ {
-				dtoThreadSearchRequestDTO.MemberIDs[n] = mapper.PeerIdentityToSharedPeer((*source).MemberIds[n])
-			}
-		}
 		dtoThreadSearchRequestDTO.Size = (*source).Size
 		dtoThreadSearchRequestDTO.Sort = (*source).Sort
 		dtoThreadSearchRequestDTO.Page = (*source).Page
@@ -181,7 +169,6 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 	if source != nil {
 		var apiThread v11.Thread
 		apiThread.Id = (*source).ID
-		apiThread.DomainId = (*source).DomainID
 		apiThread.CreatedAt = (*source).CreatedAt
 		apiThread.UpdatedAt = (*source).UpdatedAt
 		apiThread.Kind = mapper.FromThreadKind((*source).Kind)
