@@ -28,8 +28,11 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BotsClient interface {
+	// Create a new bot
 	CreateBot(ctx context.Context, in *CreateBotRequest, opts ...grpc.CallOption) (*Bot, error)
+	// Update existing bot
 	UpdateBot(ctx context.Context, in *UpdateBotRequest, opts ...grpc.CallOption) (*Bot, error)
+	// Delete a bot
 	DeleteBot(ctx context.Context, in *DeleteBotRequest, opts ...grpc.CallOption) (*Bot, error)
 }
 
@@ -75,8 +78,11 @@ func (c *botsClient) DeleteBot(ctx context.Context, in *DeleteBotRequest, opts .
 // All implementations must embed UnimplementedBotsServer
 // for forward compatibility.
 type BotsServer interface {
+	// Create a new bot
 	CreateBot(context.Context, *CreateBotRequest) (*Bot, error)
+	// Update existing bot
 	UpdateBot(context.Context, *UpdateBotRequest) (*Bot, error)
+	// Delete a bot
 	DeleteBot(context.Context, *DeleteBotRequest) (*Bot, error)
 	mustEmbedUnimplementedBotsServer()
 }

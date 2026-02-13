@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	NoNameRecepient = "Unknown Recepient"
+	NoNameRecipient = "Unknown Recipient"
 )
 
 var _ Messenger = (*MessageService)(nil)
@@ -178,7 +178,7 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, do
 	return &threadv1.Peer{
 		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
-			Name: coalesceString(contact.GetName(), contact.GetUsername(), NoNameRecepient),
+			Name: coalesceString(contact.GetName(), contact.GetUsername(), NoNameRecipient),
 		},
 	}, nil
 }

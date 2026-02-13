@@ -9,6 +9,7 @@ import (
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
@@ -52,12 +53,13 @@ func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contact
 func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error) {
 	log := t.logger.With(slog.String("op", "thread.Search"))
 
-	if len(searchQuery.DomainIDs) == 0 {
-		log.Warn("request without domain_ids", slog.Any("request",searchQuery))
-    	return nil, false, errors.New("domain_ids is required")
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, false, auth.IdentityNotFoundErr
 	}
 
-	internalOwners, internalMembers, err := t.collectInternalContactsIDs(ctx, searchQuery.Owners, searchQuery.MemberIDs, searchQuery.DomainIDs[0])
+	internalOwners, _, err := t.collectInternalContactsIDs(ctx,searchQuery.Owners,nil,int32(identity.GetDomainID()))
 	if err != nil {	
 		log.Error("failed to fetch internal thread participants", slog.Any("error", err))
 		return nil, false, err
@@ -66,11 +68,11 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
 		Fields:    searchQuery.Fields,
 		Ids:       searchQuery.IDs,
-		DomainIds: searchQuery.DomainIDs,
+		DomainIds: []int32{int32(identity.GetDomainID())},
 		Kinds:     t.converter.DTOKindsToThreadV1Kinds(searchQuery.Kinds),
 		Owners:    internalOwners,
 		Q:         searchQuery.Q,
-		MemberIds: internalMembers,
+		MemberIds: []string{identity.GetContactID()},
 		Size:      searchQuery.Size,
 		Sort:      searchQuery.Sort,
 		Page:      searchQuery.Page,
@@ -81,7 +83,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 	}
 
 	uniqueIds := t.collectUniqueMembersIDs(internalThreads.GetThreads())
-	contactsIdentities, err := t.fetchExternalParticipantsInfo(ctx, uniqueIds, int(searchQuery.DomainIDs[0]))
+	contactsIdentities, err := t.fetchExternalParticipantsInfo(ctx, uniqueIds, int(identity.GetDomainID()))
 	if err != nil {
 		log.Error("failed to fetch internal contact information for enrichment", 
 			slog.Any("error", err),
