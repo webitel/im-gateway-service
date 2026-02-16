@@ -94,35 +94,67 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 	}
 
 	enrichedThreads := t.converter.ThreadV1ListToThreadDTOList(internalThreads.GetThreads())
-	t.enrichThreads(enrichedThreads, contactsIdentities)
+	t.enrichThreads(enrichedThreads, contactsIdentities, identity.GetContactID())
 
 	return enrichedThreads, internalThreads.Next, nil
 }
 
-func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-	for _, thr := range threads {
-		if owner, ok := im[thr.Owner.InternalID]; ok {
-			thr.Owner = owner 
-		}
+func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
+    for _, thr := range threads {
+        t.enrichThreadOwner(thr, im)
+        t.enrichThreadAdmins(thr, im)
+        t.enrichThreadMemberIDs(thr, im)
+        t.enrichThreadMembers(thr, im, sessionMemberID)
+    }
+}
 
-		for i := range thr.Admins {
-    		if ad, ok := im[thr.Admins[i].InternalID]; ok {
-    		    thr.Admins[i] = ad
-    		}
-		}
+func (t *thread) enrichThreadOwner(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
+    if owner, ok := im[thr.Owner.InternalID]; ok {
+        thr.Owner = owner
+    }
+}
 
-		for i := range thr.MemberIDs {
-		    if m, ok := im[thr.MemberIDs[i].InternalID]; ok {
-		        thr.MemberIDs[i] = m
-		    }
-		}
+func (t *thread) enrichThreadAdmins(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
+    for i := range thr.Admins {
+        if ad, ok := im[thr.Admins[i].InternalID]; ok {
+            thr.Admins[i] = ad
+        }
+    }
+}
 
-		for i := range thr.Members {
-		    if m, ok := im[thr.Members[i].Member.InternalID]; ok {
-		        thr.Members[i].Member = m
-		    }
-		}
+func (t *thread) enrichThreadMemberIDs(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
+    for i := range thr.MemberIDs {
+        if m, ok := im[thr.MemberIDs[i].InternalID]; ok {
+            thr.MemberIDs[i] = m
+        }
+    }
+}
+
+func (t *thread) enrichThreadMembers(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
+    for i := range thr.Members {
+        internalID := thr.Members[i].Member.InternalID
+        if m, ok := im[internalID]; ok {
+            thr.Members[i].Member = m
+            t.updateDirectThreadSubject(thr, thr.Members[i], internalID, sessionMemberID)
+        }
+    }
+}
+
+func (t *thread) updateDirectThreadSubject(thr *dto.ThreadDTO, member *dto.ThreadMemberDTO, internalID, sessionMemberID string) {
+	if thr.Kind != dto.ThreadKindDirect {
+		return
 	}
+
+	if internalID != sessionMemberID {
+		return
+	}
+
+	if member.DirectSettings == nil {
+		return
+	}
+	
+    
+    thr.Subject = member.DirectSettings.Title
 }
 
 func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
