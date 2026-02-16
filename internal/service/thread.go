@@ -69,7 +69,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 		Fields:    searchQuery.Fields,
 		Ids:       searchQuery.IDs,
 		DomainIds: []int32{int32(identity.GetDomainID())},
-		Kinds:     t.converter.DTOKindsToThreadV1Kinds(searchQuery.Kinds),
+		// Kinds:     t.converter.DTOKindsToThreadV1Kinds(searchQuery.Kinds),
 		Owners:    internalOwners,
 		Q:         searchQuery.Q,
 		MemberIds: []string{identity.GetContactID()},

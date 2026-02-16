@@ -30,7 +30,7 @@ func (c *InMapperImpl) ToAccessToken(source *v1.AccessToken) (*dto.AccessToken, 
 	}
 	return pDtoAccessToken, nil
 }
-func (c *InMapperImpl) ToAuthContact(source *v1.AuthContact) (*dto.AuthContact, error) {
+func (c *InMapperImpl) ToAuthContact(source *v1.Contact) (*dto.AuthContact, error) {
 	var pDtoAuthContact *dto.AuthContact
 	if source != nil {
 		var dtoAuthContact dto.AuthContact

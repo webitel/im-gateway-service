@@ -19,7 +19,7 @@ type InMapper interface {
 	// goverter:useZeroValueOnPointerInconsistency
 	ToDevice(in *authv1.Device) *dto.Device
 	// goverter:useZeroValueOnPointerInconsistency
-	ToAuthContact(in *authv1.AuthContact) (*dto.AuthContact, error)
+	ToAuthContact(in *authv1.Contact) (*dto.AuthContact, error)
 	// goverter:useZeroValueOnPointerInconsistency
 	ToAccessToken(in *authv1.AccessToken) (*dto.AccessToken, error)
 }
