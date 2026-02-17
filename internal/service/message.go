@@ -150,6 +150,10 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 		}, nil
 	case shared.PeerContact:
 		return m.resolveContact(ctx, p.ID, p.Issuer, domainID)
+	case shared.PeerThread:
+		return &threadv1.Peer{
+			Kind: &threadv1.Peer_ThreadId{ThreadId: p.ID},
+		}, nil
 	default:
 		return nil, errors.New("unknown receiver peer type")
 	}
