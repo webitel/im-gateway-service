@@ -47,3 +47,5 @@ debug
 .vscode
 deploy/docker/config/config.yaml
 .zed
+certs
+config/config.yml

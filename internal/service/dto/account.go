@@ -1,5 +1,7 @@
 package dto
 
+import "google.golang.org/grpc/metadata"
+
 type GrantTyper interface {
 	isTokenRequest_GrantType()
 }
@@ -10,6 +12,7 @@ type TokenRequest struct {
 	ClientID     string
 	ClientSecret string
 	GrantType    GrantTyper
+	Headers metadata.MD
 }
 
 type IdentityGrant struct {

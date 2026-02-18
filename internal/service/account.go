@@ -29,7 +29,7 @@ func NewAccountService(client *imauth.Client) *AccountService {
 
 func (s *AccountService) Inspect(ctx context.Context, headers metadata.MD) (*dto.Authorization, error) {
 	if headers == nil {
-		return nil, errors.New("headers required for logout")
+		return nil, errors.New("headers required for inspect")
 	}
 
 	outCtx := metadata.NewOutgoingContext(ctx, headers)
@@ -38,7 +38,11 @@ func (s *AccountService) Inspect(ctx context.Context, headers metadata.MD) (*dto
 }
 
 func (s *AccountService) Token(ctx context.Context, request *dto.TokenRequest) (*dto.Authorization, error) {
-	return s.client.Token(ctx, request)
+	if len(request.Headers) == 0 {
+		return nil, errors.New("headers required for token")
+	}
+	outCtx := metadata.NewOutgoingContext(ctx, request.Headers)
+	return s.client.Token(outCtx, request)
 }
 
 func (s *AccountService) Logout(ctx context.Context, headers metadata.MD) error {

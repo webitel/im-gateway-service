@@ -29,6 +29,12 @@ func (a *AccountService) Token(ctx context.Context, request *impb.TokenRequest) 
 	req := a.inMapper.ToTokenRequest(request)
 	req.GrantType = mapper.ParseGrantType(request)
 
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errors.New("headers required for token")
+	}
+	req.Headers = md
+
 	auth, err := a.accounter.Token(ctx, req)
 	if err != nil {
 		return nil, err

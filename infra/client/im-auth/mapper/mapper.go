@@ -28,8 +28,8 @@ type InMapper interface {
 // goverter:matchIgnoreCase
 // goverter:output:file ./generated/out.go
 type OutMapper interface {
-	// ToTokenRequest converts a TokenRequest from the gRPC layer to the internal DTO representation.
-	// GrantType is not converted directly, define your method to convert it or use mapper.ToTokenRequest.
+	// ToTokenRequest converts model to protobuf request.
+	// NOTE: GrantType is not converted directly, define your method to convert it or use mapper.SetTokenGrant.
 	// goverter:ignore GrantType state sizeCache unknownFields
 	ToTokenRequest(in *dto.TokenRequest) *authv1.TokenRequest
 }
