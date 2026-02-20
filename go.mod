@@ -22,12 +22,12 @@ require (
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/sdk v1.39.0
 	go.uber.org/fx v1.24.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20251029180050-ab9386a59fda
-	google.golang.org/grpc v1.78.0
+	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217
+	google.golang.org/grpc v1.79.1
 )
 
 require (
-	cel.dev/expr v0.24.0 // indirect
+	cel.dev/expr v0.25.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
