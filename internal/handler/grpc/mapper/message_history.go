@@ -68,7 +68,7 @@ func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMe
 //
 // Returns:
 //  - A slice of HistoryMessages with the given IDs, thread IDs, sender IDs, receiver IDs, types, bodies, metadata, created at times, updated at times, documents, and images.
-func toProtoMessages(messages []dto.HistoryMessage) []*pb.HistoryMessage {
+func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -194,10 +194,15 @@ func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
 // Returns:
 //  - A MessageSender with the given subject, issuer, and type.
 func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
+	if ms == nil {
+		return nil
+	}
+	
 	return &pb.MessageParticipant{
 		Subject: ms.Subject,
 		Issuer:  ms.Issuer,
 		Type:    ms.Type,
+		Username: ms.UserName,
 	}
 }
 

@@ -44,7 +44,6 @@ type HistoryMessage struct {
 	ID         string            `json:"id"`
 	ThreadID   string            `json:"thread_id"`
 	SenderID   string            `json:"sender_id"`
-	ReceiverID string            `json:"receiver_id"`
 	Type       int32             `json:"type"`
 	Body       string            `json:"body"`
 	Metadata   map[string]any    `json:"metadata,omitempty"`
@@ -67,7 +66,7 @@ type Paging struct {
 }
 
 type SearchMessageHistoryResponse struct {
-	Messages       []HistoryMessage      `json:"messages"`
+	Messages       []*HistoryMessage      `json:"messages"`
 	NextCursor     *HistoryMessageCursor `json:"next_cursor,omitempty"`
 	Next           bool                  `json:"next"`
 	Paging         Paging                `json:"paging"`
@@ -75,15 +74,17 @@ type SearchMessageHistoryResponse struct {
 }
 
 type MessageSender struct {
-	Subject string `json:"subject"`
-	Issuer  string `json:"issuer"`
-	Type    string `json:"type"`
+	Subject  string `json:"subject"`
+	Issuer   string `json:"issuer"`
+	Type     string `json:"type"`
+	UserName string `json:"user_name"`
 }
 
-func NewMessageSender(sub, iss, senderType string) *MessageSender {
+func NewMessageSender(sub, iss, senderType, userName string) *MessageSender {
 	return &MessageSender{
-		Subject: sub,
-		Issuer:  iss,
-		Type:    senderType,
+		Subject:  sub,
+		Issuer:   iss,
+		Type:     senderType,
+		UserName: userName,
 	}
 }
