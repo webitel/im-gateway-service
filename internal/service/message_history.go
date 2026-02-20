@@ -87,14 +87,13 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 // collectUniqueIDs takes a slice of messages and a slice of internalIDs and returns a slice of unique IDs.
 // It collects all the IDs from the messages and internalIDs and returns a slice of unique IDs.
 // The returned slice will contain all the IDs from the messages and internalIDs, without any duplicates.
-func (s *messageHistory) collectUniqueIDs(messages []dto.HistoryMessage, internalIDs []string) []string {
+func (s *messageHistory) collectUniqueIDs(messages []*dto.HistoryMessage, internalIDs []string) []string {
 	uniqueMap := make(map[string]struct{})
 	for _, id := range internalIDs {
 		uniqueMap[id] = struct{}{}
 	}
 
 	for _, m := range messages {
-		if m.ReceiverID != "" {uniqueMap[m.ReceiverID] = struct{}{}}
 		if m.SenderID != "" {uniqueMap[m.SenderID] = struct{}{}}
 	}
 
@@ -111,7 +110,7 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 	}
 
 	external, err := s.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-        Fields:   []string{"id", "issuer_id", "type", "subject_id"},
+        Fields:   []string{"id", "issuer_id", "type", "subject_id", "username"},
         DomainId: domainID,
         Size:     int32(len(ids)),
         Ids:      ids,
@@ -122,7 +121,7 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 
 	res := make(map[string]*dto.MessageSender, len(external.GetContacts()))
     for _, p := range external.GetContacts() {
-        res[p.Id] = dto.NewMessageSender(p.GetSubject(), p.GetIssId(), p.GetType())
+        res[p.Id] = dto.NewMessageSender(p.GetSubject(), p.GetIssId(), p.GetType(), p.GetUsername())
     }
     return res, nil
 }
@@ -138,7 +137,6 @@ func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, 
     }
 
     for _, m := range resp.Messages {
-        m.Receiver = imap[m.ReceiverID]
         m.Sender = imap[m.SenderID]
     }
 }

@@ -154,14 +154,14 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 //
 // Returns:
 //  - A slice of HistoryMessages with the given IDs, thread IDs, sender IDs, receiver IDs, types, bodies, metadata, created at times, updated at times, documents, and images.
-func mapMessages(pbMsgs []*threadv1.HistoryMessage) []dto.HistoryMessage {
+func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 	if len(pbMsgs) == 0 {
-		return []dto.HistoryMessage{}
+		return []*dto.HistoryMessage{}
 	}
 
-	res := make([]dto.HistoryMessage, len(pbMsgs))
+	res := make([]*dto.HistoryMessage, len(pbMsgs))
 	for i, m := range pbMsgs {
-		res[i] = dto.HistoryMessage{
+		res[i] = &dto.HistoryMessage{
 			ID:         m.Id,
 			ThreadID:   m.ThreadId,
 			SenderID:   m.SenderId,
