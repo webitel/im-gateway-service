@@ -27,7 +27,7 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 	return &dto.SearchMessageHistoryRequest{
 		Fields:      req.GetFields(),
 		IDs:         req.GetIds(),
-		ThreadIDs:   req.GetThreadIds(),
+		ThreadIDs:   []string{req.GetThreadId()},
 		SenderIDs:   req.GetSenderIds(),
 		Types:       req.GetTypes(),
 		Cursor:      cursor,
