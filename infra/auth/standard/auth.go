@@ -75,7 +75,7 @@ func New(logger *slog.Logger, auther *authclient.Client, contacter *contactclien
 func (da *Authorizer) SetIdentity(ctx context.Context) (context.Context, error) {
 	resolvedIdentity, err := da.resolveIdentity(ctx)
 	if err != nil {
-		return ctx, err
+		return ctx, errors.Unauthenticated(err.Error())
 	}
 
 	newCtx := context.WithValue(ctx, interfaces.AuthContextKey, resolvedIdentity)
