@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"maps"
@@ -182,7 +183,7 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 func (t *thread) fetchExternalParticipantsInfo(ctx context.Context, uniqueIDs []string, domainID int) (map[string]*dto.ExternalParticipantDTO, error) {
 	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Size: int32(len(uniqueIDs)),
-		Fields: []string{"id", "issuer_id", "type", "subject_id"},
+		Fields: []string{"id", "issuer_id", "type", "subject_id", "username", "name"},
 		DomainId: int32(domainID),
 		Ids: uniqueIDs,
 	})
@@ -198,6 +199,7 @@ func (t *thread) fetchExternalParticipantsInfo(ctx context.Context, uniqueIDs []
 			Issuer: c.GetIssId(),
 			Subject: c.GetSubject(),
 			Type:    c.GetType(),
+			Username: cmp.Or(c.GetName(), c.GetUsername()),
 		}
 	}
 

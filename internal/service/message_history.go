@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"maps"
@@ -110,7 +111,7 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 	}
 
 	external, err := s.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-        Fields:   []string{"id", "issuer_id", "type", "subject_id", "username"},
+        Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name"},
         DomainId: domainID,
         Size:     int32(len(ids)),
         Ids:      ids,
@@ -121,7 +122,12 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 
 	res := make(map[string]*dto.MessageSender, len(external.GetContacts()))
     for _, p := range external.GetContacts() {
-        res[p.Id] = dto.NewMessageSender(p.GetSubject(), p.GetIssId(), p.GetType(), p.GetUsername())
+        res[p.Id] = dto.NewMessageSender(
+        	p.GetSubject(),
+        	p.GetIssId(),
+        	p.GetType(),
+        	cmp.Or(p.GetName(), p.GetUsername()),
+        )
     }
     return res, nil
 }

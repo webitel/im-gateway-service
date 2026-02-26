@@ -18,6 +18,7 @@ type (
 		Issuer  string
 		Subject string
 		Type    string
+		Username string
 	}
 
 	ThreadDirectSettingsDTO struct {
