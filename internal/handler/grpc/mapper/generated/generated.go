@@ -30,6 +30,7 @@ func (c *ThreadConverterImpl) DTOToExternalParticipantProto(source *dto.External
 		apiExternalParticipant.Issuer = (*source).Issuer
 		apiExternalParticipant.Subject = (*source).Subject
 		apiExternalParticipant.Type = (*source).Type
+		apiExternalParticipant.Username = (*source).Username
 		pApiExternalParticipant = &apiExternalParticipant
 	}
 	return pApiExternalParticipant
