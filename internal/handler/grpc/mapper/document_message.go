@@ -30,6 +30,7 @@ func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentReq
 
 	return &dto.SendDocumentRequest{
 		To:       MapPeerFromProto(in.GetTo()),
+		SendID:   in.GetSendId(),
 		Document: docReq,
 	}
 }

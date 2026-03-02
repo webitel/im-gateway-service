@@ -66,6 +66,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		To:       to,
 		Body:     in.Body,
 		DomainId: identity.GetDomainID(),
+		SendId:   in.SendID,
 	})
 	if err != nil {
 		return nil, err
@@ -92,6 +93,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 		},
 		To:       to,
 		DomainId: identity.GetDomainID(),
+		SendId:   in.SendID,
 		Image: &threadv1.ImageRequest{
 			Body:   in.Image.Body,
 			Images: m.mapImages(in.Image.Images),
@@ -122,6 +124,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		},
 		To:       to,
 		DomainId: identity.GetDomainID(),
+		SendId:   in.SendID,
 		Document: &threadv1.DocumentRequest{
 			Body:      in.Document.Body,
 			Documents: m.mapDocuments(in.Document.Documents),
