@@ -22,6 +22,7 @@ const (
 	Message_SendText_FullMethodName  = "/webitel.im.api.gateway.v1.Message/SendText"
 	Message_SendFile_FullMethodName  = "/webitel.im.api.gateway.v1.Message/SendFile"
 	Message_SendImage_FullMethodName = "/webitel.im.api.gateway.v1.Message/SendImage"
+	Message_Read_FullMethodName      = "/webitel.im.api.gateway.v1.Message/Read"
 )
 
 // MessageClient is the client API for Message service.
@@ -37,6 +38,8 @@ type MessageClient interface {
 	SendFile(ctx context.Context, in *SendDocumentRequest, opts ...grpc.CallOption) (*SendDocumentResponse, error)
 	// SendImage delivers image-specific messages.
 	SendImage(ctx context.Context, in *SendImageRequest, opts ...grpc.CallOption) (*SendImageResponse, error)
+	// Mark message as read by id.
+	Read(ctx context.Context, in *ReadMessageRequest, opts ...grpc.CallOption) (*ReadMessageResponse, error)
 }
 
 type messageClient struct {
@@ -77,6 +80,16 @@ func (c *messageClient) SendImage(ctx context.Context, in *SendImageRequest, opt
 	return out, nil
 }
 
+func (c *messageClient) Read(ctx context.Context, in *ReadMessageRequest, opts ...grpc.CallOption) (*ReadMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadMessageResponse)
+	err := c.cc.Invoke(ctx, Message_Read_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServer is the server API for Message service.
 // All implementations must embed UnimplementedMessageServer
 // for forward compatibility.
@@ -90,6 +103,8 @@ type MessageServer interface {
 	SendFile(context.Context, *SendDocumentRequest) (*SendDocumentResponse, error)
 	// SendImage delivers image-specific messages.
 	SendImage(context.Context, *SendImageRequest) (*SendImageResponse, error)
+	// Mark message as read by id.
+	Read(context.Context, *ReadMessageRequest) (*ReadMessageResponse, error)
 	mustEmbedUnimplementedMessageServer()
 }
 
@@ -108,6 +123,9 @@ func (UnimplementedMessageServer) SendFile(context.Context, *SendDocumentRequest
 }
 func (UnimplementedMessageServer) SendImage(context.Context, *SendImageRequest) (*SendImageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendImage not implemented")
+}
+func (UnimplementedMessageServer) Read(context.Context, *ReadMessageRequest) (*ReadMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
 }
 func (UnimplementedMessageServer) mustEmbedUnimplementedMessageServer() {}
 func (UnimplementedMessageServer) testEmbeddedByValue()                 {}
@@ -184,6 +202,24 @@ func _Message_SendImage_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Message_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).Read(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Message_Read_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).Read(ctx, req.(*ReadMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Message_ServiceDesc is the grpc.ServiceDesc for Message service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -202,6 +238,10 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendImage",
 			Handler:    _Message_SendImage_Handler,
+		},
+		{
+			MethodName: "Read",
+			Handler:    _Message_Read_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

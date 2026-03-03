@@ -26,14 +26,14 @@ type Client struct {
 }
 
 // New initializes a resilient gRPC client for the Message service.
-func New(logger *slog.Logger, discovery discovery.DiscoveryProvider,tls *infratls.Config) (*Client, error) {
+func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
 	// [FACTORY] Helper to instantiate the gRPC stub upon connection
 	factory := func(conn *grpc.ClientConn) threadv1.MessageClient {
 		return threadv1.NewMessageClient(conn)
 	}
 
 	// [INIT] Create the base gRPC client with discovery and circuit breaker
-	c, err := webitel.New(logger, discovery, ServiceName,tls, factory)
+	c, err := webitel.New(logger, discovery, ServiceName, tls, factory)
 	if err != nil {
 		return nil, fmt.Errorf("[im-thread-client] initialization failed: %w", err)
 	}
@@ -84,6 +84,21 @@ func (c *Client) SendImage(ctx context.Context, in *threadv1.SendImageRequest, o
 
 		var err error
 		resp, err = api.SendImage(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+// Read implements [thread.MessageClient].
+func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts ...grpc.CallOption) (*threadv1.ReadMessageResponse, error) {
+	var resp *threadv1.ReadMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.READ_MESSAGE", slog.Any("req", in))
+
+		var err error
+		resp, err = api.Read(ctx, in, opts...)
 		return err
 	})
 
