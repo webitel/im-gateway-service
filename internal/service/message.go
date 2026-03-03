@@ -28,6 +28,7 @@ type Messenger interface {
 	SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error)
 	SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error)
 	SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error)
+	Read(ctx context.Context, in *dto.ReadMessageRequest) error
 }
 
 type MessageService struct {
@@ -135,6 +136,25 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	}
 
 	return &dto.SendDocumentResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
+}
+
+// Read implements [Messenger].
+func (m *MessageService) Read(ctx context.Context, in *dto.ReadMessageRequest) error {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return auth.IdentityNotFoundErr
+	}
+
+	_, err := m.threader.Read(ctx, &threadv1.ReadMessageRequest{
+		Id:       in.MessageID,
+		ThreadId: in.ThreadID,
+		UserId:   identity.GetContactID(),
+		DomainId: int32(identity.GetDomainID()),
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // --- Internal Helpers & Mappers ---

@@ -54,6 +54,11 @@ func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocument
 	return mapper.MapToSendDocumentResponse(out), nil
 }
 
+// Read implements [api.MessageServer].
+func (m *MessageService) Read(context.Context, *impb.ReadMessageRequest) (*impb.ReadMessageResponse, error) {
+	panic("unimplemented")
+}
+
 // SendFile implements [gatewayv1.MessageServer].
 func (m *MessageService) SendFile(context.Context, *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
 	panic("unimplemented")
