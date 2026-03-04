@@ -26,7 +26,7 @@ func MapToContact(in *dto.Contact) *impb.Contact {
 		IssId:     in.IssID,
 		AppId:     in.AppID,
 		Type:      in.Type,
-		Name:      in.Type,
+		Name:      in.Name,
 		Username:  in.Username,
 		Metadata:  in.Metadata,
 		CreatedAt: in.CreatedAt,
