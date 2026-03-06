@@ -8,12 +8,6 @@ import (
 )
 
 // MapSearchMessageHistoryRequestToDTO maps a SearchMessageHistoryRequest to a SearchMessageHistoryRequestDTO.
-//
-// Args:
-//  - req: The SearchMessageHistoryRequest to be mapped.
-//
-// Returns:
-//  - A SearchMessageHistoryRequestDTO with the given fields, IDs, thread IDs, sender IDs, receiver IDs, types, cursor, and size.
 func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *dto.SearchMessageHistoryRequest {
 	var cursor *dto.HistoryMessageCursor
 	if req.Cursor != nil {
@@ -36,12 +30,6 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 }
 
 // MapToSearchHistoryProto maps a SearchMessageHistoryResponseDTO to a SearchMessageHistoryResponse.
-//
-// Args:
-//  - res: The SearchMessageHistoryResponseDTO to be mapped.
-//
-// Returns:
-//  - A SearchMessageHistoryResponse with the given messages, next cursor, next, from, and paging.
 func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMessageHistoryResponse {
 	if res == nil {
 		return nil
@@ -62,12 +50,6 @@ func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMe
 }
 
 // toProtoMessages maps a slice of HistoryMessageDTOs to a slice of HistoryMessages.
-//
-// Args:
-//  - messages: The slice of HistoryMessageDTOs to be mapped.
-//
-// Returns:
-//  - A slice of HistoryMessages with the given IDs, thread IDs, sender IDs, receiver IDs, types, bodies, metadata, created at times, updated at times, documents, and images.
 func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 	if len(messages) == 0 {
 		return nil
@@ -97,12 +79,6 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 }
 
 // toProtoDocuments maps a slice of HistoryDocumentDTOs to a slice of Documents.
-//
-// Args:
-//  - docs: The slice of HistoryDocumentDTOs to be mapped.
-//
-// Returns:
-//  - A slice of Documents with the given IDs, message IDs, file IDs, names, mime types, sizes, created at times, and URLs.
 func toProtoDocuments(docs []dto.HistoryDocument) []*pb.Document {
 	res := make([]*pb.Document, len(docs))
 	for i, d := range docs {
@@ -121,12 +97,6 @@ func toProtoDocuments(docs []dto.HistoryDocument) []*pb.Document {
 }
 
 // toProtoImages maps a slice of HistoryImageDTOs to a slice of Images.
-//
-// Args:
-//  - imgs: The slice of HistoryImageDTOs to be mapped.
-//
-// Returns:
-//  - A slice of Images with the given IDs, message IDs, file IDs, mime types, widths, heights, created at times, and URLs.
 func toProtoImages(imgs []dto.HistoryImage) []*pb.Image {
 	res := make([]*pb.Image, len(imgs))
 	for i, img := range imgs {
@@ -145,12 +115,6 @@ func toProtoImages(imgs []dto.HistoryImage) []*pb.Image {
 }
 
 // toProtoCursor maps a HistoryMessageCursor to a HistoryMessageCursor.
-//
-// Args:
-//  - c: The HistoryMessageCursor to be mapped.
-//
-// Returns:
-//  - A HistoryMessageCursor with the given ID, created at time, and direction.
 func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursor {
 	if c == nil {
 		return nil
@@ -163,14 +127,6 @@ func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursor {
 }
 
 // toProtoMetadata maps a map of string keys to interface values to a map of string keys to Any values.
-//
-// Args:
-//  - meta: The map of string keys to interface values to be mapped.
-//
-// Returns:
-//  - A map of string keys to Any values. The Any values are the JSON-marshalled versions of the interface values.
-//
-// If an error occurs while marshaling a value, it is skipped.
 func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
 	dst := make(map[string]*anypb.Any, len(src))
 
@@ -187,12 +143,6 @@ func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
 }
 
 // toProtoMessageSender maps a MessageSender to a MessageSender.
-//
-// Args:
-//  - ms: The MessageSender to be mapped.
-//
-// Returns:
-//  - A MessageSender with the given subject, issuer, and type.
 func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
 	if ms == nil {
 		return nil
@@ -203,16 +153,11 @@ func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
 		Issuer:  ms.Issuer,
 		Type:    ms.Type,
 		Username: ms.UserName,
+		IsBot: ms.IsBot,
 	}
 }
 
 // toProtoMessageSenderList maps a slice of MessageSendDTOs to a slice of MessageSenders.
-//
-// Args:
-//  - msList: The slice of MessageSendDTOs to be mapped.
-//
-// Returns:
-//  - A slice of MessageSenders with the given subjects, issuers, and types.
 func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.MessageParticipant {
 	var (
 		pbMessageSenderList = make([]*pb.MessageParticipant, 0, len(msList))

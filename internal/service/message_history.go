@@ -127,6 +127,7 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
         	p.GetIssId(),
         	p.GetType(),
         	cmp.Or(p.GetName(), p.GetUsername()),
+			p.GetIsBot(),
         )
     }
     return res, nil

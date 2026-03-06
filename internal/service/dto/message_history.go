@@ -78,13 +78,15 @@ type MessageSender struct {
 	Issuer   string `json:"issuer"`
 	Type     string `json:"type"`
 	UserName string `json:"user_name"`
+	IsBot bool `json:"is_bot"`
 }
 
-func NewMessageSender(sub, iss, senderType, userName string) *MessageSender {
+func NewMessageSender(sub, iss, senderType, userName string, isBot bool) *MessageSender {
 	return &MessageSender{
 		Subject:  sub,
 		Issuer:   iss,
 		Type:     senderType,
 		UserName: userName,
+		IsBot: isBot,
 	}
 }

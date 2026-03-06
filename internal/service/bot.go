@@ -53,6 +53,7 @@ func (m *BotService) CreateBot(ctx context.Context, in *dto.CreateBotRequest) (*
 		Metadata: in.Metadata,
 		Subject:  in.SchemaID,
 		DomainId: int32(identity.GetDomainID()),
+		IsBot: true,
 	})
 	if err != nil {
 		return nil, err
@@ -89,12 +90,15 @@ func (m *BotService) DeleteBot(ctx context.Context, in *dto.DeleteBotRequest) (*
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
+	onlyBots := true
 	contacts, err := m.contactClient.SearchContact(ctx, &contactv1.SearchContactRequest{
 		Size:     2,
 		IssId:    []string{BotIssuer},
 		Type:     []string{BotContactType},
 		Ids:      []string{in.ID},
 		DomainId: int32(identity.GetDomainID()),
+		OnlyBots: &onlyBots,
 	})
 	if err != nil {
 		return nil, err
@@ -107,7 +111,12 @@ func (m *BotService) DeleteBot(ctx context.Context, in *dto.DeleteBotRequest) (*
 		return nil, errors.Internal("too many bots found")
 	}
 
-	resp, err := m.contactClient.DeleteContact(ctx, &contactv1.DeleteContactRequest{})
+	bot := contacts.GetContacts()[0]
+
+	resp, err := m.contactClient.DeleteContact(ctx, &contactv1.DeleteContactRequest{
+		Id: bot.GetId(),
+		DomainId: bot.GetDomainId(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -130,17 +139,3 @@ func (m *BotService) toBot(p *contactv1.Contact) *dto.Bot {
 	return out
 }
 
-func (m *BotService) toContact(p *contactv1.Contact) *dto.Contact {
-	return &dto.Contact{
-		ID:        p.GetId(),
-		IssID:     p.GetIssId(),
-		AppID:     p.GetAppId(),
-		Type:      p.GetType(),
-		Name:      p.GetName(),
-		Username:  p.GetUsername(),
-		Metadata:  p.GetMetadata(),
-		CreatedAt: p.GetCreatedAt(),
-		UpdatedAt: p.GetUpdatedAt(),
-		Subject:   p.GetSubject(),
-	}
-}
