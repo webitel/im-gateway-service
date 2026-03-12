@@ -7,6 +7,7 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
+// InMapper handles conversion from Protobuf responses to DTOs.
 // goverter:converter
 // goverter:matchIgnoreCase
 // goverter:output:file ./generated/in.go
@@ -27,13 +28,24 @@ type InMapper interface {
 // goverter:converter
 // goverter:matchIgnoreCase
 // goverter:output:file ./generated/out.go
+// goverter:extend ToPbPUSHSubscription
 type OutMapper interface {
 	// ToTokenRequest converts model to protobuf request.
-	// NOTE: GrantType is not converted directly, define your method to convert it or use mapper.SetTokenGrant.
 	// goverter:ignore GrantType state sizeCache unknownFields
 	ToTokenRequest(in *dto.TokenRequest) *authv1.TokenRequest
+
+	// ToRegisterDeviceRequest converts DTO to protobuf request.
+	// goverter:map Push Push
+	// goverter:ignore state sizeCache unknownFields
+	ToRegisterDeviceRequest(in *dto.RegisterDeviceRequest) *authv1.RegisterDeviceRequest
+
+	// ToUnregisterDeviceRequest converts DTO to protobuf request.
+	// goverter:map Push Push
+	// goverter:ignore state sizeCache unknownFields
+	ToUnregisterDeviceRequest(in *dto.UnregisterDeviceRequest) *authv1.UnregisterDeviceRequest
 }
 
+// SetTokenGrant handles the complex mapping of oneof GrantType in TokenRequest.
 func SetTokenGrant(in *authv1.TokenRequest, typer dto.GrantTyper) error {
 	if in == nil {
 		return nil
@@ -74,12 +86,55 @@ func SetTokenGrant(in *authv1.TokenRequest, typer dto.GrantTyper) error {
 		in.GrantType = &authv1.TokenRequest_RefreshToken{
 			RefreshToken: grant.RefreshToken,
 		}
-	default:
-		return nil
 	}
 	return nil
 }
 
+// ToPbPUSHSubscription converts the DTO PUSHSubscription back to the oneof Protobuf format.
+func ToPbPUSHSubscription(in *dto.PUSHSubscription) *authv1.PUSHSubscription {
+	if in == nil {
+		return nil
+	}
+
+	res := &authv1.PUSHSubscription{}
+
+	// Map secret back to bytes if present in parameters
+	if val, ok := in.Parameters["secret"]; ok {
+		if secret, ok := val.([]byte); ok {
+			res.Secret = secret
+		}
+	}
+
+	// Restore the specific token type based on the Provider string
+	switch in.Provider {
+	case "fcm":
+		res.Token = &authv1.PUSHSubscription_Fcm{Fcm: in.Token}
+	case "apns":
+		res.Token = &authv1.PUSHSubscription_Apn{Apn: in.Token}
+	case "web":
+		webSub := &authv1.WebPushSubscription{
+			Endpoint: in.Token,
+		}
+		// If we stored keys in parameters, map them back
+		if auth, ok := in.Parameters["auth"].([]byte); ok {
+			if webSub.Key == nil {
+				webSub.Key = &authv1.WebPushSubscription_Key{}
+			}
+			webSub.Key.Auth = auth
+		}
+		if p256dh, ok := in.Parameters["p256dh"].([]byte); ok {
+			if webSub.Key == nil {
+				webSub.Key = &authv1.WebPushSubscription_Key{}
+			}
+			webSub.Key.P256Dh = p256dh
+		}
+		res.Token = &authv1.PUSHSubscription_Web{Web: webSub}
+	}
+
+	return res
+}
+
+// ParsePbStructToMap converts a Protobuf Struct to a Go map.
 func ParsePbStructToMap(in *structpb.Struct) map[string]any {
 	if in == nil {
 		return nil

@@ -5,7 +5,7 @@ package generated
 
 import (
 	v1 "github.com/webitel/im-gateway-service/gen/go/auth/v1"
-	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth/mapper"
+	mapper "github.com/webitel/im-gateway-service/infra/client/im-auth/mapper"
 	dto "github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -55,7 +55,7 @@ func (c *InMapperImpl) ToAuthContact(source *v1.Contact) (*dto.AuthContact, erro
 		dtoAuthContact.EmailVerified = (*source).EmailVerified
 		dtoAuthContact.PhoneNumber = (*source).PhoneNumber
 		dtoAuthContact.PhoneNumberVerified = (*source).PhoneNumberVerified
-		dtoAuthContact.Metadata = imauth.ParsePbStructToMap((*source).Metadata)
+		dtoAuthContact.Metadata = mapper.ParsePbStructToMap((*source).Metadata)
 		dtoAuthContact.CreatedAt = (*source).CreatedAt
 		dtoAuthContact.UpdatedAt = (*source).UpdatedAt
 		dtoAuthContact.DeletedAt = (*source).DeletedAt

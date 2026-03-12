@@ -97,6 +97,24 @@ func (c *AccountToPbMapperImpl) ToDevice(source *dto.Device) *v1.Device {
 	}
 	return pApiDevice
 }
+func (c *AccountToPbMapperImpl) ToRegisterDeviceResponse(source *dto.RegisterDeviceResponse) *v1.RegisterDeviceResponse {
+	var pApiRegisterDeviceResponse *v1.RegisterDeviceResponse
+	if source != nil {
+		var apiRegisterDeviceResponse v1.RegisterDeviceResponse
+		_ = (*source)
+		pApiRegisterDeviceResponse = &apiRegisterDeviceResponse
+	}
+	return pApiRegisterDeviceResponse
+}
+func (c *AccountToPbMapperImpl) ToUnregisterDeviceResponse(source *dto.UnregisterDeviceResponse) *v1.UnregisterDeviceResponse {
+	var pApiUnregisterDeviceResponse *v1.UnregisterDeviceResponse
+	if source != nil {
+		var apiUnregisterDeviceResponse v1.UnregisterDeviceResponse
+		_ = (*source)
+		pApiUnregisterDeviceResponse = &apiUnregisterDeviceResponse
+	}
+	return pApiUnregisterDeviceResponse
+}
 func (c *AccountToPbMapperImpl) ToUserAgent(source *dto.UserAgent) *v1.UserAgent {
 	var pApiUserAgent *v1.UserAgent
 	if source != nil {

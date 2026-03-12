@@ -11,11 +11,12 @@ func _() {
 	_ = x[PeerContact-1]
 	_ = x[PeerGroup-2]
 	_ = x[PeerChannel-3]
+	_ = x[PeerThread-4]
 }
 
-const _PeerType_name = "PeerContactPeerGroupPeerChannel"
+const _PeerType_name = "PeerContactPeerGroupPeerChannelPeerThread"
 
-var _PeerType_index = [...]uint8{0, 11, 20, 31}
+var _PeerType_index = [...]uint8{0, 11, 20, 31, 41}
 
 func (i PeerType) String() string {
 	i -= 1

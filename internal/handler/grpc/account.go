@@ -68,13 +68,31 @@ func (a *AccountService) Inspect(ctx context.Context, request *impb.InspectReque
 }
 
 func (a *AccountService) RegisterDevice(ctx context.Context, request *impb.RegisterDeviceRequest) (*impb.RegisterDeviceResponse, error) {
-	// TODO implement me
-	return nil, nil
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errors.Forbidden("register device failed, headers required")
+	}
+
+	err := a.accounter.RegisterDevice(ctx, md, a.inMapper.ToRegisterDeviceRequest(request))
+	if err != nil {
+		return nil, err
+	}
+
+	return &impb.RegisterDeviceResponse{}, nil
 }
 
 func (a *AccountService) UnregisterDevice(ctx context.Context, request *impb.UnregisterDeviceRequest) (*impb.UnregisterDeviceResponse, error) {
-	// TODO implement me
-	return nil, nil
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, errors.Forbidden("unregister device failed, headers required")
+	}
+
+	err := a.accounter.UnregisterDevice(ctx, md, a.inMapper.ToUnregisterDeviceRequest(request))
+	if err != nil {
+		return nil, err
+	}
+
+	return &impb.UnregisterDeviceResponse{}, nil
 }
 
 func NewAccountService(logger *slog.Logger, accounter service.Accounter) *AccountService {

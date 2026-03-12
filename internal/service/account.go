@@ -17,6 +17,8 @@ type Accounter interface {
 	Token(ctx context.Context, request *dto.TokenRequest) (*dto.Authorization, error)
 	Inspect(ctx context.Context, headers metadata.MD) (*dto.Authorization, error)
 	Logout(ctx context.Context, headers metadata.MD) error
+	RegisterDevice(ctx context.Context, headers metadata.MD, request *dto.RegisterDeviceRequest) error
+	UnregisterDevice(ctx context.Context, headers metadata.MD, request *dto.UnregisterDeviceRequest) error
 }
 
 type AccountService struct {
@@ -53,4 +55,20 @@ func (s *AccountService) Logout(ctx context.Context, headers metadata.MD) error 
 	outCtx := metadata.NewOutgoingContext(ctx, headers)
 
 	return s.client.Logout(outCtx)
+}
+
+func (s *AccountService) RegisterDevice(ctx context.Context, headers metadata.MD, request *dto.RegisterDeviceRequest) error {
+	if headers == nil {
+		return errors.New("headers required for register device")
+	}
+	outCtx := metadata.NewOutgoingContext(ctx, headers)
+	return s.client.RegisterDevice(outCtx, request)
+}
+
+func (s *AccountService) UnregisterDevice(ctx context.Context, headers metadata.MD, request *dto.UnregisterDeviceRequest) error {
+	if headers == nil {
+		return errors.New("headers required for unregister device")
+	}
+	outCtx := metadata.NewOutgoingContext(ctx, headers)
+	return s.client.UnregisterDevice(outCtx, request)
 }

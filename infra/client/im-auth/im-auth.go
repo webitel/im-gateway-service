@@ -101,16 +101,29 @@ func (c *Client) Logout(ctx context.Context, opts ...grpc.CallOption) error {
 	return err
 }
 
+// RegisterDevice registers a device for PUSH notifications.
+func (c *Client) RegisterDevice(ctx context.Context, in *dto.RegisterDeviceRequest, opts ...grpc.CallOption) error {
+	req := c.outMapper.ToRegisterDeviceRequest(in)
+
+	return c.rpc.Execute(ctx, func(api authv1.AccountClient) error {
+		_, err := api.RegisterDevice(ctx, req, opts...)
+		return err
+	})
+}
+
+// UnregisterDevice removes a device PUSH subscription.
+func (c *Client) UnregisterDevice(ctx context.Context, in *dto.UnregisterDeviceRequest, opts ...grpc.CallOption) error {
+	req := c.outMapper.ToUnregisterDeviceRequest(in)
+
+	return c.rpc.Execute(ctx, func(api authv1.AccountClient) error {
+		_, err := api.UnregisterDevice(ctx, req, opts...)
+		return err
+	})
+}
+
 func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
 	return nil
-}
-
-func (c *Client) maskToken(t string) string {
-	if len(t) <= 8 {
-		return "****"
-	}
-	return t[:4] + "..." + t[len(t)-4:]
 }

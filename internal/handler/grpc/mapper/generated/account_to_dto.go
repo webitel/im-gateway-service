@@ -5,11 +5,24 @@ package generated
 
 import (
 	v1 "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	mapper "github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	dto "github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
 type AccountToDtoMapperImpl struct{}
 
+func (c *AccountToDtoMapperImpl) ToPUSHSubscription(source *v1.PUSHSubscription) *dto.PUSHSubscription {
+	return mapper.ParsePUSHSubscription(source)
+}
+func (c *AccountToDtoMapperImpl) ToRegisterDeviceRequest(source *v1.RegisterDeviceRequest) *dto.RegisterDeviceRequest {
+	var pDtoRegisterDeviceRequest *dto.RegisterDeviceRequest
+	if source != nil {
+		var dtoRegisterDeviceRequest dto.RegisterDeviceRequest
+		dtoRegisterDeviceRequest.Push = mapper.ParsePUSHSubscription((*source).Push)
+		pDtoRegisterDeviceRequest = &dtoRegisterDeviceRequest
+	}
+	return pDtoRegisterDeviceRequest
+}
 func (c *AccountToDtoMapperImpl) ToTokenRequest(source *v1.TokenRequest) *dto.TokenRequest {
 	var pDtoTokenRequest *dto.TokenRequest
 	if source != nil {
@@ -26,4 +39,13 @@ func (c *AccountToDtoMapperImpl) ToTokenRequest(source *v1.TokenRequest) *dto.To
 		pDtoTokenRequest = &dtoTokenRequest
 	}
 	return pDtoTokenRequest
+}
+func (c *AccountToDtoMapperImpl) ToUnregisterDeviceRequest(source *v1.UnregisterDeviceRequest) *dto.UnregisterDeviceRequest {
+	var pDtoUnregisterDeviceRequest *dto.UnregisterDeviceRequest
+	if source != nil {
+		var dtoUnregisterDeviceRequest dto.UnregisterDeviceRequest
+		dtoUnregisterDeviceRequest.Push = mapper.ParsePUSHSubscription((*source).Push)
+		pDtoUnregisterDeviceRequest = &dtoUnregisterDeviceRequest
+	}
+	return pDtoUnregisterDeviceRequest
 }
