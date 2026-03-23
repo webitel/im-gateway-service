@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/webitel/webitel-go-kit/infra/profiler"
 	"go.uber.org/fx"
 
 	"github.com/webitel/webitel-go-kit/infra/discovery"
@@ -21,6 +22,7 @@ func NewApp(cfg *config.Config) *fx.App {
 			func() *config.Config { return cfg },
 			ProvideLogger,
 			ProvideSD,
+			ProvideProfile,
 		),
 		fx.Invoke(func(discovery discovery.DiscoveryProvider) error { return nil }),
 		webiteldi.Module,
@@ -31,5 +33,6 @@ func NewApp(cfg *config.Config) *fx.App {
 		service.Module,
 		grpcsrv.Module,
 		grpchandler.Module,
+		profiler.Module,
 	)
 }
