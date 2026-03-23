@@ -14,6 +14,8 @@ import (
 
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	otelsdk "github.com/webitel/webitel-go-kit/infra/otel/sdk"
+	"github.com/webitel/webitel-go-kit/infra/profiler"
+	"github.com/webitel/webitel-go-kit/pkg/logger"
 
 	"github.com/webitel/im-gateway-service/config"
 	"github.com/webitel/im-gateway-service/internal/model"
@@ -221,4 +223,12 @@ func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery
 	})
 
 	return provider, nil
+}
+
+func ProvideProfile(cfg *config.Config, l *slog.Logger) (profiler.Config, logger.Logger) {
+	return profiler.Config{
+		Addr:                 cfg.Profiler.Addr,
+		MutexProfileFraction: cfg.Profiler.MutexFraction,
+		BlockProfileRate:     cfg.Profiler.BlockRate,
+	}, logger.NewSlog(l)
 }
