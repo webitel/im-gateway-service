@@ -5,11 +5,12 @@ import (
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 //go:generate goverter gen .
 
-func ToThreadKind(source impb.ThreadKind) (dto.ThreadKind) {
+func ToThreadKind(source impb.ThreadKind) dto.ThreadKind {
 	switch source {
 	case impb.ThreadKind_CHANNEL:
 		return dto.ThreadKindChannel
@@ -62,9 +63,9 @@ func FromThreadV1KindToDTOKind(source threadv1.ThreadKind) dto.ThreadKind {
 }
 
 func StringToParticipant(id string) dto.ExternalParticipantDTO {
-    return dto.ExternalParticipantDTO{
-        InternalID: id,
-    }
+	return dto.ExternalParticipantDTO{
+		InternalID: id,
+	}
 }
 
 func PeerIdentityToSharedPeer(source *impb.PeerIdentity) shared.Peer {
@@ -75,27 +76,36 @@ func PeerIdentityToSharedPeer(source *impb.PeerIdentity) shared.Peer {
 	}
 }
 
+func MapAnyToStructpb(in map[string]any) *structpb.Struct {
+	var s, _ = structpb.NewStruct(in)
+	return s
+}
+
+func MapStructpbToMapAny(in *structpb.Struct) map[string]any { return in.AsMap() }
+
 // goverter:converter
-// goverter:extend ToThreadKind StringToParticipant PeerIdentityToSharedPeer
-// goverter:extend FromThreadKind
+// goverter:extend ToThreadKind StringToParticipant PeerIdentityToSharedPeer MapAnyToStructpb
+// goverter:extend FromThreadKind MapStructpbToMapAny
 // goverter:extend FromDTOToThreadV1Kind
 // goverter:extend FromThreadV1KindToDTOKind
 // goverter:matchIgnoreCase
 // goverter:ignoreUnexported
 // goverter:useZeroValueOnPointerInconsistency
 type ThreadConverter interface {
-    ProtoToDTO(source impb.ThreadKind) dto.ThreadKind
-    DTOToExternalParticipantProto(source *dto.ExternalParticipantDTO) *impb.ExternalParticipant 
-    DTOToThreadDirectSettingsProto(source *dto.ThreadDirectSettingsDTO) *impb.ThreadDirectSettings
-    DTOToThreadMemberProto(source *dto.ThreadMemberDTO) *impb.ThreadMember
+	ProtoToDTO(source impb.ThreadKind) dto.ThreadKind
+	DTOToExternalParticipantProto(source *dto.ExternalParticipantDTO) *impb.ExternalParticipant
+	DTOToThreadDirectSettingsProto(source *dto.ThreadDirectSettingsDTO) *impb.ThreadDirectSettings
+	DTOToThreadMemberProto(source *dto.ThreadMemberDTO) *impb.ThreadMember
 
 	ProtoThreadSearchRequestToDTO(source *impb.ThreadSearchRequest) *dto.ThreadSearchRequestDTO
-	DTOToProto(source []*dto.ThreadDTO) []*impb.Thread	
-	
+	DTOToProto(source []*dto.ThreadDTO) []*impb.Thread
+
 	// goverter:map Id Member
-    ToThreadMemberDTO(source *threadv1.ThreadMember) *dto.ThreadMemberDTO
+	ToThreadMemberDTO(source *threadv1.ThreadMember) *dto.ThreadMemberDTO
 	ThreadV1ToThreadDTO(source *threadv1.Thread) *dto.ThreadDTO
 	ThreadV1ListToThreadDTOList(source []*threadv1.Thread) []*dto.ThreadDTO
+	// goverter:ignore Sender
+	// goverter:map SenderId SenderID
+	ToHistoryMessageDTO(source *threadv1.HistoryMessage) *dto.HistoryMessage
 	DTOKindsToThreadV1Kinds(source []dto.ThreadKind) []threadv1.ThreadKind
 }
-

@@ -16,7 +16,9 @@ import (
 const ServiceName string = "im-thread-service"
 
 // [GENERIC_INTERFACE_GUARD] Ensures Client matches the generated gRPC client interface.
-var _ threadv1.MessageClient = (*Client)(nil)
+var (
+	_ threadv1.MessageClient = (*Client)(nil)
+)
 
 type Client struct {
 	logger *slog.Logger
@@ -25,14 +27,11 @@ type Client struct {
 	tls *infratls.Config
 }
 
-// New initializes a resilient gRPC client for the Message service.
 func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
-	// [FACTORY] Helper to instantiate the gRPC stub upon connection
 	factory := func(conn *grpc.ClientConn) threadv1.MessageClient {
 		return threadv1.NewMessageClient(conn)
 	}
 
-	// [INIT] Create the base gRPC client with discovery and circuit breaker
 	c, err := webitel.New(logger, discovery, ServiceName, tls, factory)
 	if err != nil {
 		return nil, fmt.Errorf("[im-thread-client] initialization failed: %w", err)
