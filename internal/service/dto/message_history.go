@@ -1,9 +1,8 @@
 package dto
 
 type HistoryMessageCursor struct {
-	CreatedAt int64  `json:"created_at"`
-	ID        string `json:"id"`
-	Direction bool   `json:"direction"`
+	ID     string `json:"id"`
+	Before bool
 }
 
 type SearchMessageHistoryRequest struct {
@@ -41,19 +40,18 @@ type HistoryImage struct {
 }
 
 type HistoryMessage struct {
-	ID         string            `json:"id"`
-	ThreadID   string            `json:"thread_id"`
-	SenderID   string            `json:"sender_id"`
-	Type       int32             `json:"type"`
-	Body       string            `json:"body"`
-	Metadata   map[string]any    `json:"metadata,omitempty"`
-	CreatedAt  int64             `json:"created_at"`
-	UpdatedAt  int64             `json:"updated_at"`
-	Documents  []HistoryDocument `json:"documents,omitempty"`
-	Images     []HistoryImage    `json:"images,omitempty"`
+	ID        string            `json:"id"`
+	ThreadID  string            `json:"thread_id"`
+	SenderID  string            `json:"sender_id"`
+	Type      int32             `json:"type"`
+	Body      string            `json:"body"`
+	Metadata  map[string]any    `json:"metadata,omitempty"`
+	CreatedAt int64             `json:"created_at"`
+	UpdatedAt int64             `json:"updated_at"`
+	Documents []HistoryDocument `json:"documents,omitempty"`
+	Images    []HistoryImage    `json:"images,omitempty"`
 
-	Receiver *MessageSender `json:"receiver"`
-	Sender   *MessageSender `json:"sender"`
+	Sender *MessageSender `json:"sender"`
 }
 
 type Cursors struct {
@@ -66,27 +64,26 @@ type Paging struct {
 }
 
 type SearchMessageHistoryResponse struct {
-	Messages       []*HistoryMessage      `json:"messages"`
+	Messages       []*HistoryMessage     `json:"messages"`
 	NextCursor     *HistoryMessageCursor `json:"next_cursor,omitempty"`
-	Next           bool                  `json:"next"`
-	Paging         Paging                `json:"paging"`
-	MessageSenders []*MessageSender      `json:"message_senders"`
+	PrevCursor     *HistoryMessageCursor
+	MessageSenders []*MessageSender `json:"message_senders"`
 }
 
 type MessageSender struct {
-	Subject  string `json:"subject"`
-	Issuer   string `json:"issuer"`
-	Type     string `json:"type"`
-	UserName string `json:"user_name"`
-	IsBot bool `json:"is_bot"`
+	Sub   string `json:"subject"`
+	Iss   string `json:"issuer"`
+	Type  string `json:"type"`
+	Name  string `json:"user_name"`
+	IsBot bool   `json:"is_bot"`
 }
 
 func NewMessageSender(sub, iss, senderType, userName string, isBot bool) *MessageSender {
 	return &MessageSender{
-		Subject:  sub,
-		Issuer:   iss,
-		Type:     senderType,
-		UserName: userName,
+		Sub:   sub,
+		Iss:   iss,
+		Type:  senderType,
+		Name:  userName,
 		IsBot: isBot,
 	}
 }

@@ -12,20 +12,19 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 	var cursor *dto.HistoryMessageCursor
 	if req.Cursor != nil {
 		cursor = &dto.HistoryMessageCursor{
-			CreatedAt: req.Cursor.CreatedAt,
-			ID:        req.Cursor.Id,
-			Direction: req.Cursor.Direction,
+			ID:     req.Cursor.Id,
+			Before: req.Cursor.Before,
 		}
 	}
-	
+
 	return &dto.SearchMessageHistoryRequest{
-		Fields:      req.GetFields(),
-		IDs:         req.GetIds(),
-		ThreadIDs:   []string{req.GetThreadId()},
-		SenderIDs:   req.GetSenderIds(),
-		Types:       req.GetTypes(),
-		Cursor:      cursor,
-		Size:        req.GetSize(),
+		Fields:    req.GetFields(),
+		IDs:       req.GetIds(),
+		ThreadIDs: []string{req.GetThreadId()},
+		SenderIDs: req.GetSenderIds(),
+		Types:     req.GetTypes(),
+		Cursor:    cursor,
+		Size:      req.GetSize(),
 	}
 }
 
@@ -36,16 +35,9 @@ func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMe
 	}
 
 	return &pb.SearchMessageHistoryResponse{
-		Messages:    toProtoMessages(res.Messages),
-		NextCursor:  toProtoCursor(res.NextCursor),
-		Next:        res.Next,
-		From:        toProtoMessageSenderList(res.MessageSenders),
-		Paging: &pb.Paging{
-			Cursors: &pb.Cursors{
-				After:  toProtoCursor(res.Paging.Cursors.After),
-				Before: toProtoCursor(res.Paging.Cursors.Before),
-			},
-		},
+		Items:      toProtoMessages(res.Messages),
+		NextCursor: toProtoCursor(res.NextCursor),
+		PrevCursor: toProtoCursor(res.PrevCursor),
 	}
 }
 
@@ -57,22 +49,22 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 
 	protoMsgs := make([]*pb.HistoryMessage, len(messages))
 	for i, m := range messages {
-		md, err := toAnyMap(m.Metadata)
+		md, err := structpb.NewStruct(m.Metadata)
 		if err != nil {
 			return nil
 		}
-		
+
 		protoMsgs[i] = &pb.HistoryMessage{
-			Id:         m.ID,
+			Id:        m.ID,
 			ThreadId:  m.ThreadID,
-			Sender:  toProtoMessageSender(m.Sender),
-			Type:       m.Type,
-			Body:       m.Body,
-			Metadata:   md,
+			Sender:    toProtoMessageSender(m.Sender),
+			Type:      m.Type,
+			Body:      m.Body,
+			Metadata:  md,
 			CreatedAt: m.CreatedAt,
 			UpdatedAt: m.UpdatedAt,
-			Documents:  toProtoDocuments(m.Documents),
-			Images:     toProtoImages(m.Images),
+			Documents: toProtoDocuments(m.Documents),
+			Images:    toProtoImages(m.Images),
 		}
 	}
 	return protoMsgs
@@ -83,14 +75,14 @@ func toProtoDocuments(docs []dto.HistoryDocument) []*pb.Document {
 	res := make([]*pb.Document, len(docs))
 	for i, d := range docs {
 		res[i] = &pb.Document{
-			Id:         d.ID,
+			Id:        d.ID,
 			MessageId: d.MessageID,
 			FileId:    d.FileID,
-			Name:       d.Name,
-			Mime:       d.Mime,
-			Size:       d.Size,
+			Name:      d.Name,
+			Mime:      d.Mime,
+			Size:      d.Size,
 			CreatedAt: d.CreatedAt,
-			Url:        d.URL,
+			Url:       d.URL,
 		}
 	}
 	return res
@@ -101,28 +93,26 @@ func toProtoImages(imgs []dto.HistoryImage) []*pb.Image {
 	res := make([]*pb.Image, len(imgs))
 	for i, img := range imgs {
 		res[i] = &pb.Image{
-			Id:         img.ID,
+			Id:        img.ID,
 			MessageId: img.MessageID,
 			FileId:    img.FileID,
-			Mime:       img.Mime,
-			Width:      img.Width,
-			Height:     img.Height,
+			Mime:      img.Mime,
+			Width:     img.Width,
+			Height:    img.Height,
 			CreatedAt: img.CreatedAt,
-			Url:        img.URL,
+			Url:       img.URL,
 		}
 	}
 	return res
 }
 
 // toProtoCursor maps a HistoryMessageCursor to a HistoryMessageCursor.
-func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursor {
+func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursorResponse {
 	if c == nil {
 		return nil
 	}
-	return &pb.HistoryMessageCursor{
-		Id:        c.ID,
-		CreatedAt: c.CreatedAt,
-		Direction: c.Direction,
+	return &pb.HistoryMessageCursorResponse{
+		Id: c.ID,
 	}
 }
 
@@ -147,12 +137,12 @@ func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
 	if ms == nil {
 		return nil
 	}
-	
+
 	return &pb.MessageParticipant{
-		Subject: ms.Subject,
-		Issuer:  ms.Issuer,
-		Type:    ms.Type,
-		Username: ms.UserName,
+		Sub:   ms.Sub,
+		Iss:   ms.Iss,
+		Type:  ms.Type,
+		Name:  ms.Name,
 		IsBot: ms.IsBot,
 	}
 }
@@ -162,7 +152,7 @@ func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.MessageParticip
 	var (
 		pbMessageSenderList = make([]*pb.MessageParticipant, 0, len(msList))
 	)
-	
+
 	for _, ms := range msList {
 		pbMessageSenderList = append(pbMessageSenderList, toProtoMessageSender(ms))
 	}

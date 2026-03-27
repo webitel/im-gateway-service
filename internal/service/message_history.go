@@ -17,11 +17,11 @@ import (
 
 type (
 	MessageHistorySearcher interface {
-		Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error) 
+		Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
 	}
 
 	messageHistory struct {
-		logger *slog.Logger
+		logger        *slog.Logger
 		historyClient *imthread.MessageHistoryClient
 		contactClient *imcontact.Client
 	}
@@ -30,12 +30,12 @@ type (
 // NewMessageHistory returns a new instance of MessageHistorySearcher.
 //
 // Args:
-//  - logger: logger for the service
-//  - historyClient: client for the Message History service
-//	- contactClient: client for the Contact service
+//   - logger: logger for the service
+//   - historyClient: client for the Message History service
+//   - contactClient: client for the Contact service
 //
 // Returns:
-//  - A new instance of MessageHistorySearcher
+//   - A new instance of MessageHistorySearcher
 func NewMessageHistory(logger *slog.Logger, historyClient *imthread.MessageHistoryClient, contactClient *imcontact.Client) *messageHistory {
 	return &messageHistory{
 		logger:        logger,
@@ -47,13 +47,13 @@ func NewMessageHistory(logger *slog.Logger, historyClient *imthread.MessageHisto
 // Search performs a search for messages in the message history given a search query.
 //
 // Args:
-//  - ctx: context of the request
-//  - searchQuery: search query for the message history
+//   - ctx: context of the request
+//   - searchQuery: search query for the message history
 //
 // Returns:
-//  - response: search result
-//  - error: any error encountered during the search operation
-func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)  {
+//   - response: search result
+//   - error: any error encountered during the search operation
+func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error) {
 	log := s.logger.With(
 		slog.String("op", "messageHistory.Search"),
 		slog.Any("threads", searchQuery.ThreadIDs),
@@ -64,21 +64,22 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 		log.ErrorContext(ctx, "identity not found")
 		return nil, auth.IdentityNotFoundErr
 	}
+
 	searchQuery.DomainID = int32(identity.GetDomainID())
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
-    if err != nil {
-        log.Error("failed to fetch message history", slog.Any("err", err))
-        return nil, err
-    }
+	if err != nil {
+		log.Error("failed to fetch message history", slog.Any("err", err))
+		return nil, err
+	}
 
 	participantIDs := s.collectUniqueIDs(response.Messages, fromInternal)
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, participantIDs)
-    if err != nil {
-        log.Error("failed to fetch participants info", slog.Any("err", err))
-        return nil, err
-    }
+	if err != nil {
+		log.Error("failed to fetch participants info", slog.Any("err", err))
+		return nil, err
+	}
 
 	s.enrichResponse(response, fromInternal, identityMap)
 
@@ -95,7 +96,9 @@ func (s *messageHistory) collectUniqueIDs(messages []*dto.HistoryMessage, intern
 	}
 
 	for _, m := range messages {
-		if m.SenderID != "" {uniqueMap[m.SenderID] = struct{}{}}
+		if m.SenderID != "" {
+			uniqueMap[m.SenderID] = struct{}{}
+		}
 	}
 
 	return slices.Collect(maps.Keys(uniqueMap))
@@ -111,39 +114,39 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 	}
 
 	external, err := s.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-        Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name"},
-        DomainId: domainID,
-        Size:     int32(len(ids)),
-        Ids:      ids,
-    })
-    if err != nil {
-        return nil, err
-    }
+		Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
+		DomainId: domainID,
+		Size:     int32(len(ids)),
+		Ids:      ids,
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	res := make(map[string]*dto.MessageSender, len(external.GetContacts()))
-    for _, p := range external.GetContacts() {
-        res[p.Id] = dto.NewMessageSender(
-        	p.GetSubject(),
-        	p.GetIssId(),
-        	p.GetType(),
-        	cmp.Or(p.GetName(), p.GetUsername()),
+	for _, p := range external.GetContacts() {
+		res[p.Id] = dto.NewMessageSender(
+			p.GetSubject(),
+			p.GetIssId(),
+			p.GetType(),
+			cmp.Or(p.GetName(), p.GetUsername()),
 			p.GetIsBot(),
-        )
-    }
-    return res, nil
+		)
+	}
+	return res, nil
 }
 
 // enrichResponse enriches the search message history response by replacing the receiver and sender IDs
 // with the corresponding message sender objects from the imap.
 func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, internal []string, imap map[string]*dto.MessageSender) {
 	resp.MessageSenders = make([]*dto.MessageSender, 0, len(internal))
-    for _, id := range internal {
-        if ms, ok := imap[id]; ok {
-            resp.MessageSenders = append(resp.MessageSenders, ms)
-        }
-    }
+	for _, id := range internal {
+		if ms, ok := imap[id]; ok {
+			resp.MessageSenders = append(resp.MessageSenders, ms)
+		}
+	}
 
-    for _, m := range resp.Messages {
-        m.Sender = imap[m.SenderID]
-    }
+	for _, m := range resp.Messages {
+		m.Sender = imap[m.SenderID]
+	}
 }

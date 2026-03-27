@@ -27,10 +27,11 @@ func (c *ThreadConverterImpl) DTOToExternalParticipantProto(source *dto.External
 	var pApiExternalParticipant *v11.ExternalParticipant
 	if source != nil {
 		var apiExternalParticipant v11.ExternalParticipant
-		apiExternalParticipant.Issuer = (*source).Issuer
-		apiExternalParticipant.Subject = (*source).Subject
+		apiExternalParticipant.Iss = (*source).Iss
+		apiExternalParticipant.Sub = (*source).Sub
 		apiExternalParticipant.Type = (*source).Type
-		apiExternalParticipant.Username = (*source).Username
+		apiExternalParticipant.Name = (*source).Name
+		apiExternalParticipant.IsBot = (*source).IsBot
 		pApiExternalParticipant = &apiExternalParticipant
 	}
 	return pApiExternalParticipant
@@ -150,9 +151,38 @@ func (c *ThreadConverterImpl) ThreadV1ToThreadDTO(source *v1.Thread) *dto.Thread
 				dtoThreadDTO.Members[k] = c.ToThreadMemberDTO((*source).Members[k])
 			}
 		}
+		dtoThreadDTO.LastMsg = c.ToHistoryMessageDTO((*source).LastMsg)
 		pDtoThreadDTO = &dtoThreadDTO
 	}
 	return pDtoThreadDTO
+}
+func (c *ThreadConverterImpl) ToHistoryMessageDTO(source *v1.HistoryMessage) *dto.HistoryMessage {
+	var pDtoHistoryMessage *dto.HistoryMessage
+	if source != nil {
+		var dtoHistoryMessage dto.HistoryMessage
+		dtoHistoryMessage.ID = (*source).Id
+		dtoHistoryMessage.ThreadID = (*source).ThreadId
+		dtoHistoryMessage.SenderID = (*source).SenderId
+		dtoHistoryMessage.Type = (*source).Type
+		dtoHistoryMessage.Body = (*source).Body
+		dtoHistoryMessage.Metadata = mapper.MapStructpbToMapAny((*source).Metadata)
+		dtoHistoryMessage.CreatedAt = (*source).CreatedAt
+		dtoHistoryMessage.UpdatedAt = (*source).UpdatedAt
+		if (*source).Documents != nil {
+			dtoHistoryMessage.Documents = make([]dto.HistoryDocument, len((*source).Documents))
+			for i := 0; i < len((*source).Documents); i++ {
+				dtoHistoryMessage.Documents[i] = c.pThreadDocumentToDtoHistoryDocument((*source).Documents[i])
+			}
+		}
+		if (*source).Images != nil {
+			dtoHistoryMessage.Images = make([]dto.HistoryImage, len((*source).Images))
+			for j := 0; j < len((*source).Images); j++ {
+				dtoHistoryMessage.Images[j] = c.pThreadImageToDtoHistoryImage((*source).Images[j])
+			}
+		}
+		pDtoHistoryMessage = &dtoHistoryMessage
+	}
+	return pDtoHistoryMessage
 }
 func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v1.ThreadMember) *dto.ThreadMemberDTO {
 	var pDtoThreadMemberDTO *dto.ThreadMemberDTO
@@ -164,6 +194,71 @@ func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v1.ThreadMember) *dto.Th
 		pDtoThreadMemberDTO = &dtoThreadMemberDTO
 	}
 	return pDtoThreadMemberDTO
+}
+func (c *ThreadConverterImpl) dtoHistoryDocumentToPApiDocument(source dto.HistoryDocument) *v11.Document {
+	var apiDocument v11.Document
+	apiDocument.Id = source.ID
+	apiDocument.MessageId = source.MessageID
+	apiDocument.FileId = source.FileID
+	apiDocument.Name = source.Name
+	apiDocument.Mime = source.Mime
+	apiDocument.Size = source.Size
+	apiDocument.CreatedAt = source.CreatedAt
+	apiDocument.Url = source.URL
+	return &apiDocument
+}
+func (c *ThreadConverterImpl) dtoHistoryImageToPApiImage(source dto.HistoryImage) *v11.Image {
+	var apiImage v11.Image
+	apiImage.Id = source.ID
+	apiImage.MessageId = source.MessageID
+	apiImage.FileId = source.FileID
+	apiImage.Mime = source.Mime
+	apiImage.Width = source.Width
+	apiImage.Height = source.Height
+	apiImage.CreatedAt = source.CreatedAt
+	apiImage.Url = source.URL
+	return &apiImage
+}
+func (c *ThreadConverterImpl) pDtoHistoryMessageToPApiHistoryMessage(source *dto.HistoryMessage) *v11.HistoryMessage {
+	var pApiHistoryMessage *v11.HistoryMessage
+	if source != nil {
+		var apiHistoryMessage v11.HistoryMessage
+		apiHistoryMessage.Id = (*source).ID
+		apiHistoryMessage.ThreadId = (*source).ThreadID
+		apiHistoryMessage.Sender = c.pDtoMessageSenderToPApiMessageParticipant((*source).Sender)
+		apiHistoryMessage.Type = (*source).Type
+		apiHistoryMessage.Body = (*source).Body
+		apiHistoryMessage.Metadata = mapper.MapAnyToStructpb((*source).Metadata)
+		apiHistoryMessage.CreatedAt = (*source).CreatedAt
+		apiHistoryMessage.UpdatedAt = (*source).UpdatedAt
+		if (*source).Documents != nil {
+			apiHistoryMessage.Documents = make([]*v11.Document, len((*source).Documents))
+			for i := 0; i < len((*source).Documents); i++ {
+				apiHistoryMessage.Documents[i] = c.dtoHistoryDocumentToPApiDocument((*source).Documents[i])
+			}
+		}
+		if (*source).Images != nil {
+			apiHistoryMessage.Images = make([]*v11.Image, len((*source).Images))
+			for j := 0; j < len((*source).Images); j++ {
+				apiHistoryMessage.Images[j] = c.dtoHistoryImageToPApiImage((*source).Images[j])
+			}
+		}
+		pApiHistoryMessage = &apiHistoryMessage
+	}
+	return pApiHistoryMessage
+}
+func (c *ThreadConverterImpl) pDtoMessageSenderToPApiMessageParticipant(source *dto.MessageSender) *v11.MessageParticipant {
+	var pApiMessageParticipant *v11.MessageParticipant
+	if source != nil {
+		var apiMessageParticipant v11.MessageParticipant
+		apiMessageParticipant.Sub = (*source).Sub
+		apiMessageParticipant.Iss = (*source).Iss
+		apiMessageParticipant.Type = (*source).Type
+		apiMessageParticipant.Name = (*source).Name
+		apiMessageParticipant.IsBot = (*source).IsBot
+		pApiMessageParticipant = &apiMessageParticipant
+	}
+	return pApiMessageParticipant
 }
 func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *v11.Thread {
 	var pApiThread *v11.Thread
@@ -194,9 +289,38 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 				apiThread.Members[k] = c.DTOToThreadMemberProto((*source).Members[k])
 			}
 		}
+		apiThread.LastMsg = c.pDtoHistoryMessageToPApiHistoryMessage((*source).LastMsg)
 		pApiThread = &apiThread
 	}
 	return pApiThread
+}
+func (c *ThreadConverterImpl) pThreadDocumentToDtoHistoryDocument(source *v1.Document) dto.HistoryDocument {
+	var dtoHistoryDocument dto.HistoryDocument
+	if source != nil {
+		dtoHistoryDocument.ID = (*source).Id
+		dtoHistoryDocument.MessageID = (*source).MessageId
+		dtoHistoryDocument.FileID = (*source).FileId
+		dtoHistoryDocument.Name = (*source).Name
+		dtoHistoryDocument.Mime = (*source).Mime
+		dtoHistoryDocument.Size = (*source).Size
+		dtoHistoryDocument.CreatedAt = (*source).CreatedAt
+		dtoHistoryDocument.URL = (*source).Url
+	}
+	return dtoHistoryDocument
+}
+func (c *ThreadConverterImpl) pThreadImageToDtoHistoryImage(source *v1.Image) dto.HistoryImage {
+	var dtoHistoryImage dto.HistoryImage
+	if source != nil {
+		dtoHistoryImage.ID = (*source).Id
+		dtoHistoryImage.MessageID = (*source).MessageId
+		dtoHistoryImage.FileID = (*source).FileId
+		dtoHistoryImage.Mime = (*source).Mime
+		dtoHistoryImage.Width = (*source).Width
+		dtoHistoryImage.Height = (*source).Height
+		dtoHistoryImage.CreatedAt = (*source).CreatedAt
+		dtoHistoryImage.URL = (*source).Url
+	}
+	return dtoHistoryImage
 }
 func (c *ThreadConverterImpl) pThreadThreadDirectSettingsToPDtoThreadDirectSettingsDTO(source *v1.ThreadDirectSettings) *dto.ThreadDirectSettingsDTO {
 	var pDtoThreadDirectSettingsDTO *dto.ThreadDirectSettingsDTO

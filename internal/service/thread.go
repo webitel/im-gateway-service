@@ -27,16 +27,14 @@ var (
 	_ ThreadSearcher = (*thread)(nil)
 )
 
-type (
-	ThreadSearcher interface {
-		Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error)
-	}
-)
+type ThreadSearcher interface {
+	Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error)
+}
 
 type thread struct {
 	logger *slog.Logger
 
-	threadClient *imthread.ThreadClient
+	threadClient  *imthread.ThreadClient
 	contactClient *imcontact.Client
 
 	converter mapper.ThreadConverter
@@ -60,17 +58,16 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 		return nil, false, auth.IdentityNotFoundErr
 	}
 
-	internalOwners, _, err := t.collectInternalContactsIDs(ctx,searchQuery.Owners,nil,int32(identity.GetDomainID()))
-	if err != nil {	
+	internalOwners, _, err := t.collectInternalContactsIDs(ctx, searchQuery.Owners, nil, int32(identity.GetDomainID()))
+	if err != nil {
 		log.Error("failed to fetch internal thread participants", slog.Any("error", err))
 		return nil, false, err
 	}
-	
+
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
 		Fields:    searchQuery.Fields,
 		Ids:       searchQuery.IDs,
 		DomainIds: []int32{int32(identity.GetDomainID())},
-		// Kinds:     t.converter.DTOKindsToThreadV1Kinds(searchQuery.Kinds),
 		Owners:    internalOwners,
 		Q:         searchQuery.Q,
 		MemberIds: []string{identity.GetContactID()},
@@ -78,67 +75,84 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 		Sort:      searchQuery.Sort,
 		Page:      searchQuery.Page,
 	})
+
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
 		return nil, false, err
 	}
 
-	uniqueIds := t.collectUniqueMembersIDs(internalThreads.GetThreads())
+	uniqueIds := t.collectUniqueMembersIDs(internalThreads.GetItems())
+
 	contactsIdentities, err := t.fetchExternalParticipantsInfo(ctx, uniqueIds, int(identity.GetDomainID()))
 	if err != nil {
-		log.Error("failed to fetch internal contact information for enrichment", 
+		log.Error(
+			"failed to fetch internal contact information for enrichment",
 			slog.Any("error", err),
-			slog.Any("ids",uniqueIds),
+			slog.Any("ids", uniqueIds),
 		)
 
 		return nil, false, err
 	}
 
-	enrichedThreads := t.converter.ThreadV1ListToThreadDTOList(internalThreads.GetThreads())
+	enrichedThreads := t.converter.ThreadV1ListToThreadDTOList(internalThreads.GetItems())
 	t.enrichThreads(enrichedThreads, contactsIdentities, identity.GetContactID())
 
 	return enrichedThreads, internalThreads.Next, nil
 }
 
 func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
-    for _, thr := range threads {
-        t.enrichThreadOwner(thr, im)
-        t.enrichThreadAdmins(thr, im)
-        t.enrichThreadMemberIDs(thr, im)
-        t.enrichThreadMembers(thr, im, sessionMemberID)
-    }
+	for _, thr := range threads {
+		t.enrichThreadOwner(thr, im)
+		t.enrichThreadAdmins(thr, im)
+		t.enrichThreadMemberIDs(thr, im)
+		t.enrichThreadMembers(thr, im, sessionMemberID)
+		t.enrichLastMessageSenders(thr, im)
+	}
 }
 
 func (t *thread) enrichThreadOwner(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-    if owner, ok := im[thr.Owner.InternalID]; ok {
-        thr.Owner = owner
-    }
+	if owner, ok := im[thr.Owner.InternalID]; ok {
+		thr.Owner = owner
+	}
 }
 
 func (t *thread) enrichThreadAdmins(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-    for i := range thr.Admins {
-        if ad, ok := im[thr.Admins[i].InternalID]; ok {
-            thr.Admins[i] = ad
-        }
-    }
+	for i := range thr.Admins {
+		if ad, ok := im[thr.Admins[i].InternalID]; ok {
+			thr.Admins[i] = ad
+		}
+	}
 }
 
 func (t *thread) enrichThreadMemberIDs(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-    for i := range thr.MemberIDs {
-        if m, ok := im[thr.MemberIDs[i].InternalID]; ok {
-            thr.MemberIDs[i] = m
-        }
-    }
+	for i := range thr.MemberIDs {
+		if m, ok := im[thr.MemberIDs[i].InternalID]; ok {
+			thr.MemberIDs[i] = m
+		}
+	}
 }
 
 func (t *thread) enrichThreadMembers(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
-    for i := range thr.Members {
-        internalID := thr.Members[i].Member.InternalID
-        if m, ok := im[internalID]; ok {
-            thr.Members[i].Member = m
-            t.updateDirectThreadSubject(thr, thr.Members[i], internalID, sessionMemberID)
-        }
-    }
+	for i := range thr.Members {
+		internalID := thr.Members[i].Member.InternalID
+		if m, ok := im[internalID]; ok {
+			thr.Members[i].Member = m
+			t.updateDirectThreadSubject(thr, thr.Members[i], internalID, sessionMemberID)
+		}
+	}
+}
+
+func (t *thread) enrichLastMessageSenders(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
+	if thr.LastMsg != nil {
+		if member, ok := im[thr.LastMsg.SenderID]; ok {
+			thr.LastMsg.Sender = &dto.MessageSender{
+				Sub:   member.Sub,
+				Iss:   member.Iss,
+				Name:  member.Name,
+				IsBot: member.IsBot,
+			}
+		}
+	}
 }
 
 func (t *thread) updateDirectThreadSubject(thr *dto.ThreadDTO, member *dto.ThreadMemberDTO, internalID, sessionMemberID string) {
@@ -153,9 +167,8 @@ func (t *thread) updateDirectThreadSubject(thr *dto.ThreadDTO, member *dto.Threa
 	if member.DirectSettings == nil {
 		return
 	}
-	
-    
-    thr.Subject = member.DirectSettings.Title
+
+	thr.Subject = member.DirectSettings.Title
 }
 
 func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
@@ -163,7 +176,7 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 
 	for _, thr := range threads {
 		uniqueMap[thr.Owner] = struct{}{}
-		
+
 		for _, a := range thr.Admins {
 			uniqueMap[a] = struct{}{}
 		}
@@ -175,6 +188,10 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 		for _, m := range thr.GetMembers() {
 			uniqueMap[m.GetId()] = struct{}{}
 		}
+
+		if thr.LastMsg != nil {
+			uniqueMap[thr.LastMsg.SenderId] = struct{}{}
+		}
 	}
 
 	return slices.Collect(maps.Keys(uniqueMap))
@@ -182,10 +199,10 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 
 func (t *thread) fetchExternalParticipantsInfo(ctx context.Context, uniqueIDs []string, domainID int) (map[string]*dto.ExternalParticipantDTO, error) {
 	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Size: int32(len(uniqueIDs)),
-		Fields: []string{"id", "issuer_id", "type", "subject_id", "username", "name"},
+		Size:     int32(len(uniqueIDs)),
+		Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
 		DomainId: int32(domainID),
-		Ids: uniqueIDs,
+		Ids:      uniqueIDs,
 	})
 
 	if err != nil {
@@ -196,10 +213,11 @@ func (t *thread) fetchExternalParticipantsInfo(ctx context.Context, uniqueIDs []
 
 	for _, c := range contactInfo.GetContacts() {
 		externalParticipantIdentities[c.GetId()] = &dto.ExternalParticipantDTO{
-			Issuer: c.GetIssId(),
-			Subject: c.GetSubject(),
-			Type:    c.GetType(),
-			Username: cmp.Or(c.GetName(), c.GetUsername()),
+			Iss:   c.GetIssId(),
+			Sub:   c.GetSubject(),
+			Type:  c.GetType(),
+			Name:  cmp.Or(c.GetName(), c.GetUsername()),
+			IsBot: c.IsBot,
 		}
 	}
 
@@ -207,25 +225,25 @@ func (t *thread) fetchExternalParticipantsInfo(ctx context.Context, uniqueIDs []
 }
 
 func (t *thread) groupSubByIssuers(peers []shared.Peer) ([]string, []string) {
-    uniqueIssuers := make(map[string]struct{})
-    uniqueIDs := make(map[string]struct{})
+	uniqueIssuers := make(map[string]struct{})
+	uniqueIDs := make(map[string]struct{})
 
-    for _, p := range peers {
-        uniqueIssuers[p.Issuer] = struct{}{}
-        uniqueIDs[p.ID] = struct{}{}
-    }
+	for _, p := range peers {
+		uniqueIssuers[p.Issuer] = struct{}{}
+		uniqueIDs[p.ID] = struct{}{}
+	}
 
-    issuers := make([]string, 0, len(uniqueIssuers))
-    for k := range uniqueIssuers {
-        issuers = append(issuers, k)
-    }
+	issuers := make([]string, 0, len(uniqueIssuers))
+	for k := range uniqueIssuers {
+		issuers = append(issuers, k)
+	}
 
-    ids := make([]string, 0, len(uniqueIDs))
-    for k := range uniqueIDs {
-        ids = append(ids, k)
-    }
+	ids := make([]string, 0, len(uniqueIDs))
+	for k := range uniqueIDs {
+		ids = append(ids, k)
+	}
 
-    return issuers, ids
+	return issuers, ids
 }
 
 func (t *thread) fetchInternalParticipants(ctx context.Context, issuers, subjects []string, domainID int32) ([]string, error) {
@@ -237,9 +255,9 @@ func (t *thread) fetchInternalParticipants(ctx context.Context, issuers, subject
 	requestSize := max(issLen, subLen)
 
 	response, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Size: int32(requestSize),
-		Fields: []string{"id"},
-		IssId: issuers,
+		Size:     int32(requestSize),
+		Fields:   []string{"id"},
+		IssId:    issuers,
 		Subjects: subjects,
 		DomainId: domainID,
 	})
@@ -260,77 +278,76 @@ func (t *thread) fetchInternalParticipants(ctx context.Context, issuers, subject
 	return resultIDs, nil
 }
 
-
 func (t *thread) collectInternalContactsIDs(ctx context.Context, owners, members []shared.Peer, domainID int32) ([]string, []string, error) {
-    var (
-        ownersIss, ownersSub   = t.groupSubByIssuers(owners)
-        membersIss, membersSub = t.groupSubByIssuers(members)
-    )
+	var (
+		ownersIss, ownersSub   = t.groupSubByIssuers(owners)
+		membersIss, membersSub = t.groupSubByIssuers(members)
+	)
 
-    type result struct {
-        ids []string
-        err error
-    }
+	type result struct {
+		ids []string
+		err error
+	}
 
-    var wg sync.WaitGroup
-    ownersResult := make(chan result, 1)
-    membersResult := make(chan result, 1)
+	var wg sync.WaitGroup
+	ownersResult := make(chan result, 1)
+	membersResult := make(chan result, 1)
 
-    ctx, cancel := context.WithCancel(ctx)
-    defer cancel()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-    wg.Add(2)
-    
-    go func() {
-        defer wg.Done()
-        ids, err := t.fetchInternalParticipants(ctx, ownersIss, ownersSub, domainID)
-        select {
-        case ownersResult <- result{ids: ids, err: err}:
-        case <-ctx.Done():
-        }
-    }()
+	wg.Add(2)
 
-    go func() {
-        defer wg.Done()
-        ids, err := t.fetchInternalParticipants(ctx, membersIss, membersSub, domainID)
-        select {
-        case membersResult <- result{ids: ids, err: err}:
-        case <-ctx.Done():
-        }
-    }()
+	go func() {
+		defer wg.Done()
+		ids, err := t.fetchInternalParticipants(ctx, ownersIss, ownersSub, domainID)
+		select {
+		case ownersResult <- result{ids: ids, err: err}:
+		case <-ctx.Done():
+		}
+	}()
 
-    go func() {
-        wg.Wait()
-        close(ownersResult)
-        close(membersResult)
-    }()
+	go func() {
+		defer wg.Done()
+		ids, err := t.fetchInternalParticipants(ctx, membersIss, membersSub, domainID)
+		select {
+		case membersResult <- result{ids: ids, err: err}:
+		case <-ctx.Done():
+		}
+	}()
 
-    var ownersRes, membersRes result
-    var ownersReceived, membersReceived bool
+	go func() {
+		wg.Wait()
+		close(ownersResult)
+		close(membersResult)
+	}()
 
-    for !ownersReceived || !membersReceived {
-        select {
-        case res, ok := <-ownersResult:
-            if ok {
-                ownersRes = res
-                ownersReceived = true
-            }
-        case res, ok := <-membersResult:
-            if ok {
-                membersRes = res
-                membersReceived = true
-            }
-        case <-ctx.Done():
-            return nil, nil, ctx.Err()
-        }
-    }
-    
-    if ownersRes.err != nil && !errors.Is(ownersRes.err, internalContactsNotFoundErr) {
-        return nil, nil, ownersRes.err
-    }
-    if membersRes.err != nil && !errors.Is(membersRes.err, internalContactsNotFoundErr) {
-        return nil, nil, membersRes.err
-    }
+	var ownersRes, membersRes result
+	var ownersReceived, membersReceived bool
 
-    return ownersRes.ids, membersRes.ids, nil
+	for !ownersReceived || !membersReceived {
+		select {
+		case res, ok := <-ownersResult:
+			if ok {
+				ownersRes = res
+				ownersReceived = true
+			}
+		case res, ok := <-membersResult:
+			if ok {
+				membersRes = res
+				membersReceived = true
+			}
+		case <-ctx.Done():
+			return nil, nil, ctx.Err()
+		}
+	}
+
+	if ownersRes.err != nil && !errors.Is(ownersRes.err, internalContactsNotFoundErr) {
+		return nil, nil, ownersRes.err
+	}
+	if membersRes.err != nil && !errors.Is(membersRes.err, internalContactsNotFoundErr) {
+		return nil, nil, membersRes.err
+	}
+
+	return ownersRes.ids, membersRes.ids, nil
 }

@@ -14,11 +14,12 @@ const (
 type (
 	ExternalParticipantDTO struct {
 		InternalID string
-		
-		Issuer  string
-		Subject string
-		Type    string
-		Username string
+
+		Iss   string
+		Sub   string
+		Type  string
+		Name  string
+		IsBot bool
 	}
 
 	ThreadDirectSettingsDTO struct {
@@ -46,16 +47,17 @@ type (
 		Subject     string
 		Description string
 		Members     []*ThreadMemberDTO
+		LastMsg     *HistoryMessage
 	}
 
 	ThreadSearchRequestDTO struct {
-		Fields    []string
-		IDs       []string
-		Kinds     []ThreadKind
-		Owners    []shared.Peer
-		Q         string
-		Size      int32
-		Sort      string
-		Page      int32
+		Fields []string
+		IDs    []string
+		Kinds  []ThreadKind
+		Owners []shared.Peer
+		Q      string
+		Size   int32
+		Sort   string
+		Page   int32
 	}
 )

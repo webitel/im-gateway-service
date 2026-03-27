@@ -67,12 +67,11 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 		slog.Any("cursor", searchQuery.Cursor),
 	)
 
-	var cursor *threadv1.HistoryMessageCursor
+	var cursor *threadv1.HistoryMessageCursorRequest
 	if searchQuery.Cursor != nil {
-		cursor = &threadv1.HistoryMessageCursor{
+		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:        searchQuery.Cursor.ID,
-			CreatedAt: searchQuery.Cursor.CreatedAt,
-			Direction: searchQuery.Cursor.Direction,
+			Before: searchQuery.Cursor.Before,
 		}
 	}
 
@@ -134,15 +133,9 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 	}
 
 	return &dto.SearchMessageHistoryResponse{
-		Messages:   mapMessages(resp.Messages),
+		Messages:   mapMessages(resp.Items),
 		NextCursor: mapCursor(resp.NextCursor),
-		Next:       resp.Next,
-		Paging: dto.Paging{
-			Cursors: dto.Cursors{
-				After:  mapCursor(resp.Paging.GetCursors().GetAfter()),
-				Before: mapCursor(resp.Paging.GetCursors().GetBefore()),
-			},
-		},
+		PrevCursor: mapCursor(resp.PrevCursor),
 	}
 }
 
@@ -166,7 +159,7 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			SenderID:  m.SenderId,
 			Type:      m.Type,
 			Body:      m.Body,
-			Metadata:  unmarshalMetadata(m.Metadata),
+			Metadata:  m.Metadata.AsMap(),
 			CreatedAt: m.CreatedAt,
 			UpdatedAt: m.UpdatedAt,
 			Documents: mapDocuments(m.Documents),
@@ -231,15 +224,13 @@ func mapImages(pbImgs []*threadv1.Image) []dto.HistoryImage {
 //
 // Returns:
 //   - A HistoryMessageCursor with the given created at time, ID, and direction. If c is nil, returns nil.
-func mapCursor(c *threadv1.HistoryMessageCursor) *dto.HistoryMessageCursor {
+func mapCursor(c *threadv1.HistoryMessageCursorResponse) *dto.HistoryMessageCursor {
 	if c == nil {
 		return nil
 	}
 
 	return &dto.HistoryMessageCursor{
-		CreatedAt: c.CreatedAt,
 		ID:        c.Id,
-		Direction: c.Direction,
 	}
 }
 
