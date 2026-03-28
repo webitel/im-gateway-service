@@ -19,9 +19,9 @@ const _PeerType_name = "PeerContactPeerGroupPeerChannelPeerThread"
 var _PeerType_index = [...]uint8{0, 11, 20, 31, 41}
 
 func (i PeerType) String() string {
-	i -= 1
-	if i < 0 || i >= PeerType(len(_PeerType_index)-1) {
-		return "PeerType(" + strconv.FormatInt(int64(i+1), 10) + ")"
+	idx := int(i) - 1
+	if i < 1 || idx >= len(_PeerType_index)-1 {
+		return "PeerType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _PeerType_name[_PeerType_index[i]:_PeerType_index[i+1]]
+	return _PeerType_name[_PeerType_index[idx]:_PeerType_index[idx+1]]
 }

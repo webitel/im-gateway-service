@@ -15,6 +15,11 @@ var Module = fx.Module(
 		),
 
 		fx.Annotate(
+			NewMediaService,
+			fx.As(new(MediaDownloader)),
+		),
+
+		fx.Annotate(
 			NewAccountService,
 			fx.As(new(Accounter)),
 		),

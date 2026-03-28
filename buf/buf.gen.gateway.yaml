@@ -22,4 +22,3 @@ plugins:
 
 inputs:
   - directory: "../../protos/im"
- 

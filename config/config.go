@@ -21,9 +21,10 @@ type Config struct {
 }
 
 type ServiceConfig struct {
-	Id         string           `mapstructure:"id"`
-	Address    string           `mapstructure:"addr"`
-	Connection ConnectionConfig `mapstructure:"conn"`
+	Id          string           `mapstructure:"id"`
+	Address     string           `mapstructure:"addr"`
+	HTTPAddress string           `mapstructure:"http_addr"`
+	Connection  ConnectionConfig `mapstructure:"conn"`
 }
 
 type ConnectionConfig struct {
@@ -129,6 +130,7 @@ func defineFlags() {
 
 	pflag.String("service.id", "", "Service ID")
 	pflag.String("service.addr", "localhost:8080", "Service address")
+	pflag.String("service.http_addr", "localhost:8081", "HTTP service address")
 	pflag.Bool("service.conn.verify_certs", true, "Determine whether to verify certificates")
 	pflag.String("service.conn.ca", "", "Server CA certificate path")
 	pflag.String("service.conn.key", "", "Server certificate key path")

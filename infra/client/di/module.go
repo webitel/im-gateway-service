@@ -6,6 +6,7 @@ import (
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
+	storage "github.com/webitel/im-gateway-service/infra/client/storage"
 	"go.uber.org/fx"
 )
 
@@ -16,6 +17,7 @@ var Module = fx.Module(
 	fx.Provide(imthread.New, imthread.NewMessageHistoryClient, imthread.NewThreadClient),
 	fx.Provide(imauth.New),
 	fx.Provide(imcontact.New),
+	fx.Provide(storage.New),
 
 	// [LIFECYCLE] Ensures the gRPC connection pool is closed gracefully on app shutdown
 	fx.Invoke(
@@ -53,6 +55,14 @@ var Module = fx.Module(
 	}),
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imcontact.Client) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return client.Close()
+			},
+		})
+	}),
+
+	fx.Invoke(func(lc fx.Lifecycle, client *storage.Client) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				return client.Close()
