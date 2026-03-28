@@ -150,6 +150,7 @@ func (t *thread) enrichLastMessageSenders(thr *dto.ThreadDTO, im map[string]*dto
 				Iss:   member.Iss,
 				Name:  member.Name,
 				IsBot: member.IsBot,
+				Type:  member.Type,
 			}
 		}
 	}
