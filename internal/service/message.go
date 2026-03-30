@@ -70,6 +70,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		SendId:   in.SendID,
 	})
 	if err != nil {
+		m.logger.Error("SendText", "err", err, "to", in.To, "from", in.From)
 		return nil, err
 	}
 
