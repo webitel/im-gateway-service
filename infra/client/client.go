@@ -33,10 +33,10 @@ func New[T any](log *slog.Logger, dp ds.DiscoveryProvider, target string, tlsCon
 		rpc.WithRetry(rpc.DefaultRetryConfig()),
 		rpc.WithKeepalive(
 			keepalive.ClientParameters{
-        		Time:                10 * time.Minute,
-        		Timeout:             20 * time.Second,
-        		PermitWithoutStream: false,           
-    		},
+				Time:                10 * time.Minute,
+				Timeout:             20 * time.Second,
+				PermitWithoutStream: false,
+			},
 		),
 	)
 	if err != nil {

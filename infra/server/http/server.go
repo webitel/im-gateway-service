@@ -10,6 +10,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/webitel/im-gateway-service/config"
+	apptls "github.com/webitel/im-gateway-service/infra/tls"
 )
 
 var Module = fx.Module("http_server",
@@ -18,20 +19,28 @@ var Module = fx.Module("http_server",
 
 func ProvideServer(
 	cfg *config.Config,
+	tlsCfg *apptls.Config,
 	logger *slog.Logger,
 	mux *http.ServeMux,
 	lc fx.Lifecycle,
 ) error {
 	srv := &http.Server{
-		Addr:    cfg.Service.HTTPAddress,
-		Handler: mux,
+		Addr:      cfg.Service.HTTPAddress,
+		Handler:   mux,
+		TLSConfig: tlsCfg.Server,
 	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
 				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTPAddress))
-				if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				var err error
+				if tlsCfg.Server != nil {
+					err = srv.ListenAndServeTLS("", "")
+				} else {
+					err = srv.ListenAndServe()
+				}
+				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					logger.Error("http server error", "err", err)
 				}
 			}()

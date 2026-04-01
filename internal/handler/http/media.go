@@ -1,8 +1,10 @@
 package http
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,7 +12,7 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-// downloadFile handles GET /im/media/{id} and returns the full file.
+// downloadFile handles GET /media/{id} and returns the full file.
 func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	fileID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -18,7 +20,7 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.downloader.Download(r.Context(), &dto.MediaDownloadRequest{
+	result, err := h.media.Download(r.Context(), &dto.MediaDownloadRequest{
 		FileID: fileID,
 		Offset: 0,
 	})
@@ -39,7 +41,7 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// streamFile handles GET /im/media/{id}/stream and supports Range-based partial downloads.
+// streamFile handles GET /media/{id}/stream and supports Range-based partial downloads.
 func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	fileID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -62,7 +64,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		isRangeRequest = true
 	}
 
-	result, err := h.downloader.Download(r.Context(), &dto.MediaDownloadRequest{
+	result, err := h.media.Download(r.Context(), &dto.MediaDownloadRequest{
 		FileID: fileID,
 		Offset: offset,
 	})
@@ -87,7 +89,75 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	io.Copy(w, result.Body) //nolint:errcheck
+	if _, err := io.Copy(w, result.Body); err != nil {
+		h.writeError(w, err)
+		return
+	}
+}
+
+func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
+	var req dto.CreateUploadSessionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name, req.MimeType)
+	if err != nil {
+		h.logger.Error("failed to create upload session", slog.String("error", err.Error()))
+		h.writeError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(dto.CreateUploadSessionResponse{UploadID: uploadID}); err != nil {
+		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
+	}
+}
+
+func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
+	uploadID := r.URL.Query().Get("uploadId")
+	if uploadID == "" {
+		http.Error(w, "missing uploadId", http.StatusBadRequest)
+		return
+	}
+
+	size, err := h.media.GetUploadFileInfo(r.Context(), uploadID)
+	if err != nil {
+		h.logger.Error("failed to get upload file info", slog.String("error", err.Error()))
+		h.writeError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(dto.FileInfoResponse{UploadID: uploadID, Size: size}); err != nil {
+		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
+	}
+}
+
+func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
+	uploadID := r.URL.Query().Get("uploadId")
+	if uploadID == "" {
+		http.Error(w, "missing uploadId", http.StatusBadRequest)
+		return
+	}
+
+	meta, err := h.media.AppendContent(r.Context(), uploadID, r.Body)
+	if err != nil {
+		h.writeError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(dto.SuccessfullyUploadResponse{
+		FileID:   meta.ID,
+		Name:     meta.Name,
+		MimeType: meta.MimeType,
+		Size:     meta.Size,
+		Hash:     meta.Hash,
+	}); err != nil {
+		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
+	}
 }
 
 // parseRangeStart extracts the start byte offset from a Range header value.

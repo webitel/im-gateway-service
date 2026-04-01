@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 
 	"google.golang.org/grpc/metadata"
@@ -27,6 +28,7 @@ func NewAuthMiddleware(authorizer auth.Authorizer) func(http.Handler) http.Handl
 
 			newCtx, err := authorizer.SetIdentity(ctx)
 			if err != nil {
+				slog.Error("auth failed", "error", err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}

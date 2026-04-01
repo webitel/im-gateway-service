@@ -4,41 +4,54 @@ import (
 	"log/slog"
 	"net/http"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/webitel/im-gateway-service/infra/auth"
 	"github.com/webitel/im-gateway-service/internal/service"
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // Handler registers and serves HTTP endpoints for the IM media API.
 type Handler struct {
-	logger     *slog.Logger
-	downloader service.MediaDownloader
+	logger *slog.Logger
+	media  service.Media
 }
 
 func NewHandler(
 	logger *slog.Logger,
-	downloader service.MediaDownloader,
+	media service.Media,
 	authMW func(http.Handler) http.Handler,
 	mux *http.ServeMux,
 ) *Handler {
 	h := &Handler{
-		logger:     logger,
-		downloader: downloader,
+		logger: logger,
+		media:  media,
 	}
 	h.registerRoutes(mux, authMW)
 	return h
 }
 
 func (h *Handler) registerRoutes(mux *http.ServeMux, authMW func(http.Handler) http.Handler) {
-	mux.Handle("GET /im/media/{id}", authMW(http.HandlerFunc(h.downloadFile)))
-	mux.Handle("GET /im/media/{id}/stream", authMW(http.HandlerFunc(h.streamFile)))
+	mux.Handle("GET /media/{id}", authMW(http.HandlerFunc(h.downloadFile)))
+	mux.Handle("GET /media/{id}/stream", authMW(http.HandlerFunc(h.streamFile)))
+	mux.Handle("GET /media", authMW(http.HandlerFunc(h.getUploadFileInfo)))
+	mux.Handle("PUT /media", authMW(http.HandlerFunc(h.uploadFile)))
+	mux.Handle("POST /media", authMW(http.HandlerFunc(h.createUploadSession)))
 }
 
 func (h *Handler) writeError(w http.ResponseWriter, err error) {
-	if err == auth.IdentityNotFoundErr {
+	if errors.Is(err, auth.IdentityNotFoundErr) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	if errors.Is(err, service.ErrSessionNotFound) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	if errors.Is(err, service.ErrSessionConflict) || errors.Is(err, service.ErrSessionDone) {
+		http.Error(w, "Conflict", http.StatusConflict)
 		return
 	}
 
@@ -56,6 +69,5 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 		}
 	}
 
-	h.logger.Error("media handler error", "err", err)
 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 }
