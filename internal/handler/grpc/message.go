@@ -9,7 +9,9 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service"
 )
 
-var _ impb.MessageServer = (*MessageService)(nil)
+var (
+	_ impb.MessageServer = (*MessageService)(nil)
+)
 
 type MessageService struct {
 	impb.UnimplementedMessageServer
@@ -34,7 +36,6 @@ func (m *MessageService) SendText(ctx context.Context, in *impb.SendTextRequest)
 	return mapper.MapToSendTextResponse(out), nil
 }
 
-// SendImage implements threadv1.MessageServer.
 func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageRequest) (*impb.SendImageResponse, error) {
 	out, err := m.messager.SendImage(ctx, mapper.MapToSendImageRequest(in))
 	if err != nil {
@@ -44,7 +45,6 @@ func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageReques
 	return mapper.MapToSendImageResponse(out), nil
 }
 
-// SendDocument implements threadv1.MessageServer.
 func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
 	out, err := m.messager.SendDocument(ctx, mapper.MapToSendDocumentRequest(in))
 	if err != nil {
@@ -54,16 +54,10 @@ func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocument
 	return mapper.MapToSendDocumentResponse(out), nil
 }
 
-// Read implements [api.MessageServer].
 func (m *MessageService) Read(ctx context.Context, in *impb.ReadMessageRequest) (*impb.ReadMessageResponse, error) {
 	err := m.messager.Read(ctx, mapper.MapToReadMessageRequest(in))
 	if err != nil {
 		return nil, err
 	}
 	return &impb.ReadMessageResponse{}, nil
-}
-
-// SendFile implements [gatewayv1.MessageServer].
-func (m *MessageService) SendFile(context.Context, *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
-	panic("unimplemented")
 }
