@@ -27,19 +27,19 @@ func NewContactService(logger *slog.Logger, contacter service.Contacter) *Contac
 }
 
 func (c *ContactService) Search(ctx context.Context, request *impb.SearchContactRequest) (*impb.ContactList, error) {
-	mapped, err := mapper.Convert(request, new(contactservice.SearchContactRequest) )
+	mapped, err := mapper.Convert(request, new(contactservice.SearchContactRequest))
 	if err != nil {
 		return nil, err
 	}
-	
-	out, err := c.contacter.SearchContact(ctx, mapped) 
+
+	out, err := c.contacter.SearchContact(ctx, mapped)
 	if err != nil {
 		return nil, err
 	}
 	return mapContactsToGatewayResponseProto(out), nil
 }
 
-// WARNING: rewritten from proto proxy 
+// WARNING: rewritten from proto proxy
 // mapper to manual due to different props for list [Contacts vs Items]
 func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *impb.ContactList {
 	cl := new(impb.ContactList)
@@ -52,7 +52,7 @@ func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *im
 
 	for _, c := range internal.GetContacts() {
 		cl.Items = append(cl.Items, &impb.Contact{
-			IssId:     c.GetIssId(),
+			Iss:       c.GetIssId(),
 			AppId:     c.GetAppId(),
 			Type:      c.GetType(),
 			Name:      c.GetName(),
@@ -60,7 +60,7 @@ func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *im
 			Metadata:  c.GetMetadata(),
 			CreatedAt: c.GetCreatedAt(),
 			UpdatedAt: c.GetUpdatedAt(),
-			Subject:   c.GetSubject(),
+			Sub:       c.GetSubject(),
 			IsBot:     c.GetIsBot(),
 		})
 	}
