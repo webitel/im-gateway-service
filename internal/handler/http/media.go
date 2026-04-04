@@ -12,11 +12,11 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
-// downloadFile handles GET /media/{id} and returns the full file.
+// downloadFile returns the full file.
 func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	fileID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid file id", http.StatusBadRequest)
+		renderError(w, http.StatusBadRequest, "api.bad_args", "invalid file id")
 		return
 	}
 
@@ -41,11 +41,11 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// streamFile handles GET /media/{id}/stream and supports Range-based partial downloads.
+// streamFile supports Range-based partial downloads.
 func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	fileID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
-		http.Error(w, "invalid file id", http.StatusBadRequest)
+		renderError(w, http.StatusBadRequest, "api.bad_args", "invalid file id")
 		return
 	}
 
@@ -58,7 +58,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		var parseErr error
 		offset, parseErr = parseRangeStart(rangeHeader)
 		if parseErr != nil {
-			http.Error(w, "invalid Range header", http.StatusRequestedRangeNotSatisfiable)
+			renderError(w, http.StatusRequestedRangeNotSatisfiable, "api.bad_args", "invalid Range header")
 			return
 		}
 		isRangeRequest = true
@@ -95,10 +95,11 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// createUploadSession establish session to upload file
 func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUploadSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		renderError(w, http.StatusBadRequest, "api.bad_args", "invalid request body")
 		return
 	}
 
@@ -115,10 +116,11 @@ func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// getUploadFileInfo returns the uploaded size during the active upload session
 func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.URL.Query().Get("uploadId")
 	if uploadID == "" {
-		http.Error(w, "missing uploadId", http.StatusBadRequest)
+		renderError(w, http.StatusBadRequest, "api.bad_args", "missing uploadId")
 		return
 	}
 
@@ -135,10 +137,11 @@ func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// uploadFile forwards file to storage
 func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.URL.Query().Get("uploadId")
 	if uploadID == "" {
-		http.Error(w, "missing uploadId", http.StatusBadRequest)
+		renderError(w, http.StatusBadRequest, "api.bad_args", "missing uploadId")
 		return
 	}
 

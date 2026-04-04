@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,23 +20,31 @@ var Module = fx.Module("http_server",
 
 func ProvideServer(
 	cfg *config.Config,
-	tlsCfg *apptls.Config,
 	logger *slog.Logger,
-	mux *http.ServeMux,
+	handler http.Handler,
 	lc fx.Lifecycle,
 ) error {
+	var tlsCfg *tls.Config
+	if cfg.Service.HTTP.VerifyCerts {
+		var err error
+		tlsCfg, err = apptls.Load(cfg.Service.HTTP.TLS, tls.NoClientCert)
+		if err != nil {
+			return err
+		}
+	}
+
 	srv := &http.Server{
-		Addr:      cfg.Service.HTTPAddress,
-		Handler:   mux,
-		TLSConfig: tlsCfg.Server,
+		Addr:      cfg.Service.HTTP.Address,
+		Handler:   handler,
+		TLSConfig: tlsCfg,
 	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTPAddress))
+				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTP.Address))
 				var err error
-				if tlsCfg.Server != nil {
+				if tlsCfg != nil {
 					err = srv.ListenAndServeTLS("", "")
 				} else {
 					err = srv.ListenAndServe()

@@ -24,5 +24,11 @@ plugins:
     opt:
       - module=github.com/webitel/im-gateway-service/gen/go/storage
 
+#inputs:
+#  - module: buf.build/webitel/storage
+
 inputs:
-  - directory: "../../protos/storage"
+  - git_repo: https://github.com/webitel/protos.git
+    branch: main
+    subdir: storage
+    depth: 1

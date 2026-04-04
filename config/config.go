@@ -21,10 +21,26 @@ type Config struct {
 }
 
 type ServiceConfig struct {
-	Id          string           `mapstructure:"id"`
-	Address     string           `mapstructure:"addr"`
-	HTTPAddress string           `mapstructure:"http_addr"`
-	Connection  ConnectionConfig `mapstructure:"conn"`
+	Id            string     `mapstructure:"id"`
+	GRPC          GRPCConfig `mapstructure:"grpc"`
+	HTTP          HTTPConfig `mapstructure:"http"`
+	MaxUploadSize int64      `mapstructure:"max_upload_size"`
+}
+
+type GRPCConfig struct {
+	Address    string           `mapstructure:"addr"`
+	Connection ConnectionConfig `mapstructure:"conn"`
+}
+
+type HTTPConfig struct {
+	Address     string     `mapstructure:"addr"`
+	VerifyCerts bool       `mapstructure:"verify_certs"`
+	TLS         TLSConfig  `mapstructure:"tls"`
+	CORS        CORSConfig `mapstructure:"cors"`
+}
+
+type CORSConfig struct {
+	AllowedOrigins string `mapstructure:"allowed_origins"`
 }
 
 type ConnectionConfig struct {
@@ -129,15 +145,23 @@ func defineFlags() {
 	pflag.String("config_file", "", "Configuration file (YAML, JSON, etc.)")
 
 	pflag.String("service.id", "", "Service ID")
-	pflag.String("service.addr", "localhost:8080", "Service address")
-	pflag.String("service.http_addr", "localhost:8081", "HTTP service address")
-	pflag.Bool("service.conn.verify_certs", true, "Determine whether to verify certificates")
-	pflag.String("service.conn.ca", "", "Server CA certificate path")
-	pflag.String("service.conn.key", "", "Server certificate key path")
-	pflag.String("service.conn.cert", "", "Server certificate path")
-	pflag.String("service.conn.client.ca", "", "Client CA certificate path")
-	pflag.String("service.conn.client.key", "", "Client certificate key path")
-	pflag.String("service.conn.client.cert", "", "Client certificate path")
+	pflag.Int64("service.max_upload_size", 0, "Max upload body size in bytes (0 = unlimited)")
+
+	pflag.String("service.grpc.addr", "localhost:8080", "gRPC service address")
+	pflag.Bool("service.grpc.conn.verify_certs", true, "Determine whether to verify certificates")
+	pflag.String("service.grpc.conn.ca", "", "Server CA certificate path")
+	pflag.String("service.grpc.conn.key", "", "Server certificate key path")
+	pflag.String("service.grpc.conn.cert", "", "Server certificate path")
+	pflag.String("service.grpc.conn.client.ca", "", "Client CA certificate path")
+	pflag.String("service.grpc.conn.client.key", "", "Client certificate key path")
+	pflag.String("service.grpc.conn.client.cert", "", "Client certificate path")
+
+	pflag.String("service.http.addr", "localhost:8081", "HTTP service address")
+	pflag.Bool("service.http.verify_certs", false, "Determine whether to use TLS for HTTP")
+	pflag.String("service.http.tls.ca", "", "HTTP CA certificate path")
+	pflag.String("service.http.tls.cert", "", "HTTP certificate path")
+	pflag.String("service.http.tls.key", "", "HTTP certificate key path")
+	pflag.String("service.http.cors.allowed_origins", "*", "Allowed CORS origins")
 
 	pflag.String("log.level", "info", "Log level")
 	pflag.Bool("log.json", false, "Log in JSON format")
@@ -166,13 +190,18 @@ func (c *Config) validate() error {
 		return fmt.Errorf("config: service.id is required (use --service.id or SERVICE_ID env)")
 	}
 
-	if c.Service.Address == "" {
-		return fmt.Errorf("config: service.addr is required")
+	if c.Service.GRPC.Address == "" {
+		return fmt.Errorf("config: service.grpc.addr is required")
 	}
 
-	err := validateConnectionConfig(c.Service.Connection)
-	if err != nil {
+	if err := validateConnectionConfig(c.Service.GRPC.Connection); err != nil {
 		return err
+	}
+
+	if c.Service.HTTP.VerifyCerts {
+		if err := validateTLSConfig("service.http.tls", c.Service.HTTP.TLS); err != nil {
+			return err
+		}
 	}
 
 	if c.Log.Level == "" {
@@ -204,15 +233,22 @@ func (c *Config) validate() error {
 
 func validateConnectionConfig(conn ConnectionConfig) error {
 	if conn.VerifyCerts {
-		if conn.TLS.CA == "" {
-			return fmt.Errorf("config: service.conn.ca is required when verify_certs is true")
+		if err := validateTLSConfig("service.grpc.conn", conn.TLS); err != nil {
+			return err
 		}
-		if conn.TLS.Cert == "" {
-			return fmt.Errorf("config: service.conn.cert is required when verify_certs is true")
-		}
-		if conn.TLS.Key == "" {
-			return fmt.Errorf("config: service.conn.key is required when verify_certs is true")
-		}
+	}
+	return nil
+}
+
+func validateTLSConfig(prefix string, tls TLSConfig) error {
+	if tls.CA == "" {
+		return fmt.Errorf("config: %s.ca is required when verify_certs is true", prefix)
+	}
+	if tls.Cert == "" {
+		return fmt.Errorf("config: %s.cert is required when verify_certs is true", prefix)
+	}
+	if tls.Key == "" {
+		return fmt.Errorf("config: %s.key is required when verify_certs is true", prefix)
 	}
 	return nil
 }

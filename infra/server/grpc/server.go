@@ -43,7 +43,7 @@ func ProvideServer(
 	auther auth.Authorizer,
 	lc fx.Lifecycle,
 ) (*Server, error) {
-	srv, err := New(conf.Service.Address, func(c *Config) error {
+	srv, err := New(conf.Service.GRPC.Address, func(c *Config) error {
 		c.TLS = tlsConf.Server.Clone()
 		c.Logger = logger
 		c.Auther = auther

@@ -1,3 +1,3 @@
 package buf
 
-//go:generate buf generate ../../protos/storage --template buf.gen.storage.yaml
+//go:generate buf generate --template buf.gen.storage.yaml
