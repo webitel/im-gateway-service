@@ -202,7 +202,7 @@ func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery
 			"branch":         model.Branch,
 			"buildTimestamp": model.BuildTimestamp,
 		}
-		si.Endpoints = []string{(&url.URL{Scheme: "grpc", Host: cfg.Service.Address}).String()}
+		si.Endpoints = []string{(&url.URL{Scheme: "grpc", Host: cfg.Service.GRPC.Address}).String()}
 	}
 
 	lc.Append(fx.Hook{

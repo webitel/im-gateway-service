@@ -9,10 +9,12 @@ require (
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
 	github.com/sony/gobreaker v1.0.0
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/urfave/cli/v2 v2.27.7
+	github.com/webitel/storage v0.0.0-20260109145042-79404a35fcce
 	github.com/webitel/webitel-go-kit/infra/otel v0.0.0-20251222125635-d60448d23a82
 	github.com/webitel/webitel-go-kit/infra/profiler v0.0.0-20260323144913-6525b6de6782
 	github.com/webitel/webitel-go-kit/infra/transport v0.0.0-20260120140602-6f20efe1524e
@@ -39,7 +41,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/cel-go v0.26.1 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 	github.com/hashicorp/consul/api v1.33.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

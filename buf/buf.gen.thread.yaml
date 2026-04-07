@@ -21,5 +21,7 @@ plugins:
       - module=github.com/webitel/im-gateway-service/gen/go/thread
 
 inputs:
-  - directory: "../../protos/im"
- 
+  - git_repo: https://github.com/webitel/protos.git
+    branch: main
+    subdir: im
+    depth: 1
