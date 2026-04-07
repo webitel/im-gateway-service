@@ -100,7 +100,7 @@ type ThreadConverter interface {
 	ProtoThreadSearchRequestToDTO(source *impb.ThreadSearchRequest) *dto.ThreadSearchRequestDTO
 	DTOToProto(source []*dto.ThreadDTO) []*impb.Thread
 
-	// goverter:map Id Member
+	// goverter:map MemberId Member
 	// goverter:map Settings DirectSettings
 	ToThreadMemberDTO(source *threadv1.ThreadMember) *dto.ThreadMemberDTO
 	ThreadV1ToThreadDTO(source *threadv1.Thread) *dto.ThreadDTO
