@@ -214,15 +214,15 @@ func (t *thread) updateDirectThreadSubject(thr *dto.ThreadDTO, member *dto.Threa
 		return
 	}
 
-	if internalID != sessionMemberID {
+	if internalID == sessionMemberID {
 		return
 	}
 
-	if member.DirectSettings == nil {
+	if member.Member == nil {
 		return
 	}
 
-	thr.Subject = member.DirectSettings.Title
+	thr.Subject = member.Member.Name
 }
 
 func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
