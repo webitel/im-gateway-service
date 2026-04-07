@@ -11,8 +11,10 @@ import (
 	webiteldi "github.com/webitel/im-gateway-service/infra/client/di"
 	"github.com/webitel/im-gateway-service/infra/pubsub"
 	grpcsrv "github.com/webitel/im-gateway-service/infra/server/grpc"
+	httpsrv "github.com/webitel/im-gateway-service/infra/server/http"
 	"github.com/webitel/im-gateway-service/infra/tls"
 	grpchandler "github.com/webitel/im-gateway-service/internal/handler/grpc"
+	httphandler "github.com/webitel/im-gateway-service/internal/handler/http"
 	"github.com/webitel/im-gateway-service/internal/service"
 )
 
@@ -33,6 +35,8 @@ func NewApp(cfg *config.Config) *fx.App {
 		service.Module,
 		grpcsrv.Module,
 		grpchandler.Module,
+		httphandler.Module,
+		httpsrv.Module,
 		profiler.Module,
 	)
 }
