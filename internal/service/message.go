@@ -92,6 +92,9 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 	resp, err := m.threader.SendImage(ctx, &threadv1.SendImageRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
 		},
 		To:       to,
 		DomainId: identity.GetDomainID(),
@@ -123,6 +126,9 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	resp, err := m.threader.SendDocument(ctx, &threadv1.SendDocumentRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
 		},
 		To:       to,
 		DomainId: identity.GetDomainID(),
