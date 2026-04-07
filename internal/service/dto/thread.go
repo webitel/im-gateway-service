@@ -41,9 +41,6 @@ type (
 		CreatedAt   int64
 		UpdatedAt   int64
 		Kind        ThreadKind
-		Owner       *ExternalParticipantDTO
-		Admins      []*ExternalParticipantDTO
-		MemberIDs   []*ExternalParticipantDTO
 		Subject     string
 		Description string
 		Members     []*ThreadMemberDTO

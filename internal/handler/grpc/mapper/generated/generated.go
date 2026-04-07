@@ -127,28 +127,12 @@ func (c *ThreadConverterImpl) ThreadV1ToThreadDTO(source *v1.Thread) *dto.Thread
 		dtoThreadDTO.CreatedAt = (*source).CreatedAt
 		dtoThreadDTO.UpdatedAt = (*source).UpdatedAt
 		dtoThreadDTO.Kind = mapper.FromThreadV1KindToDTOKind((*source).Kind)
-		dtoExternalParticipantDTO := mapper.StringToParticipant((*source).Owner)
-		dtoThreadDTO.Owner = &dtoExternalParticipantDTO
-		if (*source).Admins != nil {
-			dtoThreadDTO.Admins = make([]*dto.ExternalParticipantDTO, len((*source).Admins))
-			for i := 0; i < len((*source).Admins); i++ {
-				dtoExternalParticipantDTO2 := mapper.StringToParticipant((*source).Admins[i])
-				dtoThreadDTO.Admins[i] = &dtoExternalParticipantDTO2
-			}
-		}
-		if (*source).MemberIds != nil {
-			dtoThreadDTO.MemberIDs = make([]*dto.ExternalParticipantDTO, len((*source).MemberIds))
-			for j := 0; j < len((*source).MemberIds); j++ {
-				dtoExternalParticipantDTO3 := mapper.StringToParticipant((*source).MemberIds[j])
-				dtoThreadDTO.MemberIDs[j] = &dtoExternalParticipantDTO3
-			}
-		}
 		dtoThreadDTO.Subject = (*source).Subject
 		dtoThreadDTO.Description = (*source).Description
 		if (*source).Members != nil {
 			dtoThreadDTO.Members = make([]*dto.ThreadMemberDTO, len((*source).Members))
-			for k := 0; k < len((*source).Members); k++ {
-				dtoThreadDTO.Members[k] = c.ToThreadMemberDTO((*source).Members[k])
+			for i := 0; i < len((*source).Members); i++ {
+				dtoThreadDTO.Members[i] = c.ToThreadMemberDTO((*source).Members[i])
 			}
 		}
 		dtoThreadDTO.LastMsg = c.ToHistoryMessageDTO((*source).LastMsg)
@@ -190,7 +174,7 @@ func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v1.ThreadMember) *dto.Th
 		var dtoThreadMemberDTO dto.ThreadMemberDTO
 		dtoExternalParticipantDTO := mapper.StringToParticipant((*source).Id)
 		dtoThreadMemberDTO.Member = &dtoExternalParticipantDTO
-		dtoThreadMemberDTO.DirectSettings = c.pThreadThreadDirectSettingsToPDtoThreadDirectSettingsDTO((*source).DirectSettings)
+		dtoThreadMemberDTO.DirectSettings = c.pThreadThreadSettingsToPDtoThreadDirectSettingsDTO((*source).Settings)
 		pDtoThreadMemberDTO = &dtoThreadMemberDTO
 	}
 	return pDtoThreadMemberDTO
@@ -268,25 +252,12 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 		apiThread.CreatedAt = (*source).CreatedAt
 		apiThread.UpdatedAt = (*source).UpdatedAt
 		apiThread.Kind = mapper.FromThreadKind((*source).Kind)
-		apiThread.Owner = c.DTOToExternalParticipantProto((*source).Owner)
-		if (*source).Admins != nil {
-			apiThread.Admins = make([]*v11.ExternalParticipant, len((*source).Admins))
-			for i := 0; i < len((*source).Admins); i++ {
-				apiThread.Admins[i] = c.DTOToExternalParticipantProto((*source).Admins[i])
-			}
-		}
-		if (*source).MemberIDs != nil {
-			apiThread.MemberIds = make([]*v11.ExternalParticipant, len((*source).MemberIDs))
-			for j := 0; j < len((*source).MemberIDs); j++ {
-				apiThread.MemberIds[j] = c.DTOToExternalParticipantProto((*source).MemberIDs[j])
-			}
-		}
 		apiThread.Subject = (*source).Subject
 		apiThread.Description = (*source).Description
 		if (*source).Members != nil {
 			apiThread.Members = make([]*v11.ThreadMember, len((*source).Members))
-			for k := 0; k < len((*source).Members); k++ {
-				apiThread.Members[k] = c.DTOToThreadMemberProto((*source).Members[k])
+			for i := 0; i < len((*source).Members); i++ {
+				apiThread.Members[i] = c.DTOToThreadMemberProto((*source).Members[i])
 			}
 		}
 		apiThread.LastMsg = c.pDtoHistoryMessageToPApiHistoryMessage((*source).LastMsg)
@@ -322,7 +293,7 @@ func (c *ThreadConverterImpl) pThreadImageToDtoHistoryImage(source *v1.Image) dt
 	}
 	return dtoHistoryImage
 }
-func (c *ThreadConverterImpl) pThreadThreadDirectSettingsToPDtoThreadDirectSettingsDTO(source *v1.ThreadDirectSettings) *dto.ThreadDirectSettingsDTO {
+func (c *ThreadConverterImpl) pThreadThreadSettingsToPDtoThreadDirectSettingsDTO(source *v1.ThreadSettings) *dto.ThreadDirectSettingsDTO {
 	var pDtoThreadDirectSettingsDTO *dto.ThreadDirectSettingsDTO
 	if source != nil {
 		var dtoThreadDirectSettingsDTO dto.ThreadDirectSettingsDTO

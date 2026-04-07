@@ -36,7 +36,7 @@ var Module = fx.Module(
 
 		fx.Annotate(
 			NewThread,
-			fx.As(new(ThreadSearcher)),
+			fx.As(new(ThreadManager)),
 		),
 	),
 )

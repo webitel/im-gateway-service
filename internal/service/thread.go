@@ -24,11 +24,13 @@ var (
 )
 
 var (
-	_ ThreadSearcher = (*thread)(nil)
+	_ ThreadManager = (*thread)(nil)
 )
 
-type ThreadSearcher interface {
+type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error)
+	AddMember(ctx context.Context, req *threadv1.AddMemberRequest) error
+	RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error
 }
 
 type thread struct {
@@ -38,6 +40,49 @@ type thread struct {
 	contactClient *imcontact.Client
 
 	converter mapper.ThreadConverter
+}
+
+func (t *thread) AddMember(ctx context.Context, req *threadv1.AddMemberRequest) error {
+	if req == nil {
+		return errors.New("request is nil")
+	}
+	if req.GetNewMemberId() == "" {
+		return errors.New("new member id is required")
+	}
+	if req.GetThreadId() == "" {
+		return errors.New("thread id is required")
+	}
+	if req.GetRole() == threadv1.ThreadRole_ROLE_UNSPECIFIED {
+		return errors.New("role is required")
+	}
+
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return auth.IdentityNotFoundErr
+	}
+	req.InitiatorId = identity.GetContactID()
+
+	return t.threadClient.AddMember(ctx, req)
+}
+
+func (t *thread) RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error {
+	if req == nil {
+		return errors.New("request is nil")
+	}
+	if req.GetTargetMemberId() == "" {
+		return errors.New("target id is required")
+	}
+	if req.GetThreadId() == "" {
+		return errors.New("thread id is required")
+	}
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return auth.IdentityNotFoundErr
+	}
+	req.InitiatorMemberId= identity.GetContactID()
+
+	return t.threadClient.RemoveMember(ctx, req)
 }
 
 func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client, converter mapper.ThreadConverter) *thread {
@@ -102,35 +147,13 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 
 func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
 	for _, thr := range threads {
-		t.enrichThreadOwner(thr, im)
-		t.enrichThreadAdmins(thr, im)
-		t.enrichThreadMemberIDs(thr, im)
 		t.enrichThreadMembers(thr, im, sessionMemberID)
 		t.enrichLastMessageSenders(thr, im)
 	}
 }
 
-func (t *thread) enrichThreadOwner(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-	if owner, ok := im[thr.Owner.InternalID]; ok {
-		thr.Owner = owner
-	}
-}
 
-func (t *thread) enrichThreadAdmins(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-	for i := range thr.Admins {
-		if ad, ok := im[thr.Admins[i].InternalID]; ok {
-			thr.Admins[i] = ad
-		}
-	}
-}
 
-func (t *thread) enrichThreadMemberIDs(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-	for i := range thr.MemberIDs {
-		if m, ok := im[thr.MemberIDs[i].InternalID]; ok {
-			thr.MemberIDs[i] = m
-		}
-	}
-}
 
 func (t *thread) enrichThreadMembers(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
 	for i := range thr.Members {
@@ -176,16 +199,6 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 	uniqueMap := make(map[string]struct{}, len(threads))
 
 	for _, thr := range threads {
-		uniqueMap[thr.Owner] = struct{}{}
-
-		for _, a := range thr.Admins {
-			uniqueMap[a] = struct{}{}
-		}
-
-		for _, mi := range thr.GetMemberIds() {
-			uniqueMap[mi] = struct{}{}
-		}
-
 		for _, m := range thr.GetMembers() {
 			uniqueMap[m.GetId()] = struct{}{}
 		}
