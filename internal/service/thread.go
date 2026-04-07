@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
+	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
@@ -29,8 +30,8 @@ var (
 
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error)
-	AddMember(ctx context.Context, req *threadv1.AddMemberRequest) error
-	RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error
+	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error
+	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 }
 
 type thread struct {
@@ -42,47 +43,80 @@ type thread struct {
 	converter mapper.ThreadConverter
 }
 
-func (t *thread) AddMember(ctx context.Context, req *threadv1.AddMemberRequest) error {
+func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error {
 	if req == nil {
 		return errors.New("request is nil")
 	}
-	if req.GetNewMemberId() == "" {
-		return errors.New("new member id is required")
+	if req.GetMember() == nil {
+		return errors.New("new member is required")
 	}
 	if req.GetThreadId() == "" {
 		return errors.New("thread id is required")
 	}
-	if req.GetRole() == threadv1.ThreadRole_ROLE_UNSPECIFIED {
+	if req.GetRole() == gtwthread.ThreadRole_ROLE_UNSPECIFIED {
 		return errors.New("role is required")
 	}
-
-
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
-	req.InitiatorId = identity.GetContactID()
+	target, err := t.findContact(ctx, req.GetMember().GetSub(), req.GetMember().GetIss(), int32(identity.GetDomainID()))
+	if err != nil {
+		return err
+	}
 
-	return t.threadClient.AddMember(ctx, req)
+	addMemberRequest := &threadv1.AddMemberRequest{
+		ThreadId: req.GetThreadId(),
+		NewMemberId: target.GetId(),
+		Role: threadv1.ThreadRole(req.Role),
+		InitiatorId: identity.GetContactID(),
+	}
+		
+
+	return t.threadClient.AddMember(ctx, addMemberRequest)
 }
 
-func (t *thread) RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error {
+func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error {
 	if req == nil {
 		return errors.New("request is nil")
 	}
-	if req.GetTargetMemberId() == "" {
+	if req.GetMember() == nil {
 		return errors.New("target id is required")
 	}
 	if req.GetThreadId() == "" {
 		return errors.New("thread id is required")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
-	req.InitiatorMemberId= identity.GetContactID()
+	target, err := t.findContact(ctx, req.GetMember().GetSub(), req.GetMember().GetIss(), int32(identity.GetDomainID()))
+	if err != nil {
+		return err
+	}
 
-	return t.threadClient.RemoveMember(ctx, req)
+	removeMemberRequest := &threadv1.RemoveMemberRequest{
+		ThreadId: req.GetThreadId(),
+		TargetMemberId: target.GetId(),
+		InitiatorMemberId: identity.GetContactID(),
+	}
+	return t.threadClient.RemoveMember(ctx,removeMemberRequest)
+}
+
+func (t *thread) findContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
+	target, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
+		Subjects: []string{sub},
+		IssId: []string{iss},
+		DomainId: domainID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(target.GetContacts()) == 0 {
+		return nil,errors.New("no contact found for new member")
+	}
+	return target.GetContacts()[0], nil
 }
 
 func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client, converter mapper.ThreadConverter) *thread {

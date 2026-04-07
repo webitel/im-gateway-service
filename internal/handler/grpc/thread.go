@@ -5,7 +5,6 @@ import (
 	"log/slog"
 
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
-	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service"
 )
@@ -50,12 +49,7 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberRequest) (*impb.AddMemberResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 
-	converted, err := mapper.Convert(req, new(threadv1.AddMemberRequest))
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.threadSearcher.AddMember(ctx, converted)
+	err := s.threadSearcher.AddMember(ctx, req)
 	if err != nil {
 		log.Error("failed to add member to thread", slog.Any("err", err))
 		return nil, err
@@ -70,12 +64,7 @@ func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberReques
 func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMemberRequest) (*impb.RemoveMemberResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 
-	converted, err := mapper.Convert(req, new(threadv1.RemoveMemberRequest))
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.threadSearcher.RemoveMember(ctx, converted)
+	err := s.threadSearcher.RemoveMember(ctx,req)
 	if err != nil {
 		log.Error("failed to add member to thread", slog.Any("err", err))
 		return nil, err
