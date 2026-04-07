@@ -66,12 +66,11 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	}
 
 	addMemberRequest := &threadv1.AddMemberRequest{
-		ThreadId: req.GetThreadId(),
+		ThreadId:    req.GetThreadId(),
 		NewMemberId: target.GetId(),
-		Role: threadv1.ThreadRole(req.Role),
+		Role:        threadv1.ThreadRole(req.Role),
 		InitiatorId: identity.GetContactID(),
 	}
-		
 
 	return t.threadClient.AddMember(ctx, addMemberRequest)
 }
@@ -97,24 +96,24 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	}
 
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
-		ThreadId: req.GetThreadId(),
-		TargetMemberId: target.GetId(),
+		ThreadId:          req.GetThreadId(),
+		TargetMemberId:    target.GetId(),
 		InitiatorMemberId: identity.GetContactID(),
 	}
-	return t.threadClient.RemoveMember(ctx,removeMemberRequest)
+	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
 }
 
 func (t *thread) findContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
 	target, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Subjects: []string{sub},
-		IssId: []string{iss},
+		IssId:    []string{iss},
 		DomainId: domainID,
 	})
 	if err != nil {
 		return nil, err
 	}
 	if len(target.GetContacts()) == 0 {
-		return nil,errors.New("no contact found for new member")
+		return nil, errors.New("no contact found for new member")
 	}
 	return target.GetContacts()[0], nil
 }
@@ -186,9 +185,6 @@ func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.Exte
 	}
 }
 
-
-
-
 func (t *thread) enrichThreadMembers(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
 	for i := range thr.Members {
 		internalID := thr.Members[i].Member.InternalID
@@ -234,7 +230,7 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 
 	for _, thr := range threads {
 		for _, m := range thr.GetMembers() {
-			uniqueMap[m.GetId()] = struct{}{}
+			uniqueMap[m.GetMemberId()] = struct{}{}
 		}
 
 		if thr.LastMsg != nil {

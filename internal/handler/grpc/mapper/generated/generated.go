@@ -172,7 +172,7 @@ func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v1.ThreadMember) *dto.Th
 	var pDtoThreadMemberDTO *dto.ThreadMemberDTO
 	if source != nil {
 		var dtoThreadMemberDTO dto.ThreadMemberDTO
-		dtoExternalParticipantDTO := mapper.StringToParticipant((*source).Id)
+		dtoExternalParticipantDTO := mapper.StringToParticipant((*source).MemberId)
 		dtoThreadMemberDTO.Member = &dtoExternalParticipantDTO
 		dtoThreadMemberDTO.DirectSettings = c.pThreadThreadSettingsToPDtoThreadDirectSettingsDTO((*source).Settings)
 		pDtoThreadMemberDTO = &dtoThreadMemberDTO
