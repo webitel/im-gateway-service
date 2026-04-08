@@ -10,11 +10,13 @@ import (
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
 	impb "github.com/webitel/im-gateway-service/gen/go/contact/v1" // ADDED FOR SEARCH
+	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
+	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -29,12 +31,161 @@ type Messenger interface {
 	SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error)
 	SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error)
 	Read(ctx context.Context, in *dto.ReadMessageRequest) error
+	SendContact(ctx context.Context, in *api.SendContactRequest) (*api.SendMessageResponse, error)
+	SendInteractive(ctx context.Context, in *api.SendInteractiveMessageRequest) (*api.SendMessageResponse, error)
+	SendInteractiveCallback(ctx context.Context, in *api.InteractiveCallbackRequest) (*api.InteractiveCallbackResponse, error)
+	SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error)
 }
 
 type MessageService struct {
 	logger    *slog.Logger
 	threader  *imthread.Client
 	contacter *imcontact.Client
+}
+
+// SendContact implements Messenger.
+func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactRequest) (*api.SendMessageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	to, err := m.resolveRecipient(ctx, mapper.MapPeerFromProto(in.To), int32(identity.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := m.threader.SendContact(ctx, &threadv1.SendContactRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		To:          to,
+		Name:        in.Name,
+		Email:       in.Email,
+		PhoneNumber: in.PhoneNumber,
+		Metadata:    in.Metadata,
+		SendId:      in.SendId,
+		DomainId:    int32(identity.GetDomainID()),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SendMessageResponse{
+		To: in.To,
+		Id: resp.Id,
+	}, nil
+}
+
+// SendInteractive implements Messenger.
+func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendInteractiveMessageRequest) (*api.SendMessageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	to, err := m.resolveRecipient(ctx, mapper.MapPeerFromProto(in.To), int32(identity.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
+
+	converted, err := mapper.Convert(in, &threadv1.SendInteractiveMessageRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	converted.To = to
+	converted.From = &threadv1.Peer{
+		Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+		Identity: &threadv1.Identity{
+			Name: identity.GetName(),
+		},
+	}
+	converted.DomainId = int32(identity.GetDomainID())
+
+	resp, err := m.threader.SendInteractive(ctx, converted)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SendMessageResponse{
+		To: in.To,
+		Id: resp.Id,
+	}, nil
+}
+
+// SendInteractiveCallback implements Messenger.
+func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.InteractiveCallbackRequest) (*api.InteractiveCallbackResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.threader.SendInteractiveCallback(ctx, &threadv1.InteractiveCallbackRequest{
+		ReactedBy: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		InReplyTo:    in.InReplyTo,
+		ButtonCode:   in.ButtonCode,
+		CallbackData: in.CallbackData,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.InteractiveCallbackResponse{
+		ReactedBy:    in.ReactedBy,
+		InReplyTo:    resp.InReplyTo,
+		ButtonCode:   resp.ButtonCode,
+		CallbackData: resp.CallbackData,
+		ReactedAt:    resp.ReactedAt,
+	}, nil
+}
+
+func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	to, err := m.resolveRecipient(ctx, mapper.MapPeerFromProto(in.To), int32(identity.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := m.threader.SendLocation(ctx, &threadv1.SendLocationRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		To:        to,
+		Latitude:  in.Latitude,
+		Longitude: in.Longitude,
+		Name:      in.Name,
+		Address:   in.Address,
+		Metadata:  in.Metadata,
+		SendId:    in.SendId,
+		DomainId:  int32(identity.GetDomainID()),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SendMessageResponse{
+		To: in.To,
+		Id: resp.Id,
+	}, nil
 }
 
 func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client) *MessageService {

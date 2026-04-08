@@ -15,16 +15,14 @@ import (
 
 const ServiceName string = "im-thread-service"
 
-// [GENERIC_INTERFACE_GUARD] Ensures Client matches the generated gRPC client interface.
 var (
 	_ threadv1.MessageClient = (*Client)(nil)
 )
 
 type Client struct {
 	logger *slog.Logger
-	// [GENERIC_RPC] Underlying go-kit RPC client using the generated MessageClient stub
-	rpc *rpc.Client[threadv1.MessageClient]
-	tls *infratls.Config
+	rpc    *rpc.Client[threadv1.MessageClient]
+	tls    *infratls.Config
 }
 
 func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
@@ -41,6 +39,54 @@ func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infrat
 		logger: logger,
 		rpc:    c,
 	}, nil
+}
+
+func (c *Client) SendContact(ctx context.Context, in *threadv1.SendContactRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
+	var resp *threadv1.SendMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		var err error
+		resp, err = api.SendContact(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) SendInteractive(ctx context.Context, in *threadv1.SendInteractiveMessageRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
+	var resp *threadv1.SendMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		var err error
+		resp, err = api.SendInteractive(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) SendInteractiveCallback(ctx context.Context, in *threadv1.InteractiveCallbackRequest, opts ...grpc.CallOption) (*threadv1.InteractiveCallbackResponse, error) {
+	var resp *threadv1.InteractiveCallbackResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		var err error
+		resp, err = api.SendInteractiveCallback(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) SendLocation(ctx context.Context, in *threadv1.SendLocationRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
+	var resp *threadv1.SendMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		var err error
+		resp, err = api.SendLocation(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
 }
 
 // SendText delivers a plain text message through the Thread service.
