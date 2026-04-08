@@ -61,3 +61,39 @@ func (m *MessageService) Read(ctx context.Context, in *impb.ReadMessageRequest) 
 	}
 	return &impb.ReadMessageResponse{}, nil
 }
+
+func (m *MessageService) SendContact(ctx context.Context, in *impb.SendContactRequest) (*impb.SendMessageResponse, error) {
+	out, err := m.messager.SendContact(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (m *MessageService) SendInteractive(ctx context.Context, in *impb.SendInteractiveMessageRequest) (*impb.SendMessageResponse, error) {
+	out, err := m.messager.SendInteractive(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *impb.InteractiveCallbackRequest) (*impb.InteractiveCallbackResponse, error) {
+	out, err := m.messager.SendInteractiveCallback(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (m *MessageService) SendLocation(ctx context.Context, in *impb.SendLocationRequest) (*impb.SendMessageResponse, error) {
+	out, err := m.messager.SendLocation(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
