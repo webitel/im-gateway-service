@@ -307,6 +307,7 @@ func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.Exte
 	for _, thr := range threads {
 		t.enrichThreadMembers(thr, im, sessionMemberID)
 		t.enrichLastMessageSenders(thr, im)
+		t.enrichThreadVariables(thr, im)
 	}
 }
 
@@ -329,6 +330,28 @@ func (t *thread) enrichLastMessageSenders(thr *dto.ThreadDTO, im map[string]*dto
 				Name:  member.Name,
 				IsBot: member.IsBot,
 				Type:  member.Type,
+			}
+		}
+	}
+}
+
+func (t *thread) enrichThreadVariables(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
+	if thr.Variables == nil {
+		return
+	}
+
+	for k, v := range thr.Variables.Variables {
+		if member, ok := im[v.SetByInternalID]; ok {
+			thr.Variables.Variables[k] = &dto.VariableEntryDTO{
+				Value: v.Value,
+				SetBy: &gtwthread.Contact{
+					Iss:   member.Iss,
+					Sub:   member.Sub,
+					Type:  member.Type,
+					Name:  member.Name,
+					IsBot: member.IsBot,
+				},
+				SetAt: v.SetAt,
 			}
 		}
 	}
@@ -360,6 +383,12 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 
 		if thr.LastMsg != nil {
 			uniqueMap[thr.LastMsg.SenderId] = struct{}{}
+		}
+
+		if thr.Variables != nil {
+			for _, v := range thr.Variables.GetVariables() {
+				uniqueMap[v.GetSetBy()] = struct{}{}
+			}
 		}
 	}
 

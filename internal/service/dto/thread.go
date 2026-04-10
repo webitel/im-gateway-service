@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/webitel/im-gateway-service/internal/domain/shared"
+import (
+	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	"github.com/webitel/im-gateway-service/internal/domain/shared"
+)
 
 type ThreadKind int
 
@@ -45,6 +48,7 @@ type (
 		Description string
 		Members     []*ThreadMemberDTO
 		LastMsg     *HistoryMessage
+		Variables   *ThreadVariablesDTO
 	}
 
 	ThreadSearchRequestDTO struct {
@@ -58,3 +62,15 @@ type (
 		Page   int32
 	}
 )
+
+type ThreadVariablesDTO struct {
+	ThreadID  string                       `json:"thread_id"`
+	Variables map[string]*VariableEntryDTO `json:"variables,omitempty"`
+}
+
+type VariableEntryDTO struct {
+	Value           map[string]any     `json:"value,omitempty"`
+	SetBy           *gtwthread.Contact `json:"set_by,omitempty"`
+	SetByInternalID string             `json:"set_by_internal_id,omitempty"`
+	SetAt           int64              `json:"set_at,omitempty"`
+}
