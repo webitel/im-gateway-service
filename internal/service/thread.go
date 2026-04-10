@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
+	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -32,6 +33,10 @@ type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
+	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
+	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
+	LocateVariables(ctx context.Context, req *gtwthread.LocateVariablesRequest) (*gtwthread.ThreadVariables, error)
+	FlushVariables(ctx context.Context, req *gtwthread.FlushVariablesRequest) (*gtwthread.ThreadVariables, error)
 }
 
 type thread struct {
@@ -176,6 +181,126 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 	t.enrichThreads(enrichedThreads, contactsIdentities, identity.GetContactID())
 
 	return enrichedThreads, internalThreads.Next, nil
+}
+
+func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error) {
+	log := t.logger.With("operation", "service.thread.set_variables")
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.Warn("identity not found in context")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	response, err := t.threadClient.SetVariables(ctx, &threadv1.SetVariablesRequest{
+		ThreadId:  req.ThreadId,
+		Variables: convertToThreadProto(req.GetVariables()),
+	})
+
+	if err != nil {
+		log.Error("internal service set variables", "err", err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
+		return nil, err
+	}
+
+	threadVars, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
+	if err != nil {
+		log.Error("convert to thread variables", "err", err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
+		return nil, err
+	}
+
+	return threadVars, nil
+}
+
+func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error) {
+	var log = t.logger.With("operation", "service.thread.search_variables")
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.Warn("identity not found in context")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	response, err := t.threadClient.SearchVariables(ctx, &threadv1.SearchVariablesRequest{
+		Size:      req.GetSize(),
+		Page:      req.GetPage(),
+		Fields:    req.GetFields(),
+		ThreadIds: req.GetThreadIds(),
+	})
+
+	if err != nil {
+		log.Error("search variables", "err", err)
+		return nil, err
+	}
+
+	var vars []*gtwthread.ThreadVariables
+	for _, item := range response.GetItems() {
+		v, err := t.convertToThreadVariables(ctx, item, int32(identity.GetDomainID()))
+		if err != nil {
+			log.Error("convert to thread variables", "err", err)
+			return nil, err
+		}
+		vars = append(vars, v)
+	}
+
+	return &gtwthread.SearchVariablesResponse{
+		Items: vars,
+		Next:  response.GetNext(),
+	}, nil
+}
+
+func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVariablesRequest) (*gtwthread.ThreadVariables, error) {
+	var log = t.logger.With("operation", "service.thread.locate_variables")
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.Warn("identity not found in context")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	response, err := t.threadClient.LocateVariables(ctx, &threadv1.LocateVariablesRequest{
+		ThreadId: req.GetThreadId(),
+	})
+
+	if err != nil {
+		log.Error("locate variables", "err", err)
+		return nil, err
+	}
+
+	v, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
+	if err != nil {
+		log.Error("convert to thread variables", "err", err)
+		return nil, err
+	}
+
+	return v, nil
+}
+
+func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariablesRequest) (*gtwthread.ThreadVariables, error) {
+	var log = t.logger.With("operation", "service.thread.flush_variables")
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.Warn("identity not found in context")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	response, err := t.threadClient.FlushVariables(ctx, &threadv1.FlushVariablesRequest{
+		ThreadId: req.GetThreadId(),
+		Keys:     req.GetKeys(),
+	})
+
+	if err != nil {
+		log.Error("flush variables", "err", err)
+		return nil, err
+	}
+
+	v, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
+	if err != nil {
+		log.Error("convert to thread variables", "err", err)
+		return nil, err
+	}
+
+	return v, nil
 }
 
 func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
@@ -394,4 +519,68 @@ func (t *thread) collectInternalContactsIDs(ctx context.Context, owners, members
 	}
 
 	return ownersRes.ids, membersRes.ids, nil
+}
+
+func convertToThreadProto(request []*gtwthread.VariableEntryRequest) []*threadv1.VariableEntryRequest {
+	protoRequests := make([]*threadv1.VariableEntryRequest, len(request))
+	for i, req := range request {
+		protoReq := &threadv1.VariableEntryRequest{
+			Key:   req.Key,
+			Value: req.Value,
+		}
+		protoRequests[i] = protoReq
+	}
+	return protoRequests
+}
+
+func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv1.ThreadVariables, domainID int32) (*gtwthread.ThreadVariables, error) {
+	var log = t.logger.With("operation", "service.thread.convert_to_thread_variables")
+
+	var uniqueSettersSet = make(map[string]struct{})
+	for _, v := range response.Variables {
+		uniqueSettersSet[v.SetBy] = struct{}{}
+	}
+	var uniqueSettersIDs []string = slices.Collect(maps.Keys(uniqueSettersSet))
+
+	contacts, err := t.contactClient.SearchContact(ctx, &contactv1.SearchContactRequest{
+		Size:     int32(len(uniqueSettersIDs)),
+		Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
+		DomainId: domainID,
+		Ids:      uniqueSettersIDs,
+	})
+
+	if err != nil {
+		log.ErrorContext(ctx, "search variables setters contacts", "err", err)
+		return nil, err
+	}
+
+	var externalSettersMap = make(map[string]*gtwthread.Contact, len(contacts.GetContacts()))
+	for _, c := range contacts.GetContacts() {
+		externalSettersMap[c.Id] = &gtwthread.Contact{
+			Iss:   c.GetIssId(),
+			Sub:   c.GetSubject(),
+			Type:  c.GetType(),
+			Name:  coalesceString(c.GetName(), c.GetUsername(), NoNameRecipient),
+			IsBot: c.IsBot,
+		}
+	}
+
+	vars := make(map[string]*gtwthread.VariableEntry, len(response.Variables))
+	for k, v := range response.Variables {
+		setBy, ok := externalSettersMap[v.SetBy]
+		if !ok {
+			log.Warn("not found external setter", "internal_id", v.SetBy)
+		}
+
+		vars[k] = &gtwthread.VariableEntry{
+			Value: v.Value,
+			SetBy: setBy,
+			SetAt: v.SetAt,
+		}
+	}
+
+	return &gtwthread.ThreadVariables{
+		ThreadId:  response.ThreadId,
+		Variables: vars,
+	}, nil
 }

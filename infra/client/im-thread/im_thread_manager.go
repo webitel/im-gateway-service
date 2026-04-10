@@ -16,13 +16,13 @@ import (
 type ThreadClient struct {
 	logger *slog.Logger
 
-	rpc *rpc.Client[threadv1.ThreadManagementClient]
+	rpc       *rpc.Client[threadv1.ThreadManagementClient]
 	converter mapper.ThreadConverter
 }
 
 func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config, converter mapper.ThreadConverter) (*ThreadClient, error) {
 	log := logger.With(slog.String("component", "im-thread-management-client"))
-	
+
 	factory := func(conn *grpc.ClientConn) threadv1.ThreadManagementClient {
 		return threadv1.NewThreadManagementClient(conn)
 	}
@@ -31,7 +31,7 @@ func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider,
 	if err != nil {
 		log.Error("initialization failed", slog.Any("error", err))
 		return nil, err
-	} 
+	}
 
 	return &ThreadClient{
 		logger:    log,
@@ -47,7 +47,7 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 	)
 
 	var (
-		err error
+		err  error
 		resp *threadv1.SearchThreadResponse
 	)
 
@@ -90,6 +90,78 @@ func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMem
 	}
 
 	return nil
+}
+
+func (c *ThreadClient) SetVariables(ctx context.Context, req *threadv1.SetVariablesRequest) (*threadv1.ThreadVariables, error) {
+	var (
+		err  error
+		resp *threadv1.ThreadVariables
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.SetVariables(ctx, req)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (c *ThreadClient) SearchVariables(ctx context.Context, req *threadv1.SearchVariablesRequest) (*threadv1.SearchVariablesResponse, error) {
+	var (
+		err  error
+		resp *threadv1.SearchVariablesResponse
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.SearchVariables(ctx, req)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (c *ThreadClient) LocateVariables(ctx context.Context, req *threadv1.LocateVariablesRequest) (*threadv1.ThreadVariables, error) {
+	var (
+		err  error
+		resp *threadv1.ThreadVariables
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.LocateVariables(ctx, req)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func (c *ThreadClient) FlushVariables(ctx context.Context, req *threadv1.FlushVariablesRequest) (*threadv1.ThreadVariables, error) {
+	var (
+		err  error
+		resp *threadv1.ThreadVariables
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.FlushVariables(ctx, req)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (c *ThreadClient) Close() error {
