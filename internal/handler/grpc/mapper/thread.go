@@ -103,6 +103,9 @@ type ThreadConverter interface {
 	// goverter:map MemberId Member
 	// goverter:map Settings DirectSettings
 	ToThreadMemberDTO(source *threadv1.ThreadMember) *dto.ThreadMemberDTO
+	// goverter:ignore SetBy
+	// goverter:map SetBy SetByInternalID
+	ToVariableEntryDTO(source *threadv1.VariableEntry) *dto.VariableEntryDTO
 	ThreadV1ToThreadDTO(source *threadv1.Thread) *dto.ThreadDTO
 	ThreadV1ListToThreadDTOList(source []*threadv1.Thread) []*dto.ThreadDTO
 	// goverter:ignore Sender
