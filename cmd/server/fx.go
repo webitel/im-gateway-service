@@ -31,7 +31,6 @@ func NewApp(cfg *config.Config) *fx.App {
 		defaultauth.Module,
 		pubsub.Module,
 		tls.Module,
-		grpchandler.MapperModule,
 		service.Module,
 		grpcsrv.Module,
 		grpchandler.Module,

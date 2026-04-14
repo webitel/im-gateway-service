@@ -7,7 +7,6 @@ import (
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
 	"google.golang.org/grpc"
@@ -16,11 +15,10 @@ import (
 type ThreadClient struct {
 	logger *slog.Logger
 
-	rpc       *rpc.Client[threadv1.ThreadManagementClient]
-	converter mapper.ThreadConverter
+	rpc *rpc.Client[threadv1.ThreadManagementClient]
 }
 
-func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config, converter mapper.ThreadConverter) (*ThreadClient, error) {
+func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*ThreadClient, error) {
 	log := logger.With(slog.String("component", "im-thread-management-client"))
 
 	factory := func(conn *grpc.ClientConn) threadv1.ThreadManagementClient {
@@ -34,9 +32,8 @@ func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider,
 	}
 
 	return &ThreadClient{
-		logger:    log,
-		rpc:       c,
-		converter: converter,
+		logger: log,
+		rpc:    c,
 	}, err
 }
 

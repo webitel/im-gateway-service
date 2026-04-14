@@ -41,9 +41,18 @@ type ThreadManagementClient interface {
 	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
 	// Remove member from the thread.
 	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	// Sets or updates variables for a specific thread.
+	// Existing variables with the same keys will be overwritten if were setted by the caller.
+	// New variables will be created if they do not exist.
 	SetVariables(ctx context.Context, in *SetVariablesRequest, opts ...grpc.CallOption) (*ThreadVariables, error)
+	// Searches thread variables across multiple threads.
+	// Supports pagination and field projection.
 	SearchVariables(ctx context.Context, in *SearchVariablesRequest, opts ...grpc.CallOption) (*SearchVariablesResponse, error)
+	// Retrieves all variables for a specific thread.
 	LocateVariables(ctx context.Context, in *LocateVariablesRequest, opts ...grpc.CallOption) (*ThreadVariables, error)
+	// Removes specified variables from a thread with caller's permission.
+	// If no keys are provided, all variables may be removed
+	// depending on implementation.
 	FlushVariables(ctx context.Context, in *FlushVariablesRequest, opts ...grpc.CallOption) (*ThreadVariables, error)
 }
 
@@ -138,9 +147,18 @@ type ThreadManagementServer interface {
 	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
 	// Remove member from the thread.
 	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	// Sets or updates variables for a specific thread.
+	// Existing variables with the same keys will be overwritten if were setted by the caller.
+	// New variables will be created if they do not exist.
 	SetVariables(context.Context, *SetVariablesRequest) (*ThreadVariables, error)
+	// Searches thread variables across multiple threads.
+	// Supports pagination and field projection.
 	SearchVariables(context.Context, *SearchVariablesRequest) (*SearchVariablesResponse, error)
+	// Retrieves all variables for a specific thread.
 	LocateVariables(context.Context, *LocateVariablesRequest) (*ThreadVariables, error)
+	// Removes specified variables from a thread with caller's permission.
+	// If no keys are provided, all variables may be removed
+	// depending on implementation.
 	FlushVariables(context.Context, *FlushVariablesRequest) (*ThreadVariables, error)
 	mustEmbedUnimplementedThreadManagementServer()
 }

@@ -133,24 +133,26 @@ func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
 }
 
 // toProtoMessageSender maps a MessageSender to a MessageSender.
-func toProtoMessageSender(ms *dto.MessageSender) *pb.MessageParticipant {
+func toProtoMessageSender(ms *dto.MessageSender) *pb.ThreadMember {
 	if ms == nil {
 		return nil
 	}
 
-	return &pb.MessageParticipant{
-		Sub:   ms.Sub,
-		Iss:   ms.Iss,
-		Type:  ms.Type,
-		Name:  ms.Name,
-		IsBot: ms.IsBot,
+	return &pb.ThreadMember{
+		Contact: &pb.Contact{
+			Sub:   ms.Sub,
+			Iss:   ms.Iss,
+			Type:  ms.Type,
+			Name:  ms.Name,
+			IsBot: ms.IsBot,
+		},
 	}
 }
 
 // toProtoMessageSenderList maps a slice of MessageSendDTOs to a slice of MessageSenders.
-func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.MessageParticipant {
+func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.ThreadMember {
 	var (
-		pbMessageSenderList = make([]*pb.MessageParticipant, 0, len(msList))
+		pbMessageSenderList = make([]*pb.ThreadMember, 0, len(msList))
 	)
 
 	for _, ms := range msList {

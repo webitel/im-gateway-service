@@ -1,12 +1,10 @@
 package service
 
 import (
-	"cmp"
 	"context"
 	"log/slog"
 	"maps"
 	"slices"
-	"sync"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -15,9 +13,6 @@ import (
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
-	"github.com/webitel/im-gateway-service/internal/domain/shared"
-	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
-	"github.com/webitel/im-gateway-service/internal/service/dto"
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
@@ -25,12 +20,8 @@ var (
 	internalContactsNotFoundErr = errors.New("internal provider return no records")
 )
 
-var (
-	_ ThreadManager = (*thread)(nil)
-)
-
 type ThreadManager interface {
-	Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error)
+	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
@@ -44,15 +35,13 @@ type thread struct {
 
 	threadClient  *imthread.ThreadClient
 	contactClient *imcontact.Client
-
-	converter mapper.ThreadConverter
 }
 
 func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error {
 	if req == nil {
 		return errors.New("request is nil")
 	}
-	if req.GetMember() == nil {
+	if req.GetContact() == nil {
 		return errors.New("new member is required")
 	}
 	if req.GetThreadId() == "" {
@@ -65,16 +54,16 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
-	target, err := t.findContact(ctx, req.GetMember().GetSub(), req.GetMember().GetIss(), int32(identity.GetDomainID()))
+	target, err := t.fetchContact(ctx, req.GetContact().GetSub(), req.GetContact().GetIss(), int32(identity.GetDomainID()))
 	if err != nil {
 		return err
 	}
 
 	addMemberRequest := &threadv1.AddMemberRequest{
-		ThreadId:    req.GetThreadId(),
-		NewMemberId: target.GetId(),
-		Role:        threadv1.ThreadRole(req.Role),
-		InitiatorId: identity.GetContactID(),
+		ThreadId:           req.GetThreadId(),
+		NewMemberContactId: target.GetId(),
+		Role:               threadv1.ThreadRole(req.Role),
+		InitiatorContactId: identity.GetContactID(),
 	}
 
 	return t.threadClient.AddMember(ctx, addMemberRequest)
@@ -84,31 +73,21 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	if req == nil {
 		return errors.New("request is nil")
 	}
-	if req.GetMember() == nil {
+	if req.GetMemberId() == "" {
 		return errors.New("target id is required")
 	}
-	if req.GetThreadId() == "" {
-		return errors.New("thread id is required")
-	}
-
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
-	target, err := t.findContact(ctx, req.GetMember().GetSub(), req.GetMember().GetIss(), int32(identity.GetDomainID()))
-	if err != nil {
-		return err
-	}
-
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
-		ThreadId:          req.GetThreadId(),
-		TargetMemberId:    target.GetId(),
-		InitiatorMemberId: identity.GetContactID(),
+		TargetMemberId:     req.GetMemberId(),
+		InitiatorContactId: identity.GetContactID(),
 	}
 	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
 }
 
-func (t *thread) findContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
+func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
 	target, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Subjects: []string{sub},
 		IssId:    []string{iss},
@@ -123,16 +102,35 @@ func (t *thread) findContact(ctx context.Context, sub, iss string, domainID int3
 	return target.GetContacts()[0], nil
 }
 
-func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client, converter mapper.ThreadConverter) *thread {
+func (t *thread) fetchContacts(ctx context.Context, ids []string) (map[string]*contact.Contact, error) {
+	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
+		Size:   int32(len(ids)),
+		Fields: []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
+		Ids:    ids,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	contacts := make(map[string]*contact.Contact)
+
+	for _, c := range contactInfo.GetContacts() {
+		contacts[c.GetId()] = c
+	}
+
+	return contacts, nil
+}
+
+func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client) *thread {
 	o := new(thread)
 	o.logger = logger
 	o.threadClient = threadClient
 	o.contactClient = contactClient
-	o.converter = converter
 	return o
 }
 
-func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchRequestDTO) ([]*dto.ThreadDTO, bool, error) {
+func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error) {
 	log := t.logger.With(slog.String("op", "thread.Search"))
 
 	identity, ok := auth.GetIdentityFromContext(ctx)
@@ -141,17 +139,10 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 		return nil, false, auth.IdentityNotFoundErr
 	}
 
-	internalOwners, _, err := t.collectInternalContactsIDs(ctx, searchQuery.Owners, nil, int32(identity.GetDomainID()))
-	if err != nil {
-		log.Error("failed to fetch internal thread participants", slog.Any("error", err))
-		return nil, false, err
-	}
-
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
 		Fields:    searchQuery.Fields,
-		Ids:       searchQuery.IDs,
+		Ids:       searchQuery.Ids,
 		DomainIds: []int32{int32(identity.GetDomainID())},
-		Owners:    internalOwners,
 		Q:         searchQuery.Q,
 		MemberIds: []string{identity.GetContactID()},
 		Size:      searchQuery.Size,
@@ -164,23 +155,28 @@ func (t *thread) Search(ctx context.Context, searchQuery *dto.ThreadSearchReques
 		return nil, false, err
 	}
 
-	uniqueIds := t.collectUniqueMembersIDs(internalThreads.GetItems())
+	uniqueContactIds := t.collectUniqueContactsFromThread(internalThreads.GetItems())
 
-	contactsIdentities, err := t.fetchExternalParticipantsInfo(ctx, uniqueIds, int(identity.GetDomainID()))
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds)
 	if err != nil {
 		log.Error(
 			"failed to fetch internal contact information for enrichment",
 			slog.Any("error", err),
-			slog.Any("ids", uniqueIds),
+			slog.Any("ids", uniqueContactIds),
 		)
 
 		return nil, false, err
 	}
 
-	enrichedThreads := t.converter.ThreadV1ListToThreadDTOList(internalThreads.GetItems())
-	t.enrichThreads(enrichedThreads, contactsIdentities, identity.GetContactID())
+	var (
+		res []*gtwthread.Thread
+	)
+	for _, thr := range internalThreads.GetItems() {
+		converted := convertToThread(thr, contacts)
+		res = append(res, converted)
+	}
 
-	return enrichedThreads, internalThreads.Next, nil
+	return res, internalThreads.Next, nil
 }
 
 func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error) {
@@ -305,86 +301,16 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 	return v, nil
 }
 
-func (t *thread) enrichThreads(threads []*dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
-	for _, thr := range threads {
-		t.enrichThreadMembers(thr, im, sessionMemberID)
-		t.enrichLastMessageSenders(thr, im)
-		t.enrichThreadVariables(thr, im)
-	}
-}
-
-func (t *thread) enrichThreadMembers(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO, sessionMemberID string) {
-	for i := range thr.Members {
-		internalID := thr.Members[i].Member.InternalID
-		if m, ok := im[internalID]; ok {
-			thr.Members[i].Member = m
-			t.updateDirectThreadSubject(thr, thr.Members[i], internalID, sessionMemberID)
-		}
-	}
-}
-
-func (t *thread) enrichLastMessageSenders(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-	if thr.LastMsg != nil {
-		if member, ok := im[thr.LastMsg.SenderID]; ok {
-			thr.LastMsg.Sender = &dto.MessageSender{
-				Sub:   member.Sub,
-				Iss:   member.Iss,
-				Name:  member.Name,
-				IsBot: member.IsBot,
-				Type:  member.Type,
-			}
-		}
-	}
-}
-
-func (t *thread) enrichThreadVariables(thr *dto.ThreadDTO, im map[string]*dto.ExternalParticipantDTO) {
-	if thr.Variables == nil {
-		return
-	}
-
-	for k, v := range thr.Variables.Variables {
-		if member, ok := im[v.SetByInternalID]; ok {
-			thr.Variables.Variables[k] = &dto.VariableEntryDTO{
-				Value: v.Value,
-				SetBy: &gtwthread.Contact{
-					Iss:   member.Iss,
-					Sub:   member.Sub,
-					Type:  member.Type,
-					Name:  member.Name,
-					IsBot: member.IsBot,
-				},
-				SetAt: v.SetAt,
-			}
-		}
-	}
-}
-
-func (t *thread) updateDirectThreadSubject(thr *dto.ThreadDTO, member *dto.ThreadMemberDTO, internalID, sessionMemberID string) {
-	if thr.Kind != dto.ThreadKindDirect {
-		return
-	}
-
-	if internalID == sessionMemberID {
-		return
-	}
-
-	if member.Member == nil {
-		return
-	}
-
-	thr.Subject = member.Member.Name
-}
-
-func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
+func (t *thread) collectUniqueContactsFromThread(threads []*threadv1.Thread) []string {
 	uniqueMap := make(map[string]struct{}, len(threads))
 
 	for _, thr := range threads {
 		for _, m := range thr.GetMembers() {
-			uniqueMap[m.GetMemberId()] = struct{}{}
+			uniqueMap[m.GetContactId()] = struct{}{}
 		}
 
 		if thr.LastMsg != nil {
-			uniqueMap[thr.LastMsg.SenderId] = struct{}{}
+			uniqueMap[thr.LastMsg.GetSenderId()] = struct{}{}
 		}
 
 		if thr.Variables != nil {
@@ -397,159 +323,112 @@ func (t *thread) collectUniqueMembersIDs(threads []*threadv1.Thread) []string {
 	return slices.Collect(maps.Keys(uniqueMap))
 }
 
-func (t *thread) fetchExternalParticipantsInfo(ctx context.Context, uniqueIDs []string, domainID int) (map[string]*dto.ExternalParticipantDTO, error) {
-	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Size:     int32(len(uniqueIDs)),
-		Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
-		DomainId: int32(domainID),
-		Ids:      uniqueIDs,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	externalParticipantIdentities := make(map[string]*dto.ExternalParticipantDTO)
-
-	for _, c := range contactInfo.GetContacts() {
-		externalParticipantIdentities[c.GetId()] = &dto.ExternalParticipantDTO{
-			Iss:   c.GetIssId(),
-			Sub:   c.GetSubject(),
-			Type:  c.GetType(),
-			Name:  cmp.Or(c.GetName(), c.GetUsername()),
-			IsBot: c.IsBot,
-		}
-	}
-
-	return externalParticipantIdentities, nil
-}
-
-func (t *thread) groupSubByIssuers(peers []shared.Peer) ([]string, []string) {
-	uniqueIssuers := make(map[string]struct{})
-	uniqueIDs := make(map[string]struct{})
-
-	for _, p := range peers {
-		uniqueIssuers[p.Issuer] = struct{}{}
-		uniqueIDs[p.ID] = struct{}{}
-	}
-
-	issuers := make([]string, 0, len(uniqueIssuers))
-	for k := range uniqueIssuers {
-		issuers = append(issuers, k)
-	}
-
-	ids := make([]string, 0, len(uniqueIDs))
-	for k := range uniqueIDs {
-		ids = append(ids, k)
-	}
-
-	return issuers, ids
-}
-
-func (t *thread) fetchInternalParticipants(ctx context.Context, issuers, subjects []string, domainID int32) ([]string, error) {
-	issLen, subLen := len(issuers), len(subjects)
-	if issLen == 0 || subLen == 0 {
-		return nil, nil // ignore in this case
-	}
-
-	requestSize := max(issLen, subLen)
-
-	response, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Size:     int32(requestSize),
-		Fields:   []string{"id"},
-		IssId:    issuers,
-		Subjects: subjects,
-		DomainId: domainID,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(response.GetContacts()) == 0 {
-		return nil, internalContactsNotFoundErr
-	}
-
-	resultIDs := make([]string, 0, len(response.GetContacts()))
-	for _, contact := range response.GetContacts() {
-		resultIDs = append(resultIDs, contact.Id)
-	}
-
-	return resultIDs, nil
-}
-
-func (t *thread) collectInternalContactsIDs(ctx context.Context, owners, members []shared.Peer, domainID int32) ([]string, []string, error) {
+func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Contact) *gtwthread.Thread {
 	var (
-		ownersIss, ownersSub   = t.groupSubByIssuers(owners)
-		membersIss, membersSub = t.groupSubByIssuers(members)
+		members               = make([]*gtwthread.ThreadMember, 0, len(thr.GetMembers()))
+		findLastMessageSender = thr.LastMsg != nil
+		lastMessageSender     *gtwthread.ThreadMember
+		variables             map[string]*gtwthread.VariableEntry
 	)
-
-	type result struct {
-		ids []string
-		err error
-	}
-
-	var wg sync.WaitGroup
-	ownersResult := make(chan result, 1)
-	membersResult := make(chan result, 1)
-
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		ids, err := t.fetchInternalParticipants(ctx, ownersIss, ownersSub, domainID)
-		select {
-		case ownersResult <- result{ids: ids, err: err}:
-		case <-ctx.Done():
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		ids, err := t.fetchInternalParticipants(ctx, membersIss, membersSub, domainID)
-		select {
-		case membersResult <- result{ids: ids, err: err}:
-		case <-ctx.Done():
-		}
-	}()
-
-	go func() {
-		wg.Wait()
-		close(ownersResult)
-		close(membersResult)
-	}()
-
-	var ownersRes, membersRes result
-	var ownersReceived, membersReceived bool
-
-	for !ownersReceived || !membersReceived {
-		select {
-		case res, ok := <-ownersResult:
-			if ok {
-				ownersRes = res
-				ownersReceived = true
+	for _, toConvert := range thr.GetMembers() {
+		correspondingContact, ok := contactData[toConvert.GetContactId()]
+		if !ok {
+			correspondingContact = &contact.Contact{
+				Id: toConvert.GetContactId(),
 			}
-		case res, ok := <-membersResult:
-			if ok {
-				membersRes = res
-				membersReceived = true
-			}
-		case <-ctx.Done():
-			return nil, nil, ctx.Err()
+		}
+		member := convertToMember(toConvert, correspondingContact)
+		members = append(members, member)
+
+		if findLastMessageSender && toConvert.GetContactId() == thr.LastMsg.GetSenderId() {
+			findLastMessageSender = false
+			lastMessageSender = member
+		}
+	}
+	for k, v := range thr.Variables.Variables {
+		contact := contactData[v.GetSetBy()]
+		variables[k] = &gtwthread.VariableEntry{
+			Value: v.GetValue(),
+			SetBy: convertToContact(contact),
+			SetAt: v.GetSetAt(),
 		}
 	}
 
-	if ownersRes.err != nil && !errors.Is(ownersRes.err, internalContactsNotFoundErr) {
-		return nil, nil, ownersRes.err
+	return &gtwthread.Thread{
+		Id:          thr.GetId(),
+		Subject:     thr.GetSubject(),
+		Kind:        gtwthread.ThreadKind(thr.GetKind()),
+		CreatedAt:   thr.GetCreatedAt(),
+		UpdatedAt:   thr.GetUpdatedAt(),
+		Description: thr.GetDescription(),
+		LastMsg:     convertToMessage(thr.GetLastMsg(), lastMessageSender),
+		Members:     members,
+		Variables: &gtwthread.ThreadVariables{
+			Variables: variables,
+		},
 	}
-	if membersRes.err != nil && !errors.Is(membersRes.err, internalContactsNotFoundErr) {
-		return nil, nil, membersRes.err
+}
+
+func convertToMember(m *threadv1.ThreadMember, contact *contact.Contact) *gtwthread.ThreadMember {
+	return &gtwthread.ThreadMember{
+		Contact: convertToContact(contact),
+		Role:    gtwthread.ThreadRole(m.GetRole()),
+	}
+}
+
+func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMember) *gtwthread.HistoryMessage {
+	if req == nil {
+		return nil
+	}
+	return &gtwthread.HistoryMessage{
+		Id:        req.GetId(),
+		ThreadId:  req.GetThreadId(),
+		CreatedAt: req.GetCreatedAt(),
+		UpdatedAt: req.GetUpdatedAt(),
+		Type:      req.GetType(),
+		Body:      req.GetBody(),
+		Metadata:  req.GetMetadata(),
+		Documents: convertDocuments(req.GetDocuments()),
+		Images:    convertImages(req.GetImages()),
+		Sender:    sender,
+	}
+}
+
+func convertDocuments(reqDocs []*threadv1.Document) []*gtwthread.Document {
+	if len(reqDocs) == 0 {
+		return nil
 	}
 
-	return ownersRes.ids, membersRes.ids, nil
+	docs := make([]*gtwthread.Document, len(reqDocs))
+	for i, d := range reqDocs {
+		docs[i] = &gtwthread.Document{
+			Id:        d.GetId(),
+			MessageId: d.GetMessageId(),
+			FileId:    d.GetFileId(),
+			Name:      d.GetName(),
+			Mime:      d.GetMime(),
+		}
+	}
+	return docs
+}
+
+func convertImages(reqImgs []*threadv1.Image) []*gtwthread.Image {
+	if len(reqImgs) == 0 {
+		return nil
+	}
+
+	imgs := make([]*gtwthread.Image, len(reqImgs))
+	for i, img := range reqImgs {
+		imgs[i] = &gtwthread.Image{
+			Id:        img.GetId(),
+			MessageId: img.GetMessageId(),
+			FileId:    img.GetFileId(),
+			Mime:      img.GetMime(),
+			Width:     img.GetWidth(),
+			Height:    img.GetHeight(),
+		}
+	}
+	return imgs
 }
 
 func convertToThreadProto(request []*gtwthread.VariableEntryRequest) []*threadv1.VariableEntryRequest {
@@ -562,6 +441,16 @@ func convertToThreadProto(request []*gtwthread.VariableEntryRequest) []*threadv1
 		protoRequests[i] = protoReq
 	}
 	return protoRequests
+}
+
+func convertToContact(c *contact.Contact) *gtwthread.Contact {
+	return &gtwthread.Contact{
+		Iss:   c.GetIssId(),
+		Sub:   c.GetSubject(),
+		Type:  c.GetType(),
+		Name:  coalesceString(c.GetName(), c.GetUsername(), NoNameRecipient),
+		IsBot: c.GetIsBot(),
+	}
 }
 
 func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv1.ThreadVariables, domainID int32) (*gtwthread.ThreadVariables, error) {
