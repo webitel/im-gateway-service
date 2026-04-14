@@ -136,6 +136,7 @@ func (c *ThreadConverterImpl) ThreadV1ToThreadDTO(source *v1.Thread) *dto.Thread
 			}
 		}
 		dtoThreadDTO.LastMsg = c.ToHistoryMessageDTO((*source).LastMsg)
+		dtoThreadDTO.Variables = c.pThreadThreadVariablesToPDtoThreadVariablesDTO((*source).Variables)
 		pDtoThreadDTO = &dtoThreadDTO
 	}
 	return pDtoThreadDTO
@@ -179,6 +180,17 @@ func (c *ThreadConverterImpl) ToThreadMemberDTO(source *v1.ThreadMember) *dto.Th
 	}
 	return pDtoThreadMemberDTO
 }
+func (c *ThreadConverterImpl) ToVariableEntryDTO(source *v1.VariableEntry) *dto.VariableEntryDTO {
+	var pDtoVariableEntryDTO *dto.VariableEntryDTO
+	if source != nil {
+		var dtoVariableEntryDTO dto.VariableEntryDTO
+		dtoVariableEntryDTO.Value = mapper.MapStructpbToMapAny((*source).Value)
+		dtoVariableEntryDTO.SetByInternalID = (*source).SetBy
+		dtoVariableEntryDTO.SetAt = (*source).SetAt
+		pDtoVariableEntryDTO = &dtoVariableEntryDTO
+	}
+	return pDtoVariableEntryDTO
+}
 func (c *ThreadConverterImpl) dtoHistoryDocumentToPApiDocument(source dto.HistoryDocument) *v11.Document {
 	var apiDocument v11.Document
 	apiDocument.Id = source.ID
@@ -202,6 +214,29 @@ func (c *ThreadConverterImpl) dtoHistoryImageToPApiImage(source dto.HistoryImage
 	apiImage.CreatedAt = source.CreatedAt
 	apiImage.Url = source.URL
 	return &apiImage
+}
+func (c *ThreadConverterImpl) pApiContactToPApiContact(source *v11.Contact) *v11.Contact {
+	var pApiContact *v11.Contact
+	if source != nil {
+		var apiContact v11.Contact
+		apiContact.Iss = (*source).Iss
+		apiContact.AppId = (*source).AppId
+		apiContact.Type = (*source).Type
+		apiContact.Name = (*source).Name
+		apiContact.Username = (*source).Username
+		if (*source).Metadata != nil {
+			apiContact.Metadata = make(map[string]string, len((*source).Metadata))
+			for key, value := range (*source).Metadata {
+				apiContact.Metadata[key] = value
+			}
+		}
+		apiContact.CreatedAt = (*source).CreatedAt
+		apiContact.UpdatedAt = (*source).UpdatedAt
+		apiContact.Sub = (*source).Sub
+		apiContact.IsBot = (*source).IsBot
+		pApiContact = &apiContact
+	}
+	return pApiContact
 }
 func (c *ThreadConverterImpl) pDtoHistoryMessageToPApiHistoryMessage(source *dto.HistoryMessage) *v11.HistoryMessage {
 	var pApiHistoryMessage *v11.HistoryMessage
@@ -261,9 +296,36 @@ func (c *ThreadConverterImpl) pDtoThreadDTOToPApiThread(source *dto.ThreadDTO) *
 			}
 		}
 		apiThread.LastMsg = c.pDtoHistoryMessageToPApiHistoryMessage((*source).LastMsg)
+		apiThread.Variables = c.pDtoThreadVariablesDTOToPApiThreadVariables((*source).Variables)
 		pApiThread = &apiThread
 	}
 	return pApiThread
+}
+func (c *ThreadConverterImpl) pDtoThreadVariablesDTOToPApiThreadVariables(source *dto.ThreadVariablesDTO) *v11.ThreadVariables {
+	var pApiThreadVariables *v11.ThreadVariables
+	if source != nil {
+		var apiThreadVariables v11.ThreadVariables
+		apiThreadVariables.ThreadId = (*source).ThreadID
+		if (*source).Variables != nil {
+			apiThreadVariables.Variables = make(map[string]*v11.VariableEntry, len((*source).Variables))
+			for key, value := range (*source).Variables {
+				apiThreadVariables.Variables[key] = c.pDtoVariableEntryDTOToPApiVariableEntry(value)
+			}
+		}
+		pApiThreadVariables = &apiThreadVariables
+	}
+	return pApiThreadVariables
+}
+func (c *ThreadConverterImpl) pDtoVariableEntryDTOToPApiVariableEntry(source *dto.VariableEntryDTO) *v11.VariableEntry {
+	var pApiVariableEntry *v11.VariableEntry
+	if source != nil {
+		var apiVariableEntry v11.VariableEntry
+		apiVariableEntry.Value = mapper.MapAnyToStructpb((*source).Value)
+		apiVariableEntry.SetBy = c.pApiContactToPApiContact((*source).SetBy)
+		apiVariableEntry.SetAt = (*source).SetAt
+		pApiVariableEntry = &apiVariableEntry
+	}
+	return pApiVariableEntry
 }
 func (c *ThreadConverterImpl) pThreadDocumentToDtoHistoryDocument(source *v1.Document) dto.HistoryDocument {
 	var dtoHistoryDocument dto.HistoryDocument
@@ -305,4 +367,19 @@ func (c *ThreadConverterImpl) pThreadThreadSettingsToPDtoThreadDirectSettingsDTO
 		pDtoThreadDirectSettingsDTO = &dtoThreadDirectSettingsDTO
 	}
 	return pDtoThreadDirectSettingsDTO
+}
+func (c *ThreadConverterImpl) pThreadThreadVariablesToPDtoThreadVariablesDTO(source *v1.ThreadVariables) *dto.ThreadVariablesDTO {
+	var pDtoThreadVariablesDTO *dto.ThreadVariablesDTO
+	if source != nil {
+		var dtoThreadVariablesDTO dto.ThreadVariablesDTO
+		dtoThreadVariablesDTO.ThreadID = (*source).ThreadId
+		if (*source).Variables != nil {
+			dtoThreadVariablesDTO.Variables = make(map[string]*dto.VariableEntryDTO, len((*source).Variables))
+			for key, value := range (*source).Variables {
+				dtoThreadVariablesDTO.Variables[key] = c.ToVariableEntryDTO(value)
+			}
+		}
+		pDtoThreadVariablesDTO = &dtoThreadVariablesDTO
+	}
+	return pDtoThreadVariablesDTO
 }

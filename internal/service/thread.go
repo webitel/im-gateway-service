@@ -193,6 +193,7 @@ func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRe
 	}
 
 	response, err := t.threadClient.SetVariables(ctx, &threadv1.SetVariablesRequest{
+		MemberId:  identity.GetContactID(),
 		ThreadId:  req.ThreadId,
 		Variables: convertToThreadProto(req.GetVariables()),
 	})
@@ -285,6 +286,7 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 	}
 
 	response, err := t.threadClient.FlushVariables(ctx, &threadv1.FlushVariablesRequest{
+		MemberId: identity.GetContactID(),
 		ThreadId: req.GetThreadId(),
 		Keys:     req.GetKeys(),
 	})
