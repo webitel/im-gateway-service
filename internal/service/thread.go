@@ -328,7 +328,6 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		members               = make([]*gtwthread.ThreadMember, 0, len(thr.GetMembers()))
 		findLastMessageSender = thr.LastMsg != nil
 		lastMessageSender     *gtwthread.ThreadMember
-		variables             map[string]*gtwthread.VariableEntry
 	)
 	for _, toConvert := range thr.GetMembers() {
 		correspondingContact, ok := contactData[toConvert.GetContactId()]
@@ -345,12 +344,17 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 			lastMessageSender = member
 		}
 	}
-	for k, v := range thr.Variables.Variables {
-		contact := contactData[v.GetSetBy()]
-		variables[k] = &gtwthread.VariableEntry{
-			Value: v.GetValue(),
-			SetBy: convertToContact(contact),
-			SetAt: v.GetSetAt(),
+
+	var threadVars map[string]*gtwthread.VariableEntry
+	if thr.Variables != nil {
+		threadVars = make(map[string]*gtwthread.VariableEntry, len(thr.Variables.Variables))
+		for k, v := range thr.Variables.Variables {
+			contact := contactData[v.GetSetBy()]
+			threadVars[k] = &gtwthread.VariableEntry{
+				Value: v.GetValue(),
+				SetBy: convertToContact(contact),
+				SetAt: v.GetSetAt(),
+			}
 		}
 	}
 
@@ -364,7 +368,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		LastMsg:     convertToMessage(thr.GetLastMsg(), lastMessageSender),
 		Members:     members,
 		Variables: &gtwthread.ThreadVariables{
-			Variables: variables,
+			Variables: threadVars,
 		},
 	}
 }
