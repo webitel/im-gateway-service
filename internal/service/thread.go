@@ -374,10 +374,22 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 }
 
 func convertToMember(m *threadv1.ThreadMember, contact *contact.Contact) *gtwthread.ThreadMember {
-	return &gtwthread.ThreadMember{
+	converted := &gtwthread.ThreadMember{
+		Id:      m.GetId(),
 		Contact: convertToContact(contact),
 		Role:    gtwthread.ThreadRole(m.GetRole()),
 	}
+	if m.Permissions != nil {
+		converted.Permissions = &gtwthread.ThreadPermissions{
+			CanSendMessages:             m.Permissions.CanSendMessages,
+			CanAddMembers:               m.Permissions.CanAddMembers,
+			CanRemoveMembers:            m.Permissions.CanRemoveMembers,
+			CanChangeMembersPermissions: m.Permissions.CanChangeMembersPermissions,
+			CanChangeThreadInfo:         m.Permissions.CanChangeThreadInfo,
+		}
+	}
+	return converted
+
 }
 
 func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMember) *gtwthread.HistoryMessage {
