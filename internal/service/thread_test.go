@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"reflect"
+	"slices"
 	"testing"
 
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -142,6 +143,75 @@ func Test_thread_Search(t *testing.T) {
 			}
 			if true {
 				t.Errorf("Search() = %v, want %v", got2, tt.want2)
+			}
+		})
+	}
+}
+
+func Test_thread_collectUniqueContactsFromThread(t *testing.T) {
+	tests := []struct {
+		name    string
+		threads []*threadv1.Thread
+		want    []string
+	}{
+		{
+			name: "collects unique ids from members last message and variables",
+			threads: []*threadv1.Thread{
+				{
+					Members: []*threadv1.ThreadMember{
+						{ContactId: "contact-1"},
+						{ContactId: "contact-2"},
+						{ContactId: "contact-1"},
+					},
+					LastMsg: &threadv1.HistoryMessage{SenderId: "contact-3"},
+					Variables: &threadv1.ThreadVariables{
+						Variables: map[string]*threadv1.VariableEntry{
+							"a": {SetBy: "contact-4"},
+							"b": {SetBy: "contact-2"},
+						},
+					},
+				},
+				{
+					Members: []*threadv1.ThreadMember{
+						{ContactId: "contact-5"},
+					},
+					LastMsg: &threadv1.HistoryMessage{SenderId: "contact-4"},
+				},
+			},
+			want: []string{"contact-1", "contact-2", "contact-3", "contact-4", "contact-5"},
+		},
+		{
+			name: "does not include empty ids",
+			threads: []*threadv1.Thread{
+				{
+					Members: []*threadv1.ThreadMember{
+						{ContactId: ""},
+						{ContactId: "contact-1"},
+					},
+					LastMsg: &threadv1.HistoryMessage{SenderId: ""},
+					Variables: &threadv1.ThreadVariables{
+						Variables: map[string]*threadv1.VariableEntry{
+							"empty":  {SetBy: ""},
+							"valid":  {SetBy: "contact-2"},
+							"repeat": {SetBy: "contact-1"},
+						},
+					},
+				},
+			},
+			want: []string{"contact-1", "contact-2"},
+		},
+	}
+
+	th := &thread{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := th.collectUniqueContactsFromThread(tt.threads)
+
+			slices.Sort(got)
+			slices.Sort(tt.want)
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("collectUniqueContactsFromThread() = %v, want %v", got, tt.want)
 			}
 		})
 	}

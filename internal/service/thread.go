@@ -102,18 +102,18 @@ func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int
 	return target.GetContacts()[0], nil
 }
 
-func (t *thread) fetchContacts(ctx context.Context, ids []string) (map[string]*contact.Contact, error) {
+func (t *thread) fetchContacts(ctx context.Context, ids []string, domainID int32) (map[string]*contact.Contact, error) {
 	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Size:   int32(len(ids)),
-		Ids:    ids,
-		Fields: []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
+		Size:     int32(len(ids)),
+		Ids:      ids,
+		DomainId: domainID,
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	contacts := make(map[string]*contact.Contact)
+	contacts := map[string]*contact.Contact{}
 
 	for _, c := range contactInfo.GetContacts() {
 		contacts[c.GetId()] = c
@@ -156,7 +156,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	uniqueContactIds := t.collectUniqueContactsFromThread(internalThreads.GetItems())
-	contacts, err := t.fetchContacts(ctx, uniqueContactIds)
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
 	if err != nil {
 		log.Error(
 			"failed to fetch internal contact information for enrichment",
@@ -310,12 +310,19 @@ func (t *thread) collectUniqueContactsFromThread(threads []*threadv1.Thread) []s
 		}
 
 		if thr.LastMsg != nil {
-			uniqueMap[thr.LastMsg.GetSenderId()] = struct{}{}
+			senderID := thr.LastMsg.GetSenderId()
+			if senderID != "" {
+				uniqueMap[senderID] = struct{}{}
+			}
 		}
 
 		if thr.Variables != nil {
 			for _, v := range thr.Variables.GetVariables() {
-				uniqueMap[v.GetSetBy()] = struct{}{}
+				setBy := v.GetSetBy()
+				if setBy == "" {
+					continue
+				}
+				uniqueMap[setBy] = struct{}{}
 			}
 		}
 	}
