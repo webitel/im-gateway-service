@@ -105,8 +105,8 @@ func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int
 func (t *thread) fetchContacts(ctx context.Context, ids []string) (map[string]*contact.Contact, error) {
 	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Size:   int32(len(ids)),
-		Fields: []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
 		Ids:    ids,
+		Fields: []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
 	})
 
 	if err != nil {
@@ -156,7 +156,6 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	uniqueContactIds := t.collectUniqueContactsFromThread(internalThreads.GetItems())
-
 	contacts, err := t.fetchContacts(ctx, uniqueContactIds)
 	if err != nil {
 		log.Error(
@@ -168,9 +167,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		return nil, false, err
 	}
 
-	var (
-		res []*gtwthread.Thread
-	)
+	res := []*gtwthread.Thread{}
 	for _, thr := range internalThreads.GetItems() {
 		converted := convertToThread(thr, contacts)
 		res = append(res, converted)
@@ -302,10 +299,13 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 }
 
 func (t *thread) collectUniqueContactsFromThread(threads []*threadv1.Thread) []string {
-	uniqueMap := make(map[string]struct{}, len(threads))
+	uniqueMap := map[string]struct{}{}
 
 	for _, thr := range threads {
 		for _, m := range thr.GetMembers() {
+			if m.GetContactId() == "" {
+				continue
+			}
 			uniqueMap[m.GetContactId()] = struct{}{}
 		}
 
@@ -333,7 +333,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		correspondingContact, ok := contactData[toConvert.GetContactId()]
 		if !ok {
 			correspondingContact = &contact.Contact{
-				Id: toConvert.GetContactId(),
+				Subject: toConvert.GetContactId(),
 			}
 		}
 		member := convertToMember(toConvert, correspondingContact)
@@ -345,16 +345,19 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		}
 	}
 
-	var threadVars map[string]*gtwthread.VariableEntry
+	var threadVars *gtwthread.ThreadVariables
 	if thr.Variables != nil {
-		threadVars = make(map[string]*gtwthread.VariableEntry, len(thr.Variables.Variables))
+		vars := make(map[string]*gtwthread.VariableEntry, len(thr.Variables.Variables))
 		for k, v := range thr.Variables.Variables {
 			contact := contactData[v.GetSetBy()]
-			threadVars[k] = &gtwthread.VariableEntry{
+			vars[k] = &gtwthread.VariableEntry{
 				Value: v.GetValue(),
 				SetBy: convertToContact(contact),
 				SetAt: v.GetSetAt(),
 			}
+		}
+		threadVars = &gtwthread.ThreadVariables{
+			Variables: vars,
 		}
 	}
 
@@ -367,9 +370,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		Description: thr.GetDescription(),
 		LastMsg:     convertToMessage(thr.GetLastMsg(), lastMessageSender),
 		Members:     members,
-		Variables: &gtwthread.ThreadVariables{
-			Variables: threadVars,
-		},
+		Variables:   threadVars,
 	}
 }
 
@@ -461,11 +462,12 @@ func convertToThreadProto(request []*gtwthread.VariableEntryRequest) []*threadv1
 
 func convertToContact(c *contact.Contact) *gtwthread.Contact {
 	return &gtwthread.Contact{
-		Iss:   c.GetIssId(),
-		Sub:   c.GetSubject(),
-		Type:  c.GetType(),
-		Name:  coalesceString(c.GetName(), c.GetUsername(), NoNameRecipient),
-		IsBot: c.GetIsBot(),
+		Iss:      c.GetIssId(),
+		Sub:      c.GetSubject(),
+		Type:     c.GetType(),
+		Name:     coalesceString(c.GetName(), c.GetUsername(), NoNameRecipient),
+		IsBot:    c.GetIsBot(),
+		Username: c.GetUsername(),
 	}
 }
 
