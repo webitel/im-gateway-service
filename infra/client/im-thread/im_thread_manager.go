@@ -61,18 +61,21 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 	return resp, nil
 }
 
-func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberRequest) error {
-
-	err := c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
-		_, err := tmc.AddMember(ctx, req)
+func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberRequest) (*threadv1.AddMemberResponse, error) {
+	var (
+		err  error
+		resp *threadv1.AddMemberResponse
+	)
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.AddMember(ctx, req)
 		return err
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return resp, nil
 }
 
 func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error {

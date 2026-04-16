@@ -40,7 +40,7 @@ func (s *ThreadPermissionService) Get(ctx context.Context, req *gtwperm.GetThrea
 	}
 	initiatorID := identity.GetContactID()
 	internalReq := &imthread.GetThreadPermissionsRequest{
-		RequestInitiatorId: &initiatorID,
+		InitiatorContactId: &initiatorID,
 		MemberId:           &req.MemberId,
 		Size:               1,
 	}
@@ -73,7 +73,6 @@ func (s *ThreadPermissionService) Get(ctx context.Context, req *gtwperm.GetThrea
 		}
 		permissions = append(permissions, &gtwperm.ThreadPermissions{
 			Id:                          perm.Id,
-			ThreadId:                    perm.ThreadId,
 			MemberId:                    perm.MemberId,
 			CreatedAt:                   perm.CreatedAt,
 			UpdatedAt:                   perm.UpdatedAt,

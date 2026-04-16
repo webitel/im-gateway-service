@@ -37,36 +37,43 @@ type thread struct {
 	contactClient *imcontact.Client
 }
 
-func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error {
+func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error) {
 	if req == nil {
-		return errors.New("request is nil")
+		return nil, errors.New("request is nil")
 	}
 	if req.GetContact() == nil {
-		return errors.New("new member is required")
+		return nil, errors.New("new member is required")
 	}
 	if req.GetThreadId() == "" {
-		return errors.New("thread id is required")
+		return nil, errors.New("thread id is required")
 	}
 	if req.GetRole() == gtwthread.ThreadRole_ROLE_UNSPECIFIED {
-		return errors.New("role is required")
+		return nil, errors.New("role is required")
 	}
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
-		return auth.IdentityNotFoundErr
+		return nil, auth.IdentityNotFoundErr
 	}
 	target, err := t.fetchContact(ctx, req.GetContact().GetSub(), req.GetContact().GetIss(), int32(identity.GetDomainID()))
 	if err != nil {
-		return err
+		return nil, err
 	}
-
+	initiatorContactId := identity.GetContactID()
 	addMemberRequest := &threadv1.AddMemberRequest{
 		ThreadId:           req.GetThreadId(),
 		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.Role),
-		InitiatorContactId: identity.GetContactID(),
+		InitiatorContactId: &initiatorContactId,
 	}
 
-	return t.threadClient.AddMember(ctx, addMemberRequest)
+	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gtwthread.AddMemberResponse{Member: &gtwthread.ThreadMember{
+		Id: response.GetMember().GetId(),
+	}}, nil
 }
 
 func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error {
@@ -80,9 +87,10 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
+	initiatorContactId := identity.GetContactID()
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
 		TargetMemberId:     req.GetMemberId(),
-		InitiatorContactId: identity.GetContactID(),
+		InitiatorContactId: &initiatorContactId,
 	}
 	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
 }
