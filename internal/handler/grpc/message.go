@@ -16,19 +16,19 @@ var (
 type MessageService struct {
 	impb.UnimplementedMessageServer
 
-	logger   *slog.Logger
-	messager service.Messenger
+	logger    *slog.Logger
+	messenger service.Messenger
 }
 
 func NewMessageService(logger *slog.Logger, messager service.Messenger) *MessageService {
 	return &MessageService{
-		logger:   logger,
-		messager: messager,
+		logger:    logger,
+		messenger: messager,
 	}
 }
 
 func (m *MessageService) SendText(ctx context.Context, in *impb.SendTextRequest) (*impb.SendTextResponse, error) {
-	out, err := m.messager.SendText(ctx, mapper.MapToSendTextRequest(in))
+	out, err := m.messenger.SendText(ctx, mapper.MapToSendTextRequest(in))
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (m *MessageService) SendText(ctx context.Context, in *impb.SendTextRequest)
 }
 
 func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageRequest) (*impb.SendImageResponse, error) {
-	out, err := m.messager.SendImage(ctx, mapper.MapToSendImageRequest(in))
+	out, err := m.messenger.SendImage(ctx, mapper.MapToSendImageRequest(in))
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageReques
 }
 
 func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
-	out, err := m.messager.SendDocument(ctx, mapper.MapToSendDocumentRequest(in))
+	out, err := m.messenger.SendDocument(ctx, mapper.MapToSendDocumentRequest(in))
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocument
 }
 
 func (m *MessageService) Read(ctx context.Context, in *impb.ReadMessageRequest) (*impb.ReadMessageResponse, error) {
-	err := m.messager.Read(ctx, mapper.MapToReadMessageRequest(in))
+	err := m.messenger.Read(ctx, mapper.MapToReadMessageRequest(in))
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (m *MessageService) Read(ctx context.Context, in *impb.ReadMessageRequest) 
 }
 
 func (m *MessageService) SendContact(ctx context.Context, in *impb.SendContactRequest) (*impb.SendMessageResponse, error) {
-	out, err := m.messager.SendContact(ctx, in)
+	out, err := m.messenger.SendContact(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *impb.SendContactRe
 }
 
 func (m *MessageService) SendInteractive(ctx context.Context, in *impb.SendInteractiveMessageRequest) (*impb.SendMessageResponse, error) {
-	out, err := m.messager.SendInteractive(ctx, in)
+	out, err := m.messenger.SendInteractive(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *impb.SendInter
 }
 
 func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *impb.InteractiveCallbackRequest) (*impb.InteractiveCallbackResponse, error) {
-	out, err := m.messager.SendInteractiveCallback(ctx, in)
+	out, err := m.messenger.SendInteractiveCallback(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -90,10 +90,19 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *impb.I
 }
 
 func (m *MessageService) SendLocation(ctx context.Context, in *impb.SendLocationRequest) (*impb.SendMessageResponse, error) {
-	out, err := m.messager.SendLocation(ctx, in)
+	out, err := m.messenger.SendLocation(ctx, in)
 	if err != nil {
 		return nil, err
 	}
 
 	return out, nil
+}
+
+func (m *MessageService) SendSystemMessage(ctx context.Context, in *impb.SendSystemMessageRequest) (*impb.SendMessageResponse, error) {
+	out, err := m.messenger.SendSystemMessage(ctx, mapper.MapPbToSystemMessageRequest(in))
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToSendSystemMessageResponse(out), nil
 }

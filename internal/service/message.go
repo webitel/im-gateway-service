@@ -35,6 +35,7 @@ type Messenger interface {
 	SendInteractive(ctx context.Context, in *api.SendInteractiveMessageRequest) (*api.SendMessageResponse, error)
 	SendInteractiveCallback(ctx context.Context, in *api.InteractiveCallbackRequest) (*api.InteractiveCallbackResponse, error)
 	SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error)
+	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
 }
 
 type MessageService struct {
@@ -294,6 +295,41 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	}
 
 	return &dto.SendDocumentResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
+}
+
+func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := m.threader.SendSystemMessage(ctx, &threadv1.SendSystemMessageRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		To:       to,
+		Type:     in.Type,
+		Body:     in.Body,
+		Metadata: in.Metadata,
+		SendId:   in.SendID,
+		DomainId: int32(identity.GetDomainID()),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.SendSystemMessageResponse{
+		To: in.To,
+		ID: m.parseUUID(resp.GetId()),
+	}, nil
 }
 
 // Read implements [Messenger].

@@ -22,7 +22,7 @@ var (
 
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
-	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) error
+	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
 	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
