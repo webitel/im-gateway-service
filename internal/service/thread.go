@@ -16,10 +16,6 @@ import (
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
-var (
-	internalContactsNotFoundErr = errors.New("internal provider return no records")
-)
-
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)

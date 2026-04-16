@@ -44,14 +44,15 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberRequest) (*impb.AddMemberResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 
-	resp, err := s.threadManager.AddMember(ctx, req)
+	member, err := s.threadManager.AddMember(ctx, req)
 	if err != nil {
 		log.Error("failed to add member to thread", slog.Any("err", err))
 		return nil, err
 	}
 
-	return resp, nil
+	response := &impb.AddMemberResponse{Member: member.Member}
 
+	return response, nil
 }
 
 func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMemberRequest) (*impb.RemoveMemberResponse, error) {
