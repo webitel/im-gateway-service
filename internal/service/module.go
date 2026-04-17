@@ -43,5 +43,9 @@ var Module = fx.Module(
 			NewThread,
 			fx.As(new(ThreadManager)),
 		),
+		fx.Annotate(
+			NewThreadPermissionService,
+			fx.As(new(ThreadPermissioner)),
+		),
 	),
 )

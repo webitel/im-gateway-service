@@ -26,7 +26,7 @@ type ThreadPermissionClient struct {
 }
 
 func NewThreadPermissionClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*ThreadPermissionClient, error) {
-	factory := func(conn *grpc.ClientConn) threadv1.ThreadPermissionManagementClient{
+	factory := func(conn *grpc.ClientConn) threadv1.ThreadPermissionManagementClient {
 		return threadv1.NewThreadPermissionManagementClient(conn)
 	}
 
@@ -61,4 +61,12 @@ func (c *ThreadPermissionClient) UpdateThreadPermissions(ctx context.Context, in
 	})
 
 	return resp, err
+}
+
+func (c *ThreadPermissionClient) Close() error {
+	if c.rpc != nil {
+		return c.rpc.Close()
+	}
+
+	return nil
 }

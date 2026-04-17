@@ -14,7 +14,7 @@ var Module = fx.Module(
 	"webitel_clients",
 
 	// [CONSTRUCTOR] Provides the resilient contact client
-	fx.Provide(imthread.New, imthread.NewMessageHistoryClient, imthread.NewThreadClient),
+	fx.Provide(imthread.New, imthread.NewMessageHistoryClient, imthread.NewThreadClient, imthread.NewThreadPermissionClient),
 	fx.Provide(imauth.New),
 	fx.Provide(imcontact.New),
 	fx.Provide(storage.New),
@@ -63,6 +63,13 @@ var Module = fx.Module(
 	}),
 
 	fx.Invoke(func(lc fx.Lifecycle, client *storage.Client) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return client.Close()
+			},
+		})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadPermissionClient) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				return client.Close()
