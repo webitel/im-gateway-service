@@ -3,13 +3,13 @@ module github.com/webitel/im-gateway-service
 go 1.25.8
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1
 	buf.build/go/protovalidate v1.1.3
 	github.com/ThreeDotsLabs/watermill v1.5.1
 	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.28.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0
 	github.com/sony/gobreaker v1.0.0
 	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
@@ -26,7 +26,7 @@ require (
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.uber.org/fx v1.24.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20260406210006-6f92a3bedf2d
+	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478
 	google.golang.org/grpc v1.80.0
 )
 
@@ -98,7 +98,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
+	golang.org/x/text v0.36.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 	google.golang.org/protobuf v1.36.11
 )
