@@ -13,11 +13,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-// [GENERIC_INTERFACE_GUARD] Ensures Client matches the generated gRPC client interface.
-var (
-	_ threadv1.MessageClient = (*Client)(nil)
-)
-
 type ThreadPermissionClient struct {
 	logger *slog.Logger
 	// [GENERIC_RPC] Underlying go-kit RPC client using the generated MessageClient stub
