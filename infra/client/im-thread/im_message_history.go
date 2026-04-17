@@ -59,7 +59,7 @@ func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryP
 // Returns:
 //   - *dto.SearchMessageHistoryResponse: search result
 //   - error: any error encountered during the search operation
-func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []string, error) {
+func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
 	log := c.logger.With(
 		slog.Int("domain_id", int(searchQuery.DomainID)),
 		slog.Uint64("size", uint64(searchQuery.Size)),
@@ -70,7 +70,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	var cursor *threadv1.HistoryMessageCursorRequest
 	if searchQuery.Cursor != nil {
 		cursor = &threadv1.HistoryMessageCursorRequest{
-			Id:        searchQuery.Cursor.ID,
+			Id:     searchQuery.Cursor.ID,
 			Before: searchQuery.Cursor.Before,
 		}
 	}
@@ -230,7 +230,7 @@ func mapCursor(c *threadv1.HistoryMessageCursorResponse) *dto.HistoryMessageCurs
 	}
 
 	return &dto.HistoryMessageCursor{
-		ID:        c.Id,
+		ID: c.Id,
 	}
 }
 

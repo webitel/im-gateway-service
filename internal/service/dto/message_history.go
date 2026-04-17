@@ -71,19 +71,23 @@ type SearchMessageHistoryResponse struct {
 }
 
 type MessageSender struct {
-	Sub   string `json:"subject"`
-	Iss   string `json:"issuer"`
-	Type  string `json:"type"`
-	Name  string `json:"user_name"`
-	IsBot bool   `json:"is_bot"`
+	Sub      string `json:"subject"`
+	Iss      string `json:"issuer"`
+	Type     string `json:"type"`
+	Name     string `json:"user_name"`
+	IsBot    bool   `json:"is_bot"`
+	MemberID string `json:"member_id"`
+	Role     int    `json:"role"`
+	Username string `json:"username"`
 }
 
-func NewMessageSender(sub, iss, senderType, userName string, isBot bool) *MessageSender {
+func NewMessageSender(sub, iss, senderType, name, username string, isBot bool) *MessageSender {
 	return &MessageSender{
-		Sub:   sub,
-		Iss:   iss,
-		Type:  senderType,
-		Name:  userName,
-		IsBot: isBot,
+		Sub:      sub,
+		Iss:      iss,
+		Type:     senderType,
+		Name:     name,
+		IsBot:    isBot,
+		Username: username,
 	}
 }
