@@ -47,5 +47,9 @@ var Module = fx.Module(
 			NewThreadPermissionService,
 			fx.As(new(ThreadPermissioner)),
 		),
+		fx.Annotate(
+			NewContactSettingsService,
+			fx.As(new(ContactSettingsManager)),
+		),
 	),
 )

@@ -29,9 +29,9 @@ const (
 //
 // ThreadPermissionService defines the gRPC service for managing permissions for thread members.
 type ThreadPermissionClient interface {
-	// Get returns all permissions for the specified thread.
+	// Get returns all permissions for the specified thread. Optional filter by member_id to get permissions for a specific member.
 	Get(ctx context.Context, in *GetThreadPermissionsRequest, opts ...grpc.CallOption) (*GetThreadPermissionsResponse, error)
-	// Update updates permissions for a specific member in the thread.
+	// Update updates permissions for a specific member in the thread. The request must include the thread_id and member_id, along with the permissions to update.
 	Update(ctx context.Context, in *UpdateThreadPermissionsRequest, opts ...grpc.CallOption) (*UpdateThreadPermissionsResponse, error)
 }
 
@@ -69,9 +69,9 @@ func (c *threadPermissionClient) Update(ctx context.Context, in *UpdateThreadPer
 //
 // ThreadPermissionService defines the gRPC service for managing permissions for thread members.
 type ThreadPermissionServer interface {
-	// Get returns all permissions for the specified thread.
+	// Get returns all permissions for the specified thread. Optional filter by member_id to get permissions for a specific member.
 	Get(context.Context, *GetThreadPermissionsRequest) (*GetThreadPermissionsResponse, error)
-	// Update updates permissions for a specific member in the thread.
+	// Update updates permissions for a specific member in the thread. The request must include the thread_id and member_id, along with the permissions to update.
 	Update(context.Context, *UpdateThreadPermissionsRequest) (*UpdateThreadPermissionsResponse, error)
 	mustEmbedUnimplementedThreadPermissionServer()
 }

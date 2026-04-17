@@ -24,7 +24,7 @@ type Client struct {
 	tls *infratls.Config
 }
 
-func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
+func NewContactClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
 	// [FACTORY] Required by go-kit to instantiate the gRPC stub
 	factory := func(conn *grpc.ClientConn) contactv1.ContactsClient {
 		return contactv1.NewContactsClient(conn)
@@ -121,7 +121,6 @@ func (c *Client) PatchContact(ctx context.Context, req *contactv1.PatchContactRe
 	return resp, err
 }
 
-// Close gracefully shuts down the underlying gRPC connection pool
 func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()

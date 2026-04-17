@@ -14,9 +14,14 @@ var Module = fx.Module(
 	"webitel_clients",
 
 	// [CONSTRUCTOR] Provides the resilient contact client
-	fx.Provide(imthread.New, imthread.NewMessageHistoryClient, imthread.NewThreadClient, imthread.NewThreadPermissionClient),
+	fx.Provide(imthread.New,
+		imthread.NewMessageHistoryClient,
+		imthread.NewThreadClient,
+		imthread.NewThreadPermissionClient,
+	),
 	fx.Provide(imauth.New),
-	fx.Provide(imcontact.New),
+	fx.Provide(imcontact.NewContactClient),
+	fx.Provide(imcontact.NewPrivacyClient),
 	fx.Provide(storage.New),
 
 	// [LIFECYCLE] Ensures the gRPC connection pool is closed gracefully on app shutdown
