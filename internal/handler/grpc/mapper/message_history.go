@@ -61,7 +61,7 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			Body:      m.Body,
 			Metadata:  md,
 			CreatedAt: m.CreatedAt,
-			UpdatedAt: m.UpdatedAt,
+			EditedAt:  m.UpdatedAt,
 			Documents: toProtoDocuments(m.Documents),
 			Images:    toProtoImages(m.Images),
 		}
