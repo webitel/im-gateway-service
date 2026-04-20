@@ -412,7 +412,7 @@ func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMemb
 		Id:        req.GetId(),
 		ThreadId:  req.GetThreadId(),
 		CreatedAt: req.GetCreatedAt(),
-		UpdatedAt: req.GetUpdatedAt(),
+		EditedAt:  req.GetUpdatedAt(),
 		Type:      req.GetType(),
 		Body:      req.GetBody(),
 		Metadata:  req.GetMetadata(),

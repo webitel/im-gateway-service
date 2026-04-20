@@ -10,9 +10,7 @@ import (
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 )
 
 const ServiceName string = "im-thread-service"
@@ -164,11 +162,6 @@ func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts
 	})
 
 	return resp, err
-}
-
-// SendSystemMessage implements thread.MessageClient.
-func (c *Client) SendSystemMessage(ctx context.Context, in *threadv1.SendSystemMessageRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
-	return nil, errors.New("unimplemented", errors.WithCode(codes.Unimplemented))
 }
 
 // Close gracefully shuts down the underlying gRPC connection pool.
