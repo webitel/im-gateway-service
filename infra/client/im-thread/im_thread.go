@@ -137,6 +137,20 @@ func (c *Client) SendImage(ctx context.Context, in *threadv1.SendImageRequest, o
 	return resp, err
 }
 
+func (c *Client) SendSystemMessage(ctx context.Context, in *threadv1.SendSystemMessageRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
+	var resp *threadv1.SendMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.SEND_SYSTEM_MESSAGE", slog.Any("req", in))
+
+		var err error
+		resp, err = api.SendSystemMessage(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
 // Read implements [thread.MessageClient].
 func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts ...grpc.CallOption) (*threadv1.ReadMessageResponse, error) {
 	var resp *threadv1.ReadMessageResponse
