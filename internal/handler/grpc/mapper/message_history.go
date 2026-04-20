@@ -3,7 +3,6 @@ package mapper
 import (
 	pb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
@@ -116,22 +115,6 @@ func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursorResponse
 	}
 }
 
-// toProtoMetadata maps a map of string keys to interface values to a map of string keys to Any values.
-func toAnyMap(src map[string]any) (map[string]*anypb.Any, error) {
-	dst := make(map[string]*anypb.Any, len(src))
-
-	for k, v := range src {
-		spb, _ := structpb.NewValue(v)
-		a, err := anypb.New(spb)
-		if err != nil {
-			return nil, err
-		}
-		dst[k] = a
-	}
-
-	return dst, nil
-}
-
 // toProtoMessageSender maps a MessageSender to a MessageSender.
 func toProtoMessageSender(ms *dto.MessageSender) *pb.ThreadMember {
 	if ms == nil {
@@ -140,24 +123,14 @@ func toProtoMessageSender(ms *dto.MessageSender) *pb.ThreadMember {
 
 	return &pb.ThreadMember{
 		Contact: &pb.Contact{
-			Sub:   ms.Sub,
-			Iss:   ms.Iss,
-			Type:  ms.Type,
-			Name:  ms.Name,
-			IsBot: ms.IsBot,
+			Sub:      ms.Sub,
+			Iss:      ms.Iss,
+			Type:     ms.Type,
+			Name:     ms.Name,
+			IsBot:    ms.IsBot,
+			Username: ms.Username,
 		},
+		Id:   ms.MemberID,
+		Role: pb.ThreadRole(ms.Role),
 	}
-}
-
-// toProtoMessageSenderList maps a slice of MessageSendDTOs to a slice of MessageSenders.
-func toProtoMessageSenderList(msList []*dto.MessageSender) []*pb.ThreadMember {
-	var (
-		pbMessageSenderList = make([]*pb.ThreadMember, 0, len(msList))
-	)
-
-	for _, ms := range msList {
-		pbMessageSenderList = append(pbMessageSenderList, toProtoMessageSender(ms))
-	}
-
-	return pbMessageSenderList
 }
