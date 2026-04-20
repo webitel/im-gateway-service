@@ -26,8 +26,12 @@ const (
 // ContactSettingsManagementClient is the client API for ContactSettingsManagement service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+//
+// ContactSettingsManagement service provides access to contact settings.
 type ContactSettingsManagementClient interface {
+	// Get retrieves the contact settings for the request initiator.
 	Get(ctx context.Context, in *GetContactSettingsRequest, opts ...grpc.CallOption) (*GetContactSettingsResponse, error)
+	// Update modifies the contact settings for the request initiator. Only the fields provided in the request will be updated; other existing settings will remain unchanged.
 	Update(ctx context.Context, in *UpdateContactSettingsRequest, opts ...grpc.CallOption) (*UpdateContactSettingsResponse, error)
 }
 
@@ -62,8 +66,12 @@ func (c *contactSettingsManagementClient) Update(ctx context.Context, in *Update
 // ContactSettingsManagementServer is the server API for ContactSettingsManagement service.
 // All implementations must embed UnimplementedContactSettingsManagementServer
 // for forward compatibility.
+//
+// ContactSettingsManagement service provides access to contact settings.
 type ContactSettingsManagementServer interface {
+	// Get retrieves the contact settings for the request initiator.
 	Get(context.Context, *GetContactSettingsRequest) (*GetContactSettingsResponse, error)
+	// Update modifies the contact settings for the request initiator. Only the fields provided in the request will be updated; other existing settings will remain unchanged.
 	Update(context.Context, *UpdateContactSettingsRequest) (*UpdateContactSettingsResponse, error)
 	mustEmbedUnimplementedContactSettingsManagementServer()
 }
