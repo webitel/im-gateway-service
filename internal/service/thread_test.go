@@ -72,7 +72,7 @@ func Test_convertToThread(t *testing.T) {
 			want: &gtwthread.Thread{
 				Id:          "thread1",
 				Subject:     "thread1",
-				Kind:        gtwthread.ThreadKind_DIRECT,
+				Type:        gtwthread.ThreadKind_DIRECT,
 				Description: "This is thread one",
 				Members: []*gtwthread.ThreadMember{
 					{

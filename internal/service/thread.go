@@ -375,7 +375,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 	return &gtwthread.Thread{
 		Id:          thr.GetId(),
 		Subject:     thr.GetSubject(),
-		Kind:        gtwthread.ThreadKind(thr.GetKind()),
+		Type:        gtwthread.ThreadKind(thr.GetKind()),
 		CreatedAt:   thr.GetCreatedAt(),
 		UpdatedAt:   thr.GetUpdatedAt(),
 		Description: thr.GetDescription(),
