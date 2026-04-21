@@ -13,19 +13,18 @@ func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentReq
 	}
 
 	var docReq dto.DocumentRequest
-	if pbDoc := in.GetDocument(); pbDoc != nil {
-		docReq.Body = pbDoc.GetBody()
-		docReq.Documents = make([]*dto.Document, 0, len(pbDoc.GetDocuments()))
 
-		for _, doc := range pbDoc.GetDocuments() {
-			id, _ := strconv.ParseInt(doc.GetId(), 10, 64)
-			docReq.Documents = append(docReq.Documents, &dto.Document{
-				ID:       id,
-				Name:     doc.GetFileName(),
-				MimeType: doc.GetMimeType(),
-				Size:     doc.GetSizeBytes(),
-			})
-		}
+	docReq.Body = in.GetBody()
+	docReq.Documents = make([]*dto.Document, 0, len(in.GetDocuments()))
+
+	for _, doc := range in.GetDocuments() {
+		id, _ := strconv.ParseInt(doc.GetId(), 10, 64)
+		docReq.Documents = append(docReq.Documents, &dto.Document{
+			ID:       id,
+			Name:     doc.GetFileName(),
+			MimeType: doc.GetMimeType(),
+			Size:     doc.GetSizeBytes(),
+		})
 	}
 
 	return &dto.SendDocumentRequest{

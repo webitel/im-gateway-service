@@ -251,10 +251,8 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 		To:       to,
 		DomainId: identity.GetDomainID(),
 		SendId:   in.SendID,
-		Image: &threadv1.ImageRequest{
-			Body:   in.Image.Body,
-			Images: m.mapImages(in.Image.Images),
-		},
+		Body:     in.Image.Body,
+		Images:   m.mapImages(in.Image.Images),
 	})
 	if err != nil {
 		return nil, err
@@ -282,13 +280,11 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 				Name: identity.GetName(),
 			},
 		},
-		To:       to,
-		DomainId: identity.GetDomainID(),
-		SendId:   in.SendID,
-		Document: &threadv1.DocumentRequest{
-			Body:      in.Document.Body,
-			Documents: m.mapDocuments(in.Document.Documents),
-		},
+		To:        to,
+		DomainId:  identity.GetDomainID(),
+		SendId:    in.SendID,
+		Body:      in.Document.Body,
+		Documents: m.mapDocuments(in.Document.Documents),
 	})
 	if err != nil {
 		return nil, err
