@@ -134,6 +134,18 @@ func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contact
 	return o
 }
 
+func gtwThreadKindToInternal(kinds []gtwthread.ThreadKind) []threadv1.ThreadKind {
+	if len(kinds) == 0 {
+		return nil
+	}
+
+	internal := make([]threadv1.ThreadKind, 0, len(kinds))
+	for _, kind := range kinds {
+		internal = append(internal, (threadv1.ThreadKind)(kind))
+	}
+	return internal
+}
+
 func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error) {
 	log := t.logger.With(slog.String("op", "thread.Search"))
 
@@ -152,6 +164,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		Size:      searchQuery.Size,
 		Sort:      searchQuery.Sort,
 		Page:      searchQuery.Page,
+		Kinds:     gtwThreadKindToInternal(searchQuery.Kinds),
 	})
 
 	if err != nil {
