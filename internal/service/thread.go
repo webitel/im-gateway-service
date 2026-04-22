@@ -164,7 +164,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		Size:      searchQuery.Size,
 		Sort:      searchQuery.Sort,
 		Page:      searchQuery.Page,
-		Kinds:     gtwThreadKindToInternal(searchQuery.Kinds),
+		Kinds:     gtwThreadKindToInternal(searchQuery.Types),
 	})
 
 	if err != nil {
