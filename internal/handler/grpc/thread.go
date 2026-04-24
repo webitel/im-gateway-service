@@ -41,6 +41,21 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 	}, nil
 }
 
+func (s *ThreadService) SearchLeft(ctx context.Context, req *impb.SearchLeftRequest) (*impb.SearchLeftResponse, error) {
+	log := s.logger.With(slog.String("op", "ListLeftChats"))
+
+	result, next, err := s.threadManager.SearchLeft(ctx, req)
+	if err != nil {
+		log.Error("list left chats", slog.Any("err", err))
+		return nil, err
+	}
+
+	return &impb.SearchLeftResponse{
+		Items: result,
+		Next:  next,
+	}, nil
+}
+
 func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberRequest) (*impb.AddMemberResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 

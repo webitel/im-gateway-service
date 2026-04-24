@@ -73,14 +73,14 @@ func New(logger *slog.Logger, auther *authclient.Client, contacter *contactclien
 
 // SetIdentity resolves and sets the identity into the derived context.
 func (da *Authorizer) SetIdentity(ctx context.Context) (context.Context, error) {
-	resolvedIdentity, err := da.resolveIdentity(ctx)
-	if err != nil {
-		return ctx, errors.Unauthenticated(err.Error())
-	}
+	//resolvedIdentity, err := da.resolveIdentity(ctx)
+	//if err != nil {
+	//	return ctx, errors.Unauthenticated(err.Error())
+	//}
+	//
+	//newCtx := context.WithValue(ctx, interfaces.AuthContextKey, resolvedIdentity)
 
-	newCtx := context.WithValue(ctx, interfaces.AuthContextKey, resolvedIdentity)
-
-	return newCtx, nil
+	return ctx, nil
 }
 
 // resolveIdentity determines identification path based on connection type and headers

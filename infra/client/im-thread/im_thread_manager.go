@@ -61,6 +61,29 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 	return resp, nil
 }
 
+func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftRequest) (*threadv1.SearchLeftResponse, error) {
+	log := c.logger.With(
+		slog.Any("domain_id", req.DomainId),
+		slog.Any("member_id", req.MemberId),
+	)
+
+	var (
+		err  error
+		resp *threadv1.SearchLeftResponse
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.SearchLeft(ctx, req)
+		return err
+	})
+	if err != nil {
+		log.Error("failed to fetch thread information from provider", slog.Any("error", err))
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberRequest) (*threadv1.AddMemberResponse, error) {
 	var (
 		err  error
