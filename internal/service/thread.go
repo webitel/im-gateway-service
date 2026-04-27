@@ -18,6 +18,7 @@ import (
 
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
+	Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
@@ -191,6 +192,35 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	return res, internalThreads.Next, nil
+}
+
+func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error) {
+	log := t.logger.With(slog.String("op", "thread.Get"))
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	internalThread, err := t.threadClient.Get(ctx, &threadv1.GetThreadRequest{
+		Id:       req.GetId(),
+		DomainId: int32(identity.GetDomainID()),
+		Fields:   req.GetFields(),
+	})
+	if err != nil {
+		log.Error("failed to fetch internal thread", slog.Any("error", err))
+		return nil, err
+	}
+
+	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalThread})
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
+	if err != nil {
+		log.Error("failed to fetch contact information for enrichment", slog.Any("error", err))
+		return nil, err
+	}
+
+	return convertToThread(internalThread, contacts), nil
 }
 
 func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error) {

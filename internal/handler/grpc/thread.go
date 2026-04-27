@@ -41,6 +41,18 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 	}, nil
 }
 
+func (s *ThreadService) Get(ctx context.Context, req *impb.GetThreadRequest) (*impb.Thread, error) {
+	log := s.logger.With(slog.String("op", "ThreadService.Get"))
+
+	thread, err := s.threadManager.Get(ctx, req)
+	if err != nil {
+		log.Error("failed to fetch thread from provider", slog.Any("err", err))
+		return nil, err
+	}
+
+	return thread, nil
+}
+
 func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberRequest) (*impb.AddMemberResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 
