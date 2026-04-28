@@ -22,6 +22,7 @@ const (
 	ThreadManagement_Search_FullMethodName          = "/webitel.im.api.gateway.v1.ThreadManagement/Search"
 	ThreadManagement_AddMember_FullMethodName       = "/webitel.im.api.gateway.v1.ThreadManagement/AddMember"
 	ThreadManagement_RemoveMember_FullMethodName    = "/webitel.im.api.gateway.v1.ThreadManagement/RemoveMember"
+	ThreadManagement_Transfer_FullMethodName        = "/webitel.im.api.gateway.v1.ThreadManagement/Transfer"
 	ThreadManagement_SetVariables_FullMethodName    = "/webitel.im.api.gateway.v1.ThreadManagement/SetVariables"
 	ThreadManagement_SearchVariables_FullMethodName = "/webitel.im.api.gateway.v1.ThreadManagement/SearchVariables"
 	ThreadManagement_LocateVariables_FullMethodName = "/webitel.im.api.gateway.v1.ThreadManagement/LocateVariables"
@@ -41,6 +42,9 @@ type ThreadManagementClient interface {
 	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
 	// Remove member from the thread.
 	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
+	// Transfer unites add member and remove member.
+	// It adds a new member to the thread and removes the initiator from the thread.
+	Transfer(ctx context.Context, in *TransferRequest, opts ...grpc.CallOption) (*TransferResponse, error)
 	// Sets or updates variables for a specific thread.
 	// Existing variables with the same keys will be overwritten if were setted by the caller.
 	// New variables will be created if they do not exist.
@@ -88,6 +92,16 @@ func (c *threadManagementClient) RemoveMember(ctx context.Context, in *RemoveMem
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RemoveMemberResponse)
 	err := c.cc.Invoke(ctx, ThreadManagement_RemoveMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *threadManagementClient) Transfer(ctx context.Context, in *TransferRequest, opts ...grpc.CallOption) (*TransferResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TransferResponse)
+	err := c.cc.Invoke(ctx, ThreadManagement_Transfer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +161,9 @@ type ThreadManagementServer interface {
 	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
 	// Remove member from the thread.
 	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
+	// Transfer unites add member and remove member.
+	// It adds a new member to the thread and removes the initiator from the thread.
+	Transfer(context.Context, *TransferRequest) (*TransferResponse, error)
 	// Sets or updates variables for a specific thread.
 	// Existing variables with the same keys will be overwritten if were setted by the caller.
 	// New variables will be created if they do not exist.
@@ -178,6 +195,9 @@ func (UnimplementedThreadManagementServer) AddMember(context.Context, *AddMember
 }
 func (UnimplementedThreadManagementServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveMember not implemented")
+}
+func (UnimplementedThreadManagementServer) Transfer(context.Context, *TransferRequest) (*TransferResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Transfer not implemented")
 }
 func (UnimplementedThreadManagementServer) SetVariables(context.Context, *SetVariablesRequest) (*ThreadVariables, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetVariables not implemented")
@@ -262,6 +282,24 @@ func _ThreadManagement_RemoveMember_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ThreadManagementServer).RemoveMember(ctx, req.(*RemoveMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ThreadManagement_Transfer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ThreadManagementServer).Transfer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ThreadManagement_Transfer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ThreadManagementServer).Transfer(ctx, req.(*TransferRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -356,6 +394,10 @@ var ThreadManagement_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveMember",
 			Handler:    _ThreadManagement_RemoveMember_Handler,
+		},
+		{
+			MethodName: "Transfer",
+			Handler:    _ThreadManagement_Transfer_Handler,
 		},
 		{
 			MethodName: "SetVariables",

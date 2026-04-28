@@ -92,6 +92,23 @@ func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMem
 	return nil
 }
 
+func (c *ThreadClient) Transfer(ctx context.Context, req *threadv1.TransferRequest) (*threadv1.TransferResponse, error) {
+	var (
+		err  error
+		resp *threadv1.TransferResponse
+	)
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.Transfer(ctx, req)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (c *ThreadClient) SetVariables(ctx context.Context, req *threadv1.SetVariablesRequest) (*threadv1.ThreadVariables, error) {
 	var (
 		err  error

@@ -19,6 +19,7 @@ import (
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
+	Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error)
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
 	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
@@ -68,6 +69,41 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	}
 
 	return &gtwthread.AddMemberResponse{Member: &gtwthread.ThreadMember{
+		Id: response.GetMember().GetId(),
+	}}, nil
+}
+
+func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error) {
+	if req == nil {
+		return nil, errors.New("request is nil")
+	}
+	if req.GetNewMemberContactId() == "" {
+		return nil, errors.New("new member contact id is required")
+	}
+	if req.GetThreadId() == "" {
+		return nil, errors.New("thread id is required")
+	}
+	if req.GetRole() == gtwthread.ThreadRole_ROLE_UNSPECIFIED {
+		return nil, errors.New("role is required")
+	}
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+	initiatorContactId := identity.GetContactID()
+	transferRequest := &threadv1.TransferRequest{
+		ThreadId:           req.GetThreadId(),
+		NewMemberContactId: req.GetNewMemberContactId(),
+		Role:               threadv1.ThreadRole(req.Role),
+		InitiatorContactId: initiatorContactId,
+	}
+
+	response, err := t.threadClient.Transfer(ctx, transferRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gtwthread.TransferResponse{Member: &gtwthread.ThreadMember{
 		Id: response.GetMember().GetId(),
 	}}, nil
 }
