@@ -77,8 +77,8 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 	if req == nil {
 		return nil, errors.New("request is nil")
 	}
-	if req.GetNewMemberContactId() == "" {
-		return nil, errors.New("new member contact id is required")
+	if req.GetContact() == nil {
+		return nil, errors.New("new member contact is required")
 	}
 	if req.GetThreadId() == "" {
 		return nil, errors.New("thread id is required")
@@ -90,10 +90,14 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+	target, err := t.fetchContact(ctx, req.GetContact().GetSub(), req.GetContact().GetIss(), int32(identity.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
 	initiatorContactId := identity.GetContactID()
 	transferRequest := &threadv1.TransferRequest{
 		ThreadId:           req.GetThreadId(),
-		NewMemberContactId: req.GetNewMemberContactId(),
+		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.Role),
 		InitiatorContactId: initiatorContactId,
 	}
