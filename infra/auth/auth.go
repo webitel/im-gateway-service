@@ -6,7 +6,10 @@ import (
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
-var IdentityNotFoundErr = errors.New("identity not found in the context")
+var (
+	IdentityNotFoundErr = errors.New("identity not found in the context")
+	ForbiddenIssuerErr  = errors.New("forbidden issuer")
+)
 
 type contextKey string
 
@@ -33,6 +36,7 @@ type Authorizer interface {
 type Identifier interface {
 	GetContactID() string
 	GetDomainID() int64
+	GetIssuer() string
 	GetName() string
 }
 

@@ -36,6 +36,7 @@ var _ interfaces.Identifier = (*Identity)(nil)
 type Identity struct {
 	ContactID string
 	DomainID  int64
+	Issuer    string
 	Name      string
 }
 
@@ -45,6 +46,10 @@ func (i *Identity) GetContactID() string {
 
 func (i *Identity) GetDomainID() int64 {
 	return i.DomainID
+}
+
+func (i *Identity) GetIssuer() string {
+	return i.Issuer
 }
 
 func (i *Identity) GetName() string {
@@ -160,6 +165,7 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error
 	return &Identity{
 		ContactID: contact.Id,
 		DomainID:  auth.Dc,
+		Issuer:    auth.Contact.Iss,
 		Name:      coalesce(contact.Name, contact.GivenName, contact.Username),
 	}, nil
 }

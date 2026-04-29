@@ -16,6 +16,10 @@ import (
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
+const (
+	WebitelIssuer = "webitel"
+)
+
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
 	SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error)
@@ -201,6 +205,11 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 	if !ok {
 		log.ErrorContext(ctx, "identity not found")
 		return nil, false, auth.IdentityNotFoundErr
+	}
+
+	if identity.GetIssuer() != WebitelIssuer {
+		log.ErrorContext(ctx, "identity is not a Webitel issuer")
+		return nil, false, auth.ForbiddenIssuerErr
 	}
 
 	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{
