@@ -214,7 +214,7 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 
 	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{
 		Fields:   request.Fields,
-		MemberId: request.MemberId,
+		MemberId: identity.GetContactID(),
 		DomainId: int32(identity.GetDomainID()),
 		Kinds:    gtwThreadKindToInternal(request.Types),
 		Size:     request.Size,
