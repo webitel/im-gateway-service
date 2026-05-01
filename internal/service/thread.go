@@ -195,12 +195,14 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		return nil, false, auth.IdentityNotFoundErr
 	}
 
+	memberIDs := append([]string{identity.GetContactID()}, searchQuery.ContactIds...)
+
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
 		Fields:    searchQuery.Fields,
 		Ids:       searchQuery.Ids,
 		DomainIds: []int32{int32(identity.GetDomainID())},
 		Q:         searchQuery.Q,
-		MemberIds: []string{identity.GetContactID()},
+		MemberIds: memberIDs,
 		Size:      searchQuery.Size,
 		Sort:      searchQuery.Sort,
 		Page:      searchQuery.Page,
