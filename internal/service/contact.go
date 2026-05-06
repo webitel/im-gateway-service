@@ -14,6 +14,7 @@ var _ Contacter = (*ContactService)(nil)
 
 type Contacter interface {
 	SearchContact(context.Context, *contactv1.SearchContactRequest) (*contactv1.ContactList, error)
+	CreateContact(context.Context, *contactv1.CreateContactRequest) (*contactv1.Contact, error)
 }
 
 type ContactService struct {
@@ -34,7 +35,14 @@ func (m *ContactService) SearchContact(ctx context.Context, in *contactv1.Search
 		return nil, auth.IdentityNotFoundErr
 	}
 	in.DomainId = int32(identity.GetDomainID())
-	return m.contactClient.SearchContact(ctx,in) 
+	return m.contactClient.SearchContact(ctx, in)
 }
 
-
+func (m *ContactService) CreateContact(ctx context.Context, in *contactv1.CreateContactRequest) (*contactv1.Contact, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+	in.DomainId = int32(identity.GetDomainID())
+	return m.contactClient.CreateContact(ctx, in)
+}
