@@ -54,16 +54,19 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 		}
 
 		protoMsgs[i] = &pb.HistoryMessage{
-			Id:        m.ID,
-			ThreadId:  m.ThreadID,
-			Sender:    toProtoMessageSender(m.Sender),
-			Type:      m.Type,
-			Body:      m.Body,
-			Metadata:  md,
-			CreatedAt: m.CreatedAt,
-			EditedAt:  m.UpdatedAt,
-			Documents: toProtoDocuments(m.Documents),
-			Images:    toProtoImages(m.Images),
+			Id:          m.ID,
+			ThreadId:    m.ThreadID,
+			Sender:      toProtoMessageSender(m.Sender),
+			Type:        m.Type,
+			Body:        m.Body,
+			Metadata:    md,
+			CreatedAt:   m.CreatedAt,
+			EditedAt:    m.UpdatedAt,
+			Documents:   toProtoDocuments(m.Documents),
+			Images:      toProtoImages(m.Images),
+			Contact:     m.Contact,
+			Location:    m.Location,
+			Interactive: m.Interactive,
 		}
 	}
 	return protoMsgs

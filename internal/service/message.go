@@ -143,7 +143,14 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.In
 	}
 
 	return &api.InteractiveCallbackResponse{
-		ReactedBy:    in.ReactedBy,
+		ReactedBy: &api.Peer{
+			Kind: &api.Peer_Contact{
+				Contact: &api.PeerIdentity{
+					Sub: "",
+					Iss: resp.GetReactedBy().GetIdentity().Issuer,
+				},
+			},
+		},
 		InReplyTo:    resp.InReplyTo,
 		ButtonCode:   resp.ButtonCode,
 		CallbackData: resp.CallbackData,
