@@ -41,41 +41,43 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 	}, nil
 }
 
+func (s *ThreadService) Get(ctx context.Context, req *impb.GetThreadRequest) (*impb.Thread, error) {
+	log := s.logger.With(slog.String("op", "ThreadService.Get"))
+
+	thread, err := s.threadManager.Get(ctx, req)
+	if err != nil {
+		log.Error("failed to fetch thread from provider", slog.Any("err", err))
+		return nil, err
+	}
+
+	return thread, nil
+}
+
 func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberRequest) (*impb.AddMemberResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 
-	response, err := s.threadManager.AddMember(ctx, req)
+	member, err := s.threadManager.AddMember(ctx, req)
 	if err != nil {
 		log.Error("failed to add member to thread", slog.Any("err", err))
 		return nil, err
 	}
 
+	response := &impb.AddMemberResponse{Member: member.Member}
+
 	return response, nil
 }
 
 func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMemberRequest) (*impb.RemoveMemberResponse, error) {
-	log := s.logger.With(slog.String("op", "ThreadService.RemoveMember"))
+	log := s.logger.With(slog.String("op", "ThreadService.AddMember"))
 
 	err := s.threadManager.RemoveMember(ctx, req)
 	if err != nil {
-		log.Error("failed to remove member from thread", slog.Any("err", err))
+		log.Error("failed to add member to thread", slog.Any("err", err))
 		return nil, err
 	}
 
 	return &impb.RemoveMemberResponse{}, nil
 
-}
-
-func (s *ThreadService) Transfer(ctx context.Context, req *impb.TransferRequest) (*impb.TransferResponse, error) {
-	log := s.logger.With(slog.String("op", "ThreadService.Transfer"))
-
-	res, err := s.threadManager.Transfer(ctx, req)
-	if err != nil {
-		log.Error("failed to transfer thread", slog.Any("err", err))
-		return nil, err
-	}
-
-	return res, nil
 }
 
 func (s *ThreadService) SetVariables(ctx context.Context, req *impb.SetVariablesRequest) (*impb.ThreadVariables, error) {
