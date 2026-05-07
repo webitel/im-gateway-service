@@ -492,16 +492,19 @@ func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMemb
 		return nil
 	}
 	return &gtwthread.HistoryMessage{
-		Id:        req.GetId(),
-		ThreadId:  req.GetThreadId(),
-		CreatedAt: req.GetCreatedAt(),
-		EditedAt:  req.GetUpdatedAt(),
-		Type:      req.GetType(),
-		Body:      req.GetBody(),
-		Metadata:  req.GetMetadata(),
-		Documents: convertDocuments(req.GetDocuments()),
-		Images:    convertImages(req.GetImages()),
-		Sender:    sender,
+		Id:          req.GetId(),
+		ThreadId:    req.GetThreadId(),
+		CreatedAt:   req.GetCreatedAt(),
+		EditedAt:    req.GetUpdatedAt(),
+		Type:        req.GetType(),
+		Body:        req.GetBody(),
+		Metadata:    req.GetMetadata(),
+		Documents:   convertDocuments(req.GetDocuments()),
+		Images:      convertImages(req.GetImages()),
+		Contact:     imthread.MapContact(req.GetContact()),
+		Location:    imthread.MapLocation(req.GetLocation()),
+		Interactive: imthread.MapInteractive(req.GetInteractive()),
+		Sender:      sender,
 	}
 }
 
