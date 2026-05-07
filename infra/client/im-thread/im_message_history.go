@@ -167,15 +167,15 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			UpdatedAt:   m.UpdatedAt,
 			Documents:   mapDocuments(m.Documents),
 			Images:      mapImages(m.Images),
-			Location:    mapLocation(m.Location),
-			Contact:     mapContact(m.Contact),
-			Interactive: mapInteractive(m.Interactive),
+			Location:    MapLocation(m.Location),
+			Contact:     MapContact(m.Contact),
+			Interactive: MapInteractive(m.Interactive),
 		}
 	}
 	return res
 }
 
-func mapInteractive(interactive *threadv1.Interactive) *api.Interactive {
+func MapInteractive(interactive *threadv1.Interactive) *api.Interactive {
 	if interactive == nil {
 		return nil
 	}
@@ -185,7 +185,7 @@ func mapInteractive(interactive *threadv1.Interactive) *api.Interactive {
 	return converted
 }
 
-func mapLocation(location *threadv1.Location) *api.MessageLocation {
+func MapLocation(location *threadv1.Location) *api.MessageLocation {
 	if location == nil {
 		return nil
 	}
@@ -198,7 +198,7 @@ func mapLocation(location *threadv1.Location) *api.MessageLocation {
 	}
 }
 
-func mapContact(contact *thread.Contact) *api.MessageContact {
+func MapContact(contact *thread.Contact) *api.MessageContact {
 	if contact == nil {
 		return nil
 	}
