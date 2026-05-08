@@ -6,12 +6,14 @@ import (
 	"io"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	storagev1 "github.com/webitel/im-gateway-service/gen/go/storage/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 const ServiceName string = "storage"
@@ -21,12 +23,12 @@ type Client struct {
 	rpc    *rpc.Client[storagev1.FileServiceClient]
 }
 
-func New(logger *slog.Logger, dp discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
+func New(logger *slog.Logger, dp discovery.DiscoveryProvider, _ *infratls.Config) (*Client, error) {
 	factory := func(conn *grpc.ClientConn) storagev1.FileServiceClient {
 		return storagev1.NewFileServiceClient(conn)
 	}
 
-	c, err := webitel.New(logger, dp, ServiceName, tls, factory)
+	c, err := webitel.New(logger, dp, ServiceName, nil, factory)
 	if err != nil {
 		return nil, fmt.Errorf("[storage-client] initialization failed: %w", err)
 	}
@@ -46,6 +48,7 @@ func (c *Client) SafeUploadFile(ctx context.Context) (storagev1.FileService_Safe
 	stream, err := api.SafeUploadFile(ctx)
 	if err != nil {
 		_ = release()
+
 		return nil, nil, err
 	}
 
@@ -59,7 +62,9 @@ func (c *Client) DownloadFile(ctx context.Context, req *storagev1.DownloadFileRe
 
 	err := c.rpc.Execute(ctx, func(api storagev1.FileServiceClient) error {
 		var err error
+
 		stream, err = api.DownloadFile(ctx, req)
+
 		return err
 	})
 
@@ -88,12 +93,15 @@ func (c *Client) GetUploadInfo(ctx context.Context, uploadID string) (int64, err
 		if err == io.EOF {
 			return 0, fmt.Errorf("upload session not found: %s", uploadID)
 		}
+
 		if err != nil {
 			return 0, err
 		}
+
 		if part := msg.GetPart(); part != nil {
 			return part.GetSize(), nil
 		}
+
 		if prog := msg.GetProgress(); prog != nil {
 			return prog.GetUploaded(), nil
 		}
@@ -104,5 +112,6 @@ func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }
