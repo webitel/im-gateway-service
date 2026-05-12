@@ -44,7 +44,7 @@ func (c *AccountToDtoMapperImpl) ToUnregisterDeviceRequest(source *v1.Unregister
 	var pDtoUnregisterDeviceRequest *dto.UnregisterDeviceRequest
 	if source != nil {
 		var dtoUnregisterDeviceRequest dto.UnregisterDeviceRequest
-		dtoUnregisterDeviceRequest.Push = mapper.ParsePUSHSubscription((*source).Push)
+		dtoUnregisterDeviceRequest.Push = mapper.ParseTokenToPUSHSubscription((*source).Token)
 		pDtoUnregisterDeviceRequest = &dtoUnregisterDeviceRequest
 	}
 	return pDtoUnregisterDeviceRequest

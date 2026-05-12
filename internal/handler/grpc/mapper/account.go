@@ -101,7 +101,6 @@ func ParsePUSHSubscription(in *impb.PUSHSubscription) *dto.PUSHSubscription {
 		Parameters: make(map[string]any),
 	}
 
-	// Extract provider and token from the proto oneof
 	switch t := in.Token.(type) {
 	case *impb.PUSHSubscription_Fcm:
 		res.Provider = "fcm"
@@ -113,7 +112,6 @@ func ParsePUSHSubscription(in *impb.PUSHSubscription) *dto.PUSHSubscription {
 		res.Provider = "web"
 		if t.Web != nil {
 			res.Token = t.Web.Endpoint
-			// Adding web-specific keys to parameters
 			if t.Web.Key != nil {
 				res.Parameters["auth"] = t.Web.Key.Auth
 				res.Parameters["p256dh"] = t.Web.Key.P256Dh
@@ -121,12 +119,19 @@ func ParsePUSHSubscription(in *impb.PUSHSubscription) *dto.PUSHSubscription {
 		}
 	}
 
-	// Add secret if present
 	if len(in.Secret) > 0 {
 		res.Parameters["secret"] = in.Secret
 	}
 
 	return res
+}
+
+// ParseTokenToPUSHSubscription wraps a bare token string into a PUSHSubscription DTO.
+func ParseTokenToPUSHSubscription(token string) *dto.PUSHSubscription {
+	return &dto.PUSHSubscription{
+		Token:      token,
+		Parameters: make(map[string]any),
+	}
 }
 
 // PbStructToAny converts a Protobuf Struct to a Go map.
