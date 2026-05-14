@@ -39,10 +39,7 @@ type AuthContact struct {
 	// which is intended to be consumed by the Client, e.g., 24400320 or AItOawmwtWwcT0k51BayewNvutrJUqsvl6qs7A4.
 	// It MUST NOT exceed 255 ASCII characters in length.
 	// The sub value is a case sensitive string.
-	Sub string `protobuf:"bytes,4,opt,name=sub,proto3" json:"sub,omitempty"`
-	// OPTIONAL. Well-known [issuer] protocol [alias] name.
-	// If unspecified, the [iss] value is used by default.
-	// For example: { iss:webitel.messaging.v1.gate, sub:576404592, type:telegram }
+	Sub  string `protobuf:"bytes,4,opt,name=sub,proto3" json:"sub,omitempty"`
 	Type string `protobuf:"bytes,6,opt,name=type,proto3" json:"type,omitempty"`
 	// REQUIRED. End-User's full name in displayable form including all name parts,
 	// possibly including titles and suffixes, ordered according to the End-User's locale and preferences.

@@ -26,11 +26,13 @@ var Module = fx.Module("grpc",
 		NewContactService,
 		NewBotService,
 		NewAccountService,
+		newViaServer,
 	),
 	fx.Invoke(
 		RegisterContactService,
 		RegisterBotService,
 		RegisterAccountService,
+		RegisterViaServer,
 	),
 )
 
@@ -66,4 +68,8 @@ func RegisterThreadPermissionService(server *grpcsrv.Server, service *ThreadPerm
 
 func RegisterContactSettingsServer(server *grpcsrv.Server, service *ContactSettingsServer) {
 	impb.RegisterContactSettingsManagementServer(server, service)
+}
+
+func RegisterViaServer(server *grpcsrv.Server, service *ViaServer) {
+	impb.RegisterViasServiceServer(server, service)
 }

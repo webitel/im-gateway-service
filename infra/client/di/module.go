@@ -23,6 +23,7 @@ var Module = fx.Module(
 	fx.Provide(imcontact.NewContactClient),
 	fx.Provide(imcontact.NewPrivacyClient),
 	fx.Provide(storage.New),
+	fx.Provide(imcontact.NewViaClient),
 
 	// [LIFECYCLE] Ensures the gRPC connection pool is closed gracefully on app shutdown
 	fx.Invoke(
@@ -75,6 +76,14 @@ var Module = fx.Module(
 		})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadPermissionClient) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return client.Close()
+			},
+		})
+	}),
+
+	fx.Invoke(func(lc fx.Lifecycle, client *imcontact.ViaClient) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				return client.Close()
