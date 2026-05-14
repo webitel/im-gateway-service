@@ -51,5 +51,6 @@ var Module = fx.Module(
 			NewContactSettingsService,
 			fx.As(new(ContactSettingsManager)),
 		),
+		fx.Annotate(newVia, fx.As(new(Via))),
 	),
 )
