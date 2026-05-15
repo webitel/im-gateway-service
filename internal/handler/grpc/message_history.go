@@ -53,3 +53,24 @@ func (s *MessageHistoryService) SearchThreadMessagesHistory(ctx context.Context,
 
 	return mappedResp, nil
 }
+
+// SearchDialogsMessagesHistory performs a search for messages grouped by the
+// user's closed membership periods ("dialogs") within a thread.
+//
+// Args:
+//   - ctx: context of the request
+//   - req: dialogs search request
+//
+// Returns:
+//   - response: dialog-grouped search result
+//   - error: error if occurred
+func (s *MessageHistoryService) SearchDialogsMessagesHistory(ctx context.Context, req *pb.SearchDialogsMessageHistoryRequest) (*pb.SearchDialogsMessageHistoryResponse, error) {
+	query := mapper.MapSearchDialogsMessageHistoryRequestToDTO(req)
+
+	resp, err := s.messageHistorySearcher.SearchDialogs(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToSearchDialogsHistoryProto(resp), nil
+}

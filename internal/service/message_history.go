@@ -20,6 +20,7 @@ import (
 type (
 	MessageHistorySearcher interface {
 		Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
+		SearchDialogs(ctx context.Context, query *dto.SearchDialogsMessageHistoryRequest) (*dto.SearchDialogsMessageHistoryResponse, error)
 	}
 
 	messageHistory struct {
@@ -86,6 +87,47 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 	return response, nil
 }
 
+// SearchDialogs performs a search for messages grouped by closed membership
+// periods ("dialogs") within a thread.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query for the dialogs message history
+//
+// Returns:
+//   - response: dialog-grouped search result with sender enrichment
+//   - error: any error encountered during the search operation
+func (s *messageHistory) SearchDialogs(ctx context.Context, query *dto.SearchDialogsMessageHistoryRequest) (*dto.SearchDialogsMessageHistoryResponse, error) {
+	log := s.logger.With(
+		slog.String("op", "messageHistory.SearchDialogs"),
+		slog.String("thread", query.ThreadID),
+	)
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	query.DomainID = int32(identity.GetDomainID())
+
+	response, fromInternal, err := s.historyClient.SearchDialogs(ctx, query)
+	if err != nil {
+		log.Error("failed to fetch dialogs message history", slog.Any("err", err))
+		return nil, err
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal)
+	if err != nil {
+		log.Error("failed to fetch participants info", slog.Any("err", err))
+		return nil, err
+	}
+
+	s.enrichDialogsResponse(response, identityMap)
+
+	return response, nil
+}
+
 // fetchParticipantMap fetches the participant map for the given domain ID and IDs.
 // It returns a map of IDs to MessageSender objects from the imap.
 // If there are no IDs provided, it returns an empty map and no error.
@@ -134,5 +176,15 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, internal []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
 	for _, m := range resp.Messages {
 		m.Sender = imap[m.SenderID]
+	}
+}
+
+// enrichDialogsResponse populates the Sender on each message inside every
+// dialog item using the resolved participant identity map.
+func (s *messageHistory) enrichDialogsResponse(resp *dto.SearchDialogsMessageHistoryResponse, imap map[string]*dto.MessageSender) {
+	for _, item := range resp.Items {
+		for _, m := range item.Messages {
+			m.Sender = imap[m.SenderID]
+		}
 	}
 }
