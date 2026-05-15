@@ -110,6 +110,103 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	return respDto, response.GetFrom(), nil
 }
 
+// SearchDialogs retrieves message history grouped by the user's closed
+// membership periods ("dialogs") within a thread.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query for the dialogs message history
+//
+// Returns:
+//   - *dto.SearchDialogsMessageHistoryResponse: dialog-grouped search result
+//   - []*threadv1.ThreadMember: internal participants used for sender enrichment
+//   - error: any error encountered during the search operation
+func (c *MessageHistoryClient) SearchDialogs(ctx context.Context, query *dto.SearchDialogsMessageHistoryRequest) (*dto.SearchDialogsMessageHistoryResponse, []*threadv1.ThreadMember, error) {
+	log := c.logger.With(
+		slog.Int("domain_id", int(query.DomainID)),
+		slog.Uint64("size", uint64(query.Size)),
+		slog.String("thread_id", query.ThreadID),
+		slog.Any("cursor", query.Cursor),
+	)
+
+	var cursor *threadv1.HistoryMessageCursorRequest
+	if query.Cursor != nil {
+		cursor = &threadv1.HistoryMessageCursorRequest{
+			Id:     query.Cursor.ID,
+			Before: query.Cursor.Before,
+		}
+	}
+
+	req := &threadv1.SearchDialogsMessageHistoryRequest{
+		Fields:     query.Fields,
+		ThreadId:   query.ThreadID,
+		DomainId:   query.DomainID,
+		SenderIds:  query.SenderIDs,
+		Types:      query.Types,
+		PeriodFrom: query.PeriodFrom,
+		PeriodTo:   query.PeriodTo,
+		Cursor:     cursor,
+		Size:       query.Size,
+	}
+
+	var (
+		response *threadv1.SearchDialogsMessageHistoryResponse
+		err      error
+	)
+	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
+		response, err = mhc.SearchDialogsMessageHistory(ctx, req)
+		return err
+	})
+	if err != nil {
+		log.Error("failed to search dialogs message history",
+			slog.Any("error", err),
+			slog.Any("request", query),
+		)
+		return nil, nil, err
+	}
+
+	return ToSearchDialogsHistoryResponseDTO(response), response.GetFrom(), nil
+}
+
+// ToSearchDialogsHistoryResponseDTO maps a thread SearchDialogsMessageHistoryResponse
+// to a SearchDialogsMessageHistoryResponse DTO.
+func ToSearchDialogsHistoryResponseDTO(resp *threadv1.SearchDialogsMessageHistoryResponse) *dto.SearchDialogsMessageHistoryResponse {
+	if resp == nil {
+		return &dto.SearchDialogsMessageHistoryResponse{}
+	}
+
+	return &dto.SearchDialogsMessageHistoryResponse{
+		Items:      mapSessions(resp.Items),
+		NextCursor: cursorFromID(resp.NextCursor),
+		PrevCursor: cursorFromID(resp.PrevCursor),
+	}
+}
+
+func mapSessions(sessions []*threadv1.SessionMessageHistory) []*dto.SessionMessageHistory {
+	if len(sessions) == 0 {
+		return nil
+	}
+
+	res := make([]*dto.SessionMessageHistory, len(sessions))
+	for i, s := range sessions {
+		res[i] = &dto.SessionMessageHistory{
+			MemberID:    s.GetMemberId(),
+			InvitedBy:   s.GetInvitedBy(),
+			ThreadRole:  int32(s.GetThreadRole()),
+			LeaveReason: s.GetLeaveReason(),
+			Messages:    mapMessages(s.GetMessages()),
+		}
+	}
+	return res
+}
+
+func cursorFromID(id string) *dto.HistoryMessageCursor {
+	if id == "" {
+		return nil
+	}
+	return &dto.HistoryMessageCursor{ID: id}
+}
+
 // Close gracefully shuts down the underlying gRPC connection pool.
 // If the client is nil, the method does nothing and returns nil.
 //

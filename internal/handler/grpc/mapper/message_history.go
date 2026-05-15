@@ -118,6 +118,60 @@ func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursorResponse
 	}
 }
 
+// MapSearchDialogsMessageHistoryRequestToDTO maps a SearchDialogsMessageHistoryRequest to its DTO form.
+func MapSearchDialogsMessageHistoryRequestToDTO(req *pb.SearchDialogsMessageHistoryRequest) *dto.SearchDialogsMessageHistoryRequest {
+	var cursor *dto.HistoryMessageCursor
+	if req.Cursor != nil {
+		cursor = &dto.HistoryMessageCursor{
+			ID:     req.Cursor.Id,
+			Before: req.Cursor.Before,
+		}
+	}
+
+	return &dto.SearchDialogsMessageHistoryRequest{
+		Fields:     req.GetFields(),
+		ThreadID:   req.GetThreadId(),
+		SenderIDs:  req.GetSenderIds(),
+		Types:      req.GetTypes(),
+		PeriodFrom: req.GetPeriodFrom(),
+		PeriodTo:   req.GetPeriodTo(),
+		Cursor:     cursor,
+		Size:       req.GetSize(),
+	}
+}
+
+// MapToSearchDialogsHistoryProto maps a SearchDialogsMessageHistoryResponse DTO to its proto form.
+func MapToSearchDialogsHistoryProto(res *dto.SearchDialogsMessageHistoryResponse) *pb.SearchDialogsMessageHistoryResponse {
+	if res == nil {
+		return nil
+	}
+
+	return &pb.SearchDialogsMessageHistoryResponse{
+		Items:      toProtoSessions(res.Items),
+		NextCursor: toProtoCursor(res.NextCursor),
+		PrevCursor: toProtoCursor(res.PrevCursor),
+	}
+}
+
+// toProtoSessions maps a slice of SessionMessageHistory DTOs to proto SessionMessageHistory.
+func toProtoSessions(sessions []*dto.SessionMessageHistory) []*pb.SessionMessageHistory {
+	if len(sessions) == 0 {
+		return nil
+	}
+
+	res := make([]*pb.SessionMessageHistory, len(sessions))
+	for i, s := range sessions {
+		res[i] = &pb.SessionMessageHistory{
+			MemberId:    s.MemberID,
+			InvitedBy:   s.InvitedBy,
+			ThreadRole:  pb.ThreadRole(s.ThreadRole),
+			LeaveReason: s.LeaveReason,
+			Messages:    toProtoMessages(s.Messages),
+		}
+	}
+	return res
+}
+
 // toProtoMessageSender maps a MessageSender to a MessageSender.
 func toProtoMessageSender(ms *dto.MessageSender) *pb.ThreadMember {
 	if ms == nil {

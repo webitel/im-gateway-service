@@ -37,7 +37,6 @@ func (c *AccountToPbMapperImpl) ToAuthContact(source *dto.AuthContact) (*v1.Auth
 		apiAuthContact.Id = (*source).Id
 		apiAuthContact.Iss = (*source).Iss
 		apiAuthContact.Sub = (*source).Sub
-		apiAuthContact.Type = (*source).Type
 		apiAuthContact.Name = (*source).Name
 		apiAuthContact.GivenName = (*source).GivenName
 		apiAuthContact.MiddleName = (*source).MiddleName
