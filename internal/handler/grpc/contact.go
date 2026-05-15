@@ -37,6 +37,7 @@ func (c *ContactService) Create(ctx context.Context, req *impb.CreateContactRequ
 	if err != nil {
 		return nil, err
 	}
+
 	return mapper.Convert(out, new(impb.Contact))
 }
 
@@ -50,6 +51,7 @@ func (c *ContactService) Search(ctx context.Context, request *impb.SearchContact
 	if err != nil {
 		return nil, err
 	}
+
 	return mapContactsToGatewayResponseProto(out), nil
 }
 
@@ -76,8 +78,27 @@ func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *im
 			UpdatedAt: c.GetUpdatedAt(),
 			Sub:       c.GetSubject(),
 			IsBot:     c.GetIsBot(),
+			Vias:      ConvertInternalViaToOut(c.GetVias()),
 		})
 	}
 
 	return cl
+}
+
+func ConvertInternalViaToOut(items []*contactservice.Via) []*impb.Via {
+	converted := make([]*impb.Via, len(items))
+
+	for i, via := range items {
+		converted[i] = &impb.Via{
+			ContactId:     via.GetContactId(),
+			Via:           via.GetVia(),
+			Disable:       via.GetDisable(),
+			DisableReason: via.DisableReason,
+			CreatedAt:     via.GetCreatedAt(),
+			UpdatedAt:     via.GetUpdatedAt(),
+			Metadata:      via.GetMetadata(),
+		}
+	}
+
+	return converted
 }
