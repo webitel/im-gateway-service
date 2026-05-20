@@ -37,6 +37,7 @@ type Identity struct {
 	ContactID string
 	DomainID  int64
 	Name      string
+	Via       string
 }
 
 func (i *Identity) GetContactID() string {
@@ -49,6 +50,10 @@ func (i *Identity) GetDomainID() int64 {
 
 func (i *Identity) GetName() string {
 	return i.Name
+}
+
+func (i *Identity) GetVia() string {
+	return i.Via
 }
 
 type Authorizer struct {
@@ -73,6 +78,12 @@ func New(logger *slog.Logger, auther *authclient.Client, contacter *contactclien
 
 // SetIdentity resolves and sets the identity into the derived context.
 func (da *Authorizer) SetIdentity(ctx context.Context) (context.Context, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if via := getHeader(md, interfaces.ViaIdentificationHeader); via != "" {
+			ctx = context.WithValue(ctx, interfaces.ViaContextKey, via)
+		}
+	}
+
 	resolvedIdentity, err := da.resolveIdentity(ctx)
 	if err != nil {
 		return ctx, errors.Unauthenticated(err.Error())
@@ -143,6 +154,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 		ContactID: contact.GetId(),
 		DomainID:  domainID,
 		Name:      coalesce(contact.GetName(), contact.GetUsername(), "Provider"),
+		Via:       getHeader(md, interfaces.ViaIdentificationHeader),
 	}, nil
 }
 
