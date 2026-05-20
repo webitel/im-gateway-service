@@ -5,6 +5,7 @@ import (
 
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
+	improviders "github.com/webitel/im-gateway-service/infra/client/im-providers"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	storage "github.com/webitel/im-gateway-service/infra/client/storage"
 	"go.uber.org/fx"
@@ -24,6 +25,13 @@ var Module = fx.Module(
 	fx.Provide(imcontact.NewPrivacyClient),
 	fx.Provide(storage.New),
 	fx.Provide(imcontact.NewViaClient),
+	fx.Provide(
+		improviders.NewFacebookClient,
+		improviders.NewGateClient,
+		improviders.NewWhatsAppClient,
+		improviders.NewMetaAppClient,
+		improviders.NewMetaOAuthClient,
+	),
 
 	// [LIFECYCLE] Ensures the gRPC connection pool is closed gracefully on app shutdown
 	fx.Invoke(
@@ -89,5 +97,21 @@ var Module = fx.Module(
 				return client.Close()
 			},
 		})
+	}),
+
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.FacebookClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.GateClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.WhatsAppClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.MetaAppClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.MetaOAuthClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
 	}),
 )

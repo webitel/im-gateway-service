@@ -4,6 +4,7 @@ import (
 	"go.uber.org/fx"
 
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	providerv1 "github.com/webitel/im-gateway-service/gen/go/provider/v1"
 	grpcsrv "github.com/webitel/im-gateway-service/infra/server/grpc"
 )
 
@@ -33,6 +34,20 @@ var Module = fx.Module("grpc",
 		RegisterBotService,
 		RegisterAccountService,
 		RegisterViaServer,
+	),
+	fx.Provide(
+		NewFacebookServiceHandler,
+		NewGateServiceHandler,
+		NewWhatsAppServiceHandler,
+		NewMetaAppServiceHandler,
+		NewMetaOAuthServiceHandler,
+	),
+	fx.Invoke(
+		RegisterFacebookServiceHandler,
+		RegisterGateServiceHandler,
+		RegisterWhatsAppServiceHandler,
+		RegisterMetaAppServiceHandler,
+		RegisterMetaOAuthServiceHandler,
 	),
 )
 
@@ -72,4 +87,24 @@ func RegisterContactSettingsServer(server *grpcsrv.Server, service *ContactSetti
 
 func RegisterViaServer(server *grpcsrv.Server, service *ViaServer) {
 	impb.RegisterViasServiceServer(server, service)
+}
+
+func RegisterFacebookServiceHandler(server *grpcsrv.Server, h *FacebookServiceHandler) {
+	providerv1.RegisterFacebookServiceServer(server.Server, h)
+}
+
+func RegisterGateServiceHandler(server *grpcsrv.Server, h *GateServiceHandler) {
+	providerv1.RegisterGateServiceServer(server.Server, h)
+}
+
+func RegisterWhatsAppServiceHandler(server *grpcsrv.Server, h *WhatsAppServiceHandler) {
+	providerv1.RegisterWhatsAppServiceServer(server.Server, h)
+}
+
+func RegisterMetaAppServiceHandler(server *grpcsrv.Server, h *MetaAppServiceHandler) {
+	providerv1.RegisterMetaAppServiceServer(server.Server, h)
+}
+
+func RegisterMetaOAuthServiceHandler(server *grpcsrv.Server, h *MetaOAuthServiceHandler) {
+	providerv1.RegisterMetaOAuthServiceServer(server.Server, h)
 }
