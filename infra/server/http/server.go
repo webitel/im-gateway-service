@@ -8,10 +8,13 @@ import (
 	"net/http"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/fx"
 
 	"github.com/webitel/im-gateway-service/config"
+	"github.com/webitel/im-gateway-service/infra/server/http/middleware"
 	apptls "github.com/webitel/im-gateway-service/infra/tls"
+	"github.com/webitel/im-gateway-service/internal/model"
 )
 
 var Module = fx.Module("http_server",
@@ -33,9 +36,23 @@ func ProvideServer(
 		}
 	}
 
+	wrapped := handler
+	if cfg.Log.Otel {
+		wrapped = otelhttp.NewHandler(
+			handler,
+			model.ServiceName,
+			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
+			}),
+		)
+	}
+
+	loggingMiddleware := middleware.LoggingMiddleware(logger)
+	finalHandler := loggingMiddleware(wrapped)
+
 	srv := &http.Server{
 		Addr:      cfg.Service.HTTP.Address,
-		Handler:   handler,
+		Handler:   finalHandler,
 		TLSConfig: tlsCfg,
 	}
 

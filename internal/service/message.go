@@ -39,9 +39,10 @@ type Messenger interface {
 }
 
 type MessageService struct {
-	logger    *slog.Logger
-	threader  *imthread.Client
-	contacter *imcontact.Client
+	logger     *slog.Logger
+	threader   *imthread.Client
+	contacter  *imcontact.Client
+	viasClient *imcontact.ViaClient
 }
 
 // SendContact implements Messenger.
