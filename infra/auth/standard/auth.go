@@ -56,6 +56,15 @@ func (i *Identity) GetVia() string {
 	return i.Via
 }
 
+func (i *Identity) GetViaPtr() *string {
+	var via *string
+	if i.Via != "" {
+		via = &i.Via
+	}
+
+	return via
+}
+
 type Authorizer struct {
 	logger    *slog.Logger
 	auther    *authclient.Client
@@ -140,6 +149,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 	}
 
 	res, err := da.contacter.SearchContact(ctx, &contactv1pb.SearchContactRequest{
+		Via:      getHeader(md, interfaces.ViaIdentificationHeader),
 		Subjects: []string{sub},
 		DomainId: int32(domainID),
 		Size:     1,

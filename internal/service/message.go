@@ -105,6 +105,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		Identity: &threadv1.Identity{
 			Name: identity.GetName(),
+			Via:  identity.GetViaPtr(),
 		},
 	}
 	converted.DomainId = int32(identity.GetDomainID())
@@ -214,6 +215,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
 				Name: identity.GetName(),
+				Via:  identity.GetViaPtr(),
 			},
 		},
 		To:       to,
@@ -246,6 +248,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
 				Name: identity.GetName(),
+				Via:  identity.GetViaPtr(),
 			},
 		},
 		To:       to,
@@ -278,6 +281,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
 				Name: identity.GetName(),
+				Via:  identity.GetViaPtr(),
 			},
 		},
 		To:        to,
