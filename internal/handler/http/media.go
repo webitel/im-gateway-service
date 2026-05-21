@@ -78,6 +78,12 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Accept-Ranges", "bytes")
 
 	if isRangeRequest {
+		if result.Metadata.Size > 0 && offset >= result.Metadata.Size {
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", result.Metadata.Size))
+			renderError(w, http.StatusRequestedRangeNotSatisfiable, "api.bad_range", "requested range not satisfiable")
+			return
+		}
+
 		if result.Metadata.Size > 0 {
 			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", offset, result.Metadata.Size-1, result.Metadata.Size))
 			w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size-offset, 10))
