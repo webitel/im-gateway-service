@@ -38,6 +38,7 @@ type Identifier interface {
 	GetDomainID() int64
 	GetName() string
 	GetVia() string
+	GetViaPtr() *string
 }
 
 func GetIdentityFromContext(ctx context.Context) (Identifier, bool) {
