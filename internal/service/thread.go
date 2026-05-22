@@ -6,6 +6,8 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
@@ -13,7 +15,6 @@ import (
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 const (
@@ -209,7 +210,7 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 
 	if identity.GetIssuer() != WebitelIssuer {
 		log.ErrorContext(ctx, "identity is not a Webitel issuer")
-		return nil, false, auth.ForbiddenIssuerErr
+		return nil, false, errors.Wrap(auth.ForbiddenIssuerErr, errors.WithID("service.thread.issuer"))
 	}
 
 	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{

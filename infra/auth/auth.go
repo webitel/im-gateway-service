@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	IdentityNotFoundErr = errors.New("identity not found in the context")
-	ForbiddenIssuerErr  = errors.New("forbidden issuer")
+	IdentityNotFoundErr = errors.Forbidden("identity not found in the context")
+	ForbiddenIssuerErr  = errors.Forbidden("forbidden issuer")
 )
 
 type contextKey string
