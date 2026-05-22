@@ -110,9 +110,45 @@ func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (*Identity, er
 		return da.resolveSchemaIdentity(ctx, md)
 	case string(interfaces.XWebitelTypeEngine):
 		return da.resolveUserIdentity(ctx)
+	case string(interfaces.XWebitelTypeProvider):
+		// Gateways [Facebook, Telegram, WhatsApp, etc]
+		return da.resolveProviderIdentity(ctx, md)
 	default:
 		return nil, errors.Forbidden("unsupported auth type")
 	}
+}
+
+func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.MD) (*Identity, error) {
+	rawProvider := getHeader(md, interfaces.ProviderIdentificationHeader)
+	if rawProvider == "" {
+		return nil, errors.Forbidden("provider identification header required")
+	}
+
+	domainID, sub, err := splitDomainAndSub(rawProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	if domainID == 0 || sub == "" {
+		return nil, errors.Forbidden("provider header format: {domain_id}.{external_id} required")
+	}
+
+	res, err := da.contacter.SearchContact(ctx, &contactv1pb.SearchContactRequest{
+		Subjects: []string{sub},
+		DomainId: int32(domainID),
+		Size:     1,
+	})
+
+	if err != nil || len(res.GetContacts()) == 0 {
+		return nil, errors.NotFound("provider contact not found")
+	}
+
+	contact := res.GetContacts()[0]
+	return &Identity{
+		ContactID: contact.GetId(),
+		DomainID:  domainID,
+		Name:      coalesce(contact.GetName(), contact.GetUsername(), "Provider"),
+	}, nil
 }
 
 func (da *Authorizer) resolveSchemaIdentity(ctx context.Context, md metadata.MD) (*Identity, error) {

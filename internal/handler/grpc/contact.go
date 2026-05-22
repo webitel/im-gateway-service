@@ -26,6 +26,20 @@ func NewContactService(logger *slog.Logger, contacter service.Contacter) *Contac
 	}
 }
 
+// Create implements [api.ContactsServer].
+func (c *ContactService) Create(ctx context.Context, req *impb.CreateContactRequest) (*impb.Contact, error) {
+	mapped, err := mapper.Convert(req, new(contactservice.CreateContactRequest))
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := c.contacter.CreateContact(ctx, mapped)
+	if err != nil {
+		return nil, err
+	}
+	return mapper.Convert(out, new(impb.Contact))
+}
+
 func (c *ContactService) Search(ctx context.Context, request *impb.SearchContactRequest) (*impb.ContactList, error) {
 	mapped, err := mapper.Convert(request, new(contactservice.SearchContactRequest))
 	if err != nil {

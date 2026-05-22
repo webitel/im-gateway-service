@@ -1,5 +1,7 @@
 package dto
 
+import api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+
 type HistoryMessageCursor struct {
 	ID     string `json:"id"`
 	Before bool
@@ -51,7 +53,10 @@ type HistoryMessage struct {
 	Documents []HistoryDocument `json:"documents,omitempty"`
 	Images    []HistoryImage    `json:"images,omitempty"`
 
-	Sender *MessageSender `json:"sender"`
+	Sender      *MessageSender       `json:"sender"`
+	Location    *api.MessageLocation `json:"location"`
+	Contact     *api.MessageContact  `json:"contact"`
+	Interactive *api.Interactive     `json:"interactive"`
 }
 
 type Cursors struct {

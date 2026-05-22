@@ -24,7 +24,9 @@ const (
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
 	SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error)
+	Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
+	Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error)
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
 	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
@@ -74,6 +76,45 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	}
 
 	return &gtwthread.AddMemberResponse{Member: &gtwthread.ThreadMember{
+		Id: response.GetMember().GetId(),
+	}}, nil
+}
+
+func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error) {
+	if req == nil {
+		return nil, errors.New("request is nil")
+	}
+	if req.GetContact() == nil {
+		return nil, errors.New("new member contact is required")
+	}
+	if req.GetThreadId() == "" {
+		return nil, errors.New("thread id is required")
+	}
+	if req.GetRole() == gtwthread.ThreadRole_ROLE_UNSPECIFIED {
+		return nil, errors.New("role is required")
+	}
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+	target, err := t.fetchContact(ctx, req.GetContact().GetSub(), req.GetContact().GetIss(), int32(identity.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
+	initiatorContactId := identity.GetContactID()
+	transferRequest := &threadv1.TransferRequest{
+		ThreadId:           req.GetThreadId(),
+		NewMemberContactId: target.GetId(),
+		Role:               threadv1.ThreadRole(req.Role),
+		InitiatorContactId: initiatorContactId,
+	}
+
+	response, err := t.threadClient.Transfer(ctx, transferRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gtwthread.TransferResponse{Member: &gtwthread.ThreadMember{
 		Id: response.GetMember().GetId(),
 	}}, nil
 }
@@ -244,6 +285,35 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 	}
 
 	return res, threads.Next, nil
+}
+
+func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error) {
+	log := t.logger.With(slog.String("op", "thread.Get"))
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	internalThread, err := t.threadClient.Get(ctx, &threadv1.GetThreadRequest{
+		Id:       req.GetId(),
+		DomainId: int32(identity.GetDomainID()),
+		Fields:   req.GetFields(),
+	})
+	if err != nil {
+		log.Error("failed to fetch internal thread", slog.Any("error", err))
+		return nil, err
+	}
+
+	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalThread})
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
+	if err != nil {
+		log.Error("failed to fetch contact information for enrichment", slog.Any("error", err))
+		return nil, err
+	}
+
+	return convertToThread(internalThread, contacts), nil
 }
 
 func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error) {
@@ -475,16 +545,19 @@ func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMemb
 		return nil
 	}
 	return &gtwthread.HistoryMessage{
-		Id:        req.GetId(),
-		ThreadId:  req.GetThreadId(),
-		CreatedAt: req.GetCreatedAt(),
-		EditedAt:  req.GetUpdatedAt(),
-		Type:      req.GetType(),
-		Body:      req.GetBody(),
-		Metadata:  req.GetMetadata(),
-		Documents: convertDocuments(req.GetDocuments()),
-		Images:    convertImages(req.GetImages()),
-		Sender:    sender,
+		Id:          req.GetId(),
+		ThreadId:    req.GetThreadId(),
+		CreatedAt:   req.GetCreatedAt(),
+		EditedAt:    req.GetUpdatedAt(),
+		Type:        req.GetType(),
+		Body:        req.GetBody(),
+		Metadata:    req.GetMetadata(),
+		Documents:   convertDocuments(req.GetDocuments()),
+		Images:      convertImages(req.GetImages()),
+		Contact:     imthread.MapContact(req.GetContact()),
+		Location:    imthread.MapLocation(req.GetLocation()),
+		Interactive: imthread.MapInteractive(req.GetInteractive()),
+		Sender:      sender,
 	}
 }
 

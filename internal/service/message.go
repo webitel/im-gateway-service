@@ -143,7 +143,6 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.In
 	}
 
 	return &api.InteractiveCallbackResponse{
-		ReactedBy:    in.ReactedBy,
 		InReplyTo:    resp.InReplyTo,
 		ButtonCode:   resp.ButtonCode,
 		CallbackData: resp.CallbackData,

@@ -84,6 +84,23 @@ func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftR
 	return resp, nil
 }
 
+func (c *ThreadClient) Get(ctx context.Context, req *threadv1.GetThreadRequest) (*threadv1.Thread, error) {
+	var (
+		err  error
+		resp *threadv1.Thread
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.Get(ctx, req)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberRequest) (*threadv1.AddMemberResponse, error) {
 	var (
 		err  error
@@ -113,6 +130,23 @@ func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMem
 	}
 
 	return nil
+}
+
+func (c *ThreadClient) Transfer(ctx context.Context, req *threadv1.TransferRequest) (*threadv1.TransferResponse, error) {
+	var (
+		err  error
+		resp *threadv1.TransferResponse
+	)
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.Transfer(ctx, req)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (c *ThreadClient) SetVariables(ctx context.Context, req *threadv1.SetVariablesRequest) (*threadv1.ThreadVariables, error) {
