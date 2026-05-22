@@ -21,8 +21,10 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	ThreadManagement_Search_FullMethodName          = "/webitel.im.service.thread.v1.ThreadManagement/Search"
 	ThreadManagement_SearchLeft_FullMethodName      = "/webitel.im.service.thread.v1.ThreadManagement/SearchLeft"
+	ThreadManagement_Get_FullMethodName             = "/webitel.im.service.thread.v1.ThreadManagement/Get"
 	ThreadManagement_CreateGroup_FullMethodName     = "/webitel.im.service.thread.v1.ThreadManagement/CreateGroup"
 	ThreadManagement_AddMember_FullMethodName       = "/webitel.im.service.thread.v1.ThreadManagement/AddMember"
+	ThreadManagement_Transfer_FullMethodName        = "/webitel.im.service.thread.v1.ThreadManagement/Transfer"
 	ThreadManagement_RemoveMember_FullMethodName    = "/webitel.im.service.thread.v1.ThreadManagement/RemoveMember"
 	ThreadManagement_SetVariables_FullMethodName    = "/webitel.im.service.thread.v1.ThreadManagement/SetVariables"
 	ThreadManagement_SearchVariables_FullMethodName = "/webitel.im.service.thread.v1.ThreadManagement/SearchVariables"
@@ -44,9 +46,16 @@ type ThreadManagementClient interface {
 	SearchLeft(ctx context.Context, in *SearchLeftRequest, opts ...grpc.CallOption) (*SearchLeftResponse, error)
 	// Creates a new group thread.
 	// The creator becomes the owner of the thread.
+	// Returns a single thread by its identifier.
+	Get(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*Thread, error)
+	// Creates a new group thread.
+	// The creator becomes the owner of the thread.
 	CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*Thread, error)
 	// Adds a new member to an existing thread.
 	AddMember(ctx context.Context, in *AddMemberRequest, opts ...grpc.CallOption) (*AddMemberResponse, error)
+	// Transfer unites add member and remove member.
+	// It adds a new member to the thread and removes the initiator from the thread in one atomic operation.
+	Transfer(ctx context.Context, in *TransferRequest, opts ...grpc.CallOption) (*TransferResponse, error)
 	// Removes a member from a thread.
 	RemoveMember(ctx context.Context, in *RemoveMemberRequest, opts ...grpc.CallOption) (*RemoveMemberResponse, error)
 	SetVariables(ctx context.Context, in *SetVariablesRequest, opts ...grpc.CallOption) (*ThreadVariables, error)
@@ -83,6 +92,16 @@ func (c *threadManagementClient) SearchLeft(ctx context.Context, in *SearchLeftR
 	return out, nil
 }
 
+func (c *threadManagementClient) Get(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*Thread, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Thread)
+	err := c.cc.Invoke(ctx, ThreadManagement_Get_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *threadManagementClient) CreateGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*Thread, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Thread)
@@ -97,6 +116,16 @@ func (c *threadManagementClient) AddMember(ctx context.Context, in *AddMemberReq
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddMemberResponse)
 	err := c.cc.Invoke(ctx, ThreadManagement_AddMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *threadManagementClient) Transfer(ctx context.Context, in *TransferRequest, opts ...grpc.CallOption) (*TransferResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TransferResponse)
+	err := c.cc.Invoke(ctx, ThreadManagement_Transfer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -167,9 +196,16 @@ type ThreadManagementServer interface {
 	SearchLeft(context.Context, *SearchLeftRequest) (*SearchLeftResponse, error)
 	// Creates a new group thread.
 	// The creator becomes the owner of the thread.
+	// Returns a single thread by its identifier.
+	Get(context.Context, *GetThreadRequest) (*Thread, error)
+	// Creates a new group thread.
+	// The creator becomes the owner of the thread.
 	CreateGroup(context.Context, *CreateGroupRequest) (*Thread, error)
 	// Adds a new member to an existing thread.
 	AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error)
+	// Transfer unites add member and remove member.
+	// It adds a new member to the thread and removes the initiator from the thread in one atomic operation.
+	Transfer(context.Context, *TransferRequest) (*TransferResponse, error)
 	// Removes a member from a thread.
 	RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error)
 	SetVariables(context.Context, *SetVariablesRequest) (*ThreadVariables, error)
@@ -192,11 +228,17 @@ func (UnimplementedThreadManagementServer) Search(context.Context, *ThreadSearch
 func (UnimplementedThreadManagementServer) SearchLeft(context.Context, *SearchLeftRequest) (*SearchLeftResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchLeft not implemented")
 }
+func (UnimplementedThreadManagementServer) Get(context.Context, *GetThreadRequest) (*Thread, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
+}
 func (UnimplementedThreadManagementServer) CreateGroup(context.Context, *CreateGroupRequest) (*Thread, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateGroup not implemented")
 }
 func (UnimplementedThreadManagementServer) AddMember(context.Context, *AddMemberRequest) (*AddMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddMember not implemented")
+}
+func (UnimplementedThreadManagementServer) Transfer(context.Context, *TransferRequest) (*TransferResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Transfer not implemented")
 }
 func (UnimplementedThreadManagementServer) RemoveMember(context.Context, *RemoveMemberRequest) (*RemoveMemberResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveMember not implemented")
@@ -270,6 +312,24 @@ func _ThreadManagement_SearchLeft_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ThreadManagement_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetThreadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ThreadManagementServer).Get(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ThreadManagement_Get_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ThreadManagementServer).Get(ctx, req.(*GetThreadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ThreadManagement_CreateGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateGroupRequest)
 	if err := dec(in); err != nil {
@@ -302,6 +362,24 @@ func _ThreadManagement_AddMember_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ThreadManagementServer).AddMember(ctx, req.(*AddMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ThreadManagement_Transfer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ThreadManagementServer).Transfer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ThreadManagement_Transfer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ThreadManagementServer).Transfer(ctx, req.(*TransferRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -412,12 +490,20 @@ var ThreadManagement_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ThreadManagement_SearchLeft_Handler,
 		},
 		{
+			MethodName: "Get",
+			Handler:    _ThreadManagement_Get_Handler,
+		},
+		{
 			MethodName: "CreateGroup",
 			Handler:    _ThreadManagement_CreateGroup_Handler,
 		},
 		{
 			MethodName: "AddMember",
 			Handler:    _ThreadManagement_AddMember_Handler,
+		},
+		{
+			MethodName: "Transfer",
+			Handler:    _ThreadManagement_Transfer_Handler,
 		},
 		{
 			MethodName: "RemoveMember",
