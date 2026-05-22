@@ -68,6 +68,7 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 	}
 
 	searchQuery.DomainID = int32(identity.GetDomainID())
+	searchQuery.CallerID = identity.GetContactID()
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
 	if err != nil {
