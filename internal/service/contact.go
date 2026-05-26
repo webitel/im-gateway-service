@@ -15,6 +15,7 @@ var _ Contacter = (*ContactService)(nil)
 type Contacter interface {
 	SearchContact(context.Context, *contactv1.SearchContactRequest) (*contactv1.ContactList, error)
 	CreateContact(context.Context, *contactv1.CreateContactRequest) (*contactv1.Contact, error)
+	Locate(ctx context.Context, in *contactv1.LocateContactRequest) (*contactv1.LocateContactResponse, error)
 }
 
 type ContactService struct {
@@ -45,4 +46,17 @@ func (m *ContactService) CreateContact(ctx context.Context, in *contactv1.Create
 	}
 	in.DomainId = int32(identity.GetDomainID())
 	return m.contactClient.CreateContact(ctx, in)
+}
+
+func (m *ContactService) Locate(ctx context.Context, in *contactv1.LocateContactRequest) (*contactv1.LocateContactResponse, error) {
+	if _, ok := auth.GetIdentityFromContext(ctx); !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	contact, err := m.contactClient.LocateContact(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return contact, nil
 }
