@@ -38,7 +38,18 @@ func (c *ContactService) Create(ctx context.Context, req *impb.CreateContactRequ
 		return nil, err
 	}
 
-	return mapper.Convert(out, new(impb.Contact))
+	return &impb.Contact{
+		Iss:       out.GetIssId(),
+		AppId:     out.GetAppId(),
+		Type:      out.GetType(),
+		Name:      out.GetName(),
+		Username:  out.GetUsername(),
+		Metadata:  out.GetMetadata(),
+		CreatedAt: out.GetCreatedAt(),
+		UpdatedAt: out.GetUpdatedAt(),
+		Sub:       out.GetSubject(),
+		IsBot:     out.GetIsBot(),
+	}, nil
 }
 
 func (c *ContactService) Search(ctx context.Context, request *impb.SearchContactRequest) (*impb.ContactList, error) {
