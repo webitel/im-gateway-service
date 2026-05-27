@@ -366,7 +366,7 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 			Kind: &threadv1.Peer_ChannelId{ChannelId: p.ID},
 		}, nil
 	case shared.PeerContact:
-		return m.resolveContact(ctx, p.ID, p.Issuer, domainID)
+		return m.resolveContact(ctx, p.ID, p.Issuer, p.Via, domainID)
 	case shared.PeerThread:
 		return &threadv1.Peer{
 			Kind: &threadv1.Peer_ThreadId{ThreadId: p.ID},
@@ -376,7 +376,7 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 	}
 }
 
-func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, domainID int32) (*threadv1.Peer, error) {
+func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, via *string, domainID int32) (*threadv1.Peer, error) {
 	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
 		Subjects: []string{sub},
 		IssId:    []string{iss},
@@ -400,6 +400,7 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, do
 		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
 			Name: coalesceString(contact.GetName(), contact.GetUsername(), NoNameRecipient),
+			Via:  via,
 		},
 	}, nil
 }
