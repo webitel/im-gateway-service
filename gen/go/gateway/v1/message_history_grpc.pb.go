@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MessageHistory_SearchThreadMessagesHistory_FullMethodName  = "/webitel.im.api.gateway.v1.MessageHistory/SearchThreadMessagesHistory"
-	MessageHistory_SearchDialogsMessagesHistory_FullMethodName = "/webitel.im.api.gateway.v1.MessageHistory/SearchDialogsMessagesHistory"
+	MessageHistory_SearchThreadMessagesHistory_FullMethodName      = "/webitel.im.api.gateway.v1.MessageHistory/SearchThreadMessagesHistory"
+	MessageHistory_SearchLeftThreadsMessagesHistory_FullMethodName = "/webitel.im.api.gateway.v1.MessageHistory/SearchLeftThreadsMessagesHistory"
 )
 
 // MessageHistoryClient is the client API for MessageHistory service.
@@ -34,9 +34,9 @@ type MessageHistoryClient interface {
 	// Supports cursor-based pagination and field selection.
 	SearchThreadMessagesHistory(ctx context.Context, in *SearchMessageHistoryRequest, opts ...grpc.CallOption) (*SearchMessageHistoryResponse, error)
 	// Searches messages grouped by the user's closed membership periods
-	// ("dialogs") within a thread. Active memberships are excluded — their
+	// within a thread. Active memberships are excluded — their
 	// messages are available via SearchThreadMessagesHistory.
-	SearchDialogsMessagesHistory(ctx context.Context, in *SearchDialogsMessageHistoryRequest, opts ...grpc.CallOption) (*SearchDialogsMessageHistoryResponse, error)
+	SearchLeftThreadsMessagesHistory(ctx context.Context, in *SearchLeftThreadsMessageHistoryRequest, opts ...grpc.CallOption) (*SearchMessageHistoryResponse, error)
 }
 
 type messageHistoryClient struct {
@@ -57,10 +57,10 @@ func (c *messageHistoryClient) SearchThreadMessagesHistory(ctx context.Context, 
 	return out, nil
 }
 
-func (c *messageHistoryClient) SearchDialogsMessagesHistory(ctx context.Context, in *SearchDialogsMessageHistoryRequest, opts ...grpc.CallOption) (*SearchDialogsMessageHistoryResponse, error) {
+func (c *messageHistoryClient) SearchLeftThreadsMessagesHistory(ctx context.Context, in *SearchLeftThreadsMessageHistoryRequest, opts ...grpc.CallOption) (*SearchMessageHistoryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SearchDialogsMessageHistoryResponse)
-	err := c.cc.Invoke(ctx, MessageHistory_SearchDialogsMessagesHistory_FullMethodName, in, out, cOpts...)
+	out := new(SearchMessageHistoryResponse)
+	err := c.cc.Invoke(ctx, MessageHistory_SearchLeftThreadsMessagesHistory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +78,9 @@ type MessageHistoryServer interface {
 	// Supports cursor-based pagination and field selection.
 	SearchThreadMessagesHistory(context.Context, *SearchMessageHistoryRequest) (*SearchMessageHistoryResponse, error)
 	// Searches messages grouped by the user's closed membership periods
-	// ("dialogs") within a thread. Active memberships are excluded — their
+	// within a thread. Active memberships are excluded — their
 	// messages are available via SearchThreadMessagesHistory.
-	SearchDialogsMessagesHistory(context.Context, *SearchDialogsMessageHistoryRequest) (*SearchDialogsMessageHistoryResponse, error)
+	SearchLeftThreadsMessagesHistory(context.Context, *SearchLeftThreadsMessageHistoryRequest) (*SearchMessageHistoryResponse, error)
 	mustEmbedUnimplementedMessageHistoryServer()
 }
 
@@ -94,8 +94,8 @@ type UnimplementedMessageHistoryServer struct{}
 func (UnimplementedMessageHistoryServer) SearchThreadMessagesHistory(context.Context, *SearchMessageHistoryRequest) (*SearchMessageHistoryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchThreadMessagesHistory not implemented")
 }
-func (UnimplementedMessageHistoryServer) SearchDialogsMessagesHistory(context.Context, *SearchDialogsMessageHistoryRequest) (*SearchDialogsMessageHistoryResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SearchDialogsMessagesHistory not implemented")
+func (UnimplementedMessageHistoryServer) SearchLeftThreadsMessagesHistory(context.Context, *SearchLeftThreadsMessageHistoryRequest) (*SearchMessageHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SearchLeftThreadsMessagesHistory not implemented")
 }
 func (UnimplementedMessageHistoryServer) mustEmbedUnimplementedMessageHistoryServer() {}
 func (UnimplementedMessageHistoryServer) testEmbeddedByValue()                        {}
@@ -136,20 +136,20 @@ func _MessageHistory_SearchThreadMessagesHistory_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MessageHistory_SearchDialogsMessagesHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchDialogsMessageHistoryRequest)
+func _MessageHistory_SearchLeftThreadsMessagesHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchLeftThreadsMessageHistoryRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageHistoryServer).SearchDialogsMessagesHistory(ctx, in)
+		return srv.(MessageHistoryServer).SearchLeftThreadsMessagesHistory(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MessageHistory_SearchDialogsMessagesHistory_FullMethodName,
+		FullMethod: MessageHistory_SearchLeftThreadsMessagesHistory_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageHistoryServer).SearchDialogsMessagesHistory(ctx, req.(*SearchDialogsMessageHistoryRequest))
+		return srv.(MessageHistoryServer).SearchLeftThreadsMessagesHistory(ctx, req.(*SearchLeftThreadsMessageHistoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -166,8 +166,8 @@ var MessageHistory_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageHistory_SearchThreadMessagesHistory_Handler,
 		},
 		{
-			MethodName: "SearchDialogsMessagesHistory",
-			Handler:    _MessageHistory_SearchDialogsMessagesHistory_Handler,
+			MethodName: "SearchLeftThreadsMessagesHistory",
+			Handler:    _MessageHistory_SearchLeftThreadsMessagesHistory_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

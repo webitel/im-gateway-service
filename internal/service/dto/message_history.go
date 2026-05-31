@@ -75,7 +75,7 @@ type SearchMessageHistoryResponse struct {
 	MessageSenders []*MessageSender `json:"message_senders"`
 }
 
-type SearchDialogsMessageHistoryRequest struct {
+type SearchLeftThreadsMessageHistoryRequest struct {
 	Fields     []string              `json:"fields,omitempty"`
 	ThreadID   string                `json:"thread_id"`
 	SenderIDs  []string              `json:"sender_ids,omitempty"`
@@ -85,20 +85,6 @@ type SearchDialogsMessageHistoryRequest struct {
 	DomainID   int32                 `json:"domain_id"`
 	Cursor     *HistoryMessageCursor `json:"cursor,omitempty"`
 	Size       uint32                `json:"size"`
-}
-
-type SessionMessageHistory struct {
-	MemberID    string            `json:"member_id"`
-	InvitedBy   string            `json:"invited_by"`
-	ThreadRole  int32             `json:"thread_role"`
-	LeaveReason string            `json:"leave_reason"`
-	Messages    []*HistoryMessage `json:"messages"`
-}
-
-type SearchDialogsMessageHistoryResponse struct {
-	Items      []*SessionMessageHistory `json:"items"`
-	NextCursor *HistoryMessageCursor    `json:"next_cursor,omitempty"`
-	PrevCursor *HistoryMessageCursor    `json:"prev_cursor,omitempty"`
 }
 
 type MessageSender struct {
