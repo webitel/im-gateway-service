@@ -295,7 +295,9 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 		return errors.New("storage: expected non-empty Part as first stream response")
 	}
 
-	sess.attachStream(stream, cancelFn, releaseFn)
+	if !sess.attachStream(stream, cancelFn, releaseFn) {
+		return ErrSessionDone
+	}
 
 	return nil
 }
@@ -404,14 +406,31 @@ func newUploadSession(name string) *uploadSession {
 	}
 }
 
-func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFileClient, cancelFn context.CancelFunc, releaseFn func()) {
+// attachStream binds the freshly-opened storage stream to the session and
+// starts its heartbeat. It returns false if the session was already terminated
+// (idle timeout or max TTL) while the stream was being opened: in that case
+// terminate() ran with no stream attached and will not run again (sync.Once),
+// so the stream is released here to avoid leaking the gRPC stream and
+// connection, and the caller must abort the upload.
+func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFileClient, cancelFn context.CancelFunc, releaseFn func()) bool {
 	s.mu.Lock()
+	if s.inactive {
+		s.mu.Unlock()
+
+		cancelFn()
+		releaseFn()
+
+		return false
+	}
+
 	s.stream = stream
 	s.cancelFn = cancelFn
 	s.releaseFn = releaseFn
-
 	s.mu.Unlock()
+
 	go s.heartbeat()
+
+	return true
 }
 
 func (s *uploadSession) isActive() bool {
