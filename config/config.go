@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const minUploadChunkSize = 512
+
 type Config struct {
 	Service  ServiceConfig  `mapstructure:"service"`
 	Log      LogConfig      `mapstructure:"log"`
@@ -196,8 +198,8 @@ func (c *Config) validate() error {
 		return fmt.Errorf("config: service.grpc.addr is required")
 	}
 
-	if c.Service.UploadChunkSize <= 0 {
-		c.Service.UploadChunkSize = 4096
+	if c.Service.UploadChunkSize < minUploadChunkSize {
+		return fmt.Errorf("config: service.upload_chunk_size must be >= %d bytes (mime sniff window)", minUploadChunkSize)
 	}
 
 	if err := validateConnectionConfig(c.Service.GRPC.Connection); err != nil {
