@@ -39,8 +39,7 @@ type FileDownloadResult struct {
 
 // CreateUploadSessionRequest is the service-layer request to create an upload session.
 type CreateUploadSessionRequest struct {
-	Name     string `json:"name,omitempty"`
-	MimeType string `json:"mimeType,omitempty"`
+	Name string `json:"name"`
 }
 
 // CreateUploadSessionResponse is returned after a session is successfully created.

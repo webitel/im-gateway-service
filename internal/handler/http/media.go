@@ -123,7 +123,7 @@ func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name, req.MimeType)
+	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name)
 	if err != nil {
 		h.logger.Error("failed to create upload session", slog.String("error", err.Error()))
 		h.writeError(w, err)
