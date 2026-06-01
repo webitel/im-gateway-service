@@ -14,7 +14,6 @@ type AccountToDtoMapperImpl struct{}
 func (c *AccountToDtoMapperImpl) ToPUSHSubscription(source *v1.PUSHSubscription) *dto.PUSHSubscription {
 	return mapper.ParsePUSHSubscription(source)
 }
-
 func (c *AccountToDtoMapperImpl) ToRegisterDeviceRequest(source *v1.RegisterDeviceRequest) *dto.RegisterDeviceRequest {
 	var pDtoRegisterDeviceRequest *dto.RegisterDeviceRequest
 	if source != nil {
@@ -24,7 +23,6 @@ func (c *AccountToDtoMapperImpl) ToRegisterDeviceRequest(source *v1.RegisterDevi
 	}
 	return pDtoRegisterDeviceRequest
 }
-
 func (c *AccountToDtoMapperImpl) ToTokenRequest(source *v1.TokenRequest) *dto.TokenRequest {
 	var pDtoTokenRequest *dto.TokenRequest
 	if source != nil {
@@ -42,7 +40,6 @@ func (c *AccountToDtoMapperImpl) ToTokenRequest(source *v1.TokenRequest) *dto.To
 	}
 	return pDtoTokenRequest
 }
-
 func (c *AccountToDtoMapperImpl) ToUnregisterDeviceRequest(source *v1.UnregisterDeviceRequest) *dto.UnregisterDeviceRequest {
 	var pDtoUnregisterDeviceRequest *dto.UnregisterDeviceRequest
 	if source != nil {

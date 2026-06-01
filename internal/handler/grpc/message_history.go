@@ -53,3 +53,25 @@ func (s *MessageHistoryService) SearchThreadMessagesHistory(ctx context.Context,
 
 	return mappedResp, nil
 }
+
+// SearchLeftThreadsMessagesHistory performs a search for messages covering the
+// user's closed membership periods within a thread. Active memberships are
+// excluded — their messages are served by SearchThreadMessagesHistory.
+//
+// Args:
+//   - ctx: context of the request
+//   - req: left-threads search request
+//
+// Returns:
+//   - response: flat search result
+//   - error: error if occurred
+func (s *MessageHistoryService) SearchLeftThreadsMessagesHistory(ctx context.Context, req *pb.SearchLeftThreadsMessageHistoryRequest) (*pb.SearchMessageHistoryResponse, error) {
+	query := mapper.MapSearchLeftThreadsMessageHistoryRequestToDTO(req)
+
+	resp, err := s.messageHistorySearcher.SearchLeftThreads(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToSearchHistoryProto(resp), nil
+}

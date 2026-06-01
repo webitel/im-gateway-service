@@ -118,6 +118,28 @@ func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursorResponse
 	}
 }
 
+// MapSearchLeftThreadsMessageHistoryRequestToDTO maps a SearchLeftThreadsMessageHistoryRequest to its DTO form.
+func MapSearchLeftThreadsMessageHistoryRequestToDTO(req *pb.SearchLeftThreadsMessageHistoryRequest) *dto.SearchLeftThreadsMessageHistoryRequest {
+	var cursor *dto.HistoryMessageCursor
+	if req.Cursor != nil {
+		cursor = &dto.HistoryMessageCursor{
+			ID:     req.Cursor.Id,
+			Before: req.Cursor.Before,
+		}
+	}
+
+	return &dto.SearchLeftThreadsMessageHistoryRequest{
+		Fields:     req.GetFields(),
+		ThreadID:   req.GetThreadId(),
+		SenderIDs:  req.GetSenderIds(),
+		Types:      req.GetTypes(),
+		PeriodFrom: req.GetPeriodFrom(),
+		PeriodTo:   req.GetPeriodTo(),
+		Cursor:     cursor,
+		Size:       req.GetSize(),
+	}
+}
+
 // toProtoMessageSender maps a MessageSender to a MessageSender.
 func toProtoMessageSender(ms *dto.MessageSender) *pb.ThreadMember {
 	if ms == nil {

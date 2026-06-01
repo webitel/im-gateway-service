@@ -111,6 +111,64 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	return respDto, response.GetFrom(), nil
 }
 
+// SearchLeftThreads retrieves message history covering the user's closed
+// membership periods within a thread.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query for the left-threads message history
+//
+// Returns:
+//   - *dto.SearchMessageHistoryResponse: flat search result
+//   - []*threadv1.ThreadMember: internal participants used for sender enrichment
+//   - error: any error encountered during the search operation
+func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
+	log := c.logger.With(
+		slog.Int("domain_id", int(query.DomainID)),
+		slog.Uint64("size", uint64(query.Size)),
+		slog.String("thread_id", query.ThreadID),
+		slog.Any("cursor", query.Cursor),
+	)
+
+	var cursor *threadv1.HistoryMessageCursorRequest
+	if query.Cursor != nil {
+		cursor = &threadv1.HistoryMessageCursorRequest{
+			Id:     query.Cursor.ID,
+			Before: query.Cursor.Before,
+		}
+	}
+
+	req := &threadv1.SearchLeftThreadsMessageHistoryRequest{
+		Fields:     query.Fields,
+		ThreadId:   query.ThreadID,
+		DomainId:   query.DomainID,
+		SenderIds:  query.SenderIDs,
+		Types:      query.Types,
+		PeriodFrom: query.PeriodFrom,
+		PeriodTo:   query.PeriodTo,
+		Cursor:     cursor,
+		Size:       query.Size,
+	}
+
+	var (
+		response *threadv1.SearchMessageHistoryResponse
+		err      error
+	)
+	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
+		response, err = mhc.SearchLeftThreadsMessageHistory(ctx, req)
+		return err
+	})
+	if err != nil {
+		log.Error("failed to search left threads message history",
+			slog.Any("error", err),
+			slog.Any("request", query),
+		)
+		return nil, nil, err
+	}
+
+	return ToSearchHistoryResponseDTO(response), response.GetFrom(), nil
+}
+
 // Close gracefully shuts down the underlying gRPC connection pool.
 // If the client is nil, the method does nothing and returns nil.
 //

@@ -76,6 +76,18 @@ type SearchMessageHistoryResponse struct {
 	MessageSenders []*MessageSender `json:"message_senders"`
 }
 
+type SearchLeftThreadsMessageHistoryRequest struct {
+	Fields     []string              `json:"fields,omitempty"`
+	ThreadID   string                `json:"thread_id"`
+	SenderIDs  []string              `json:"sender_ids,omitempty"`
+	Types      []int32               `json:"types,omitempty"`
+	PeriodFrom int64                 `json:"period_from,omitempty"`
+	PeriodTo   int64                 `json:"period_to,omitempty"`
+	DomainID   int32                 `json:"domain_id"`
+	Cursor     *HistoryMessageCursor `json:"cursor,omitempty"`
+	Size       uint32                `json:"size"`
+}
+
 type MessageSender struct {
 	Sub      string `json:"subject"`
 	Iss      string `json:"issuer"`

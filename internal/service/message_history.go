@@ -20,6 +20,7 @@ import (
 type (
 	MessageHistorySearcher interface {
 		Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
+		SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
 	}
 
 	messageHistory struct {
@@ -77,6 +78,47 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal)
+	if err != nil {
+		log.Error("failed to fetch participants info", slog.Any("err", err))
+		return nil, err
+	}
+
+	s.enrichResponse(response, fromInternal, identityMap)
+
+	return response, nil
+}
+
+// SearchLeftThreads performs a search for messages covering the user's closed
+// membership periods within a thread.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query for the left-threads message history
+//
+// Returns:
+//   - response: flat search result with sender enrichment
+//   - error: any error encountered during the search operation
+func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error) {
+	log := s.logger.With(
+		slog.String("op", "messageHistory.SearchLeftThreads"),
+		slog.String("thread", query.ThreadID),
+	)
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	query.DomainID = int32(identity.GetDomainID())
+
+	response, fromInternal, err := s.historyClient.SearchLeftThreads(ctx, query)
+	if err != nil {
+		log.Error("failed to fetch left threads message history", slog.Any("err", err))
+		return nil, err
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err
