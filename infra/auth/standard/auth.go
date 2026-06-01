@@ -36,7 +36,9 @@ var _ interfaces.Identifier = (*Identity)(nil)
 type Identity struct {
 	ContactID string
 	DomainID  int64
+	Issuer    string
 	Name      string
+	Via       string
 }
 
 func (i *Identity) GetContactID() string {
@@ -47,8 +49,25 @@ func (i *Identity) GetDomainID() int64 {
 	return i.DomainID
 }
 
+func (i *Identity) GetIssuer() string {
+	return i.Issuer
+}
+
 func (i *Identity) GetName() string {
 	return i.Name
+}
+
+func (i *Identity) GetVia() string {
+	return i.Via
+}
+
+func (i *Identity) GetViaPtr() *string {
+	var via *string
+	if i.Via != "" {
+		via = &i.Via
+	}
+
+	return via
 }
 
 type Authorizer struct {
@@ -73,6 +92,12 @@ func New(logger *slog.Logger, auther *authclient.Client, contacter *contactclien
 
 // SetIdentity resolves and sets the identity into the derived context.
 func (da *Authorizer) SetIdentity(ctx context.Context) (context.Context, error) {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		if via := getHeader(md, interfaces.ViaIdentificationHeader); via != "" {
+			ctx = context.WithValue(ctx, interfaces.ViaContextKey, via)
+		}
+	}
+
 	resolvedIdentity, err := da.resolveIdentity(ctx)
 	if err != nil {
 		return ctx, errors.Unauthenticated(err.Error())
@@ -129,6 +154,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 	}
 
 	res, err := da.contacter.SearchContact(ctx, &contactv1pb.SearchContactRequest{
+		Via:      getHeader(md, interfaces.ViaIdentificationHeader),
 		Subjects: []string{sub},
 		DomainId: int32(domainID),
 		Size:     1,
@@ -143,6 +169,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 		ContactID: contact.GetId(),
 		DomainID:  domainID,
 		Name:      coalesce(contact.GetName(), contact.GetUsername(), "Provider"),
+		Via:       getHeader(md, interfaces.ViaIdentificationHeader),
 	}, nil
 }
 
@@ -196,6 +223,7 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error
 	return &Identity{
 		ContactID: contact.Id,
 		DomainID:  auth.Dc,
+		Issuer:    auth.Contact.Iss,
 		Name:      coalesce(contact.Name, contact.GivenName, contact.Username),
 	}, nil
 }

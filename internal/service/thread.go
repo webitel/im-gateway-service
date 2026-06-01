@@ -6,6 +6,8 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
@@ -13,11 +15,15 @@ import (
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
+)
+
+const (
+	WebitelIssuer = "webitel"
 )
 
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
+	SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error)
 	Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
 	Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error)
@@ -232,6 +238,53 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	return res, internalThreads.Next, nil
+}
+
+func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error) {
+	log := t.logger.With(slog.String("op", "thread.SearchLeft"))
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, false, auth.IdentityNotFoundErr
+	}
+
+	if identity.GetIssuer() != WebitelIssuer {
+		log.ErrorContext(ctx, "identity is not a Webitel issuer")
+		return nil, false, errors.Wrap(auth.ForbiddenIssuerErr, errors.WithID("service.thread.issuer"))
+	}
+
+	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{
+		Fields:   request.Fields,
+		MemberId: identity.GetContactID(),
+		DomainId: int32(identity.GetDomainID()),
+		Kinds:    gtwThreadKindToInternal(request.Types),
+		Size:     request.Size,
+		Sort:     request.Sort,
+		Page:     request.Page,
+	})
+	if err != nil {
+		log.Error("failed to fetch internal threads", slog.Any("error", err))
+		return nil, false, err
+	}
+
+	uniqueContactIds := t.collectUniqueContactsFromThread(threads.GetItems())
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
+	if err != nil {
+		log.Error(
+			"failed to fetch internal contact information for enrichment",
+			slog.Any("error", err),
+			slog.Any("ids", uniqueContactIds),
+		)
+		return nil, false, err
+	}
+
+	res := make([]*gtwthread.Thread, 0, len(threads.GetItems()))
+	for _, thr := range threads.GetItems() {
+		res = append(res, convertToThread(thr, contacts))
+	}
+
+	return res, threads.Next, nil
 }
 
 func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error) {
@@ -516,7 +569,7 @@ func convertDocuments(reqDocs []*threadv1.Document) []*gtwthread.Document {
 	docs := make([]*gtwthread.Document, len(reqDocs))
 	for i, d := range reqDocs {
 		docs[i] = &gtwthread.Document{
-			Id:        d.GetId(),
+			Id:        d.GetFileId(),
 			MessageId: d.GetMessageId(),
 			FileId:    d.GetFileId(),
 			Name:      d.GetName(),

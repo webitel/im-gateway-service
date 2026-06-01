@@ -25,6 +25,8 @@ func (server *ViaServer) Create(ctx context.Context, req *impb.ViasServiceCreate
 		Disable:       req.GetDisable(),
 		DisableReason: req.DisableReason,
 		Metadata:      req.GetMetadata(),
+		Iss:           req.Iss,
+		Sub:           req.Sub,
 	})
 
 	if err != nil {

@@ -87,6 +87,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 		DomainId:  searchQuery.DomainID,
 		Cursor:    cursor,
 		Size:      searchQuery.Size,
+		CallerId:  searchQuery.CallerID,
 	}
 
 	var (

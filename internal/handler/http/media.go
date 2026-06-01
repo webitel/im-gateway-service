@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/webitel/im-gateway-service/internal/service/dto"
+	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 // downloadFile returns the full file.
@@ -51,12 +52,13 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		offset         int64
+		end            int64
 		isRangeRequest bool
 	)
 
 	if rangeHeader := r.Header.Get("Range"); rangeHeader != "" {
 		var parseErr error
-		offset, parseErr = parseRangeStart(rangeHeader)
+		offset, end, parseErr = parseRangeStart(rangeHeader)
 		if parseErr != nil {
 			renderError(w, http.StatusRequestedRangeNotSatisfiable, "api.bad_args", "invalid Range header")
 			return
@@ -78,11 +80,28 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Accept-Ranges", "bytes")
 
 	if isRangeRequest {
-		if result.Metadata.Size > 0 {
-			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", offset, result.Metadata.Size-1, result.Metadata.Size))
-			w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size-offset, 10))
+		if result.Metadata.Size > 0 && offset >= result.Metadata.Size {
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", result.Metadata.Size))
+			renderError(w, http.StatusRequestedRangeNotSatisfiable, "api.bad_range", "requested range not satisfiable")
+			return
 		}
+
+		actualEnd := end
+		if actualEnd < 0 || actualEnd >= result.Metadata.Size {
+			actualEnd = result.Metadata.Size - 1
+		}
+		bytesToRead := actualEnd - offset + 1
+
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", offset, actualEnd, result.Metadata.Size))
+		w.Header().Set("Content-Length", strconv.FormatInt(bytesToRead, 10))
 		w.WriteHeader(http.StatusPartialContent)
+
+		var reader io.Reader = io.LimitReader(result.Body, bytesToRead)
+		if _, err := io.Copy(w, reader); err != nil {
+			h.logger.Error("copying result body into limit reader response", "error", err)
+			return
+		}
+		return
 	} else {
 		if result.Metadata.Size > 0 {
 			w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
@@ -90,6 +109,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := io.Copy(w, result.Body); err != nil {
+		h.logger.Error("copying download storage result", "error", err)
 		h.writeError(w, err)
 		return
 	}
@@ -165,15 +185,31 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 // parseRangeStart extracts the start byte offset from a Range header value.
 // Accepts "bytes=START-" and "bytes=START-END" formats.
-func parseRangeStart(rangeHeader string) (int64, error) {
+func parseRangeStart(rangeHeader string) (int64, int64, error) {
 	const prefix = "bytes="
 	if !strings.HasPrefix(rangeHeader, prefix) {
-		return 0, fmt.Errorf("unsupported range unit in %q", rangeHeader)
+		return 0, 0, errors.InvalidArgument("unsupported range unit", errors.WithID("http.media.parse_range_stat"))
 	}
 	spec := strings.TrimPrefix(rangeHeader, prefix)
 	parts := strings.SplitN(spec, "-", 2)
 	if len(parts) == 0 || parts[0] == "" {
-		return 0, fmt.Errorf("missing range start in %q", rangeHeader)
+		return 0, 0, errors.InvalidArgument("missing range start", errors.WithID("http.media.parse_range_start"))
 	}
-	return strconv.ParseInt(parts[0], 10, 64)
+
+	endRange := int64(-1)
+	if len(parts) == 2 && parts[1] != "" {
+		end, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return 0, 0, errors.InvalidArgument("invalid end range value", errors.WithCause(err), errors.WithID("http.media.parse_range_start"))
+		}
+
+		endRange = end
+	}
+
+	startRange, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, errors.InvalidArgument("invalid start range value", errors.WithCause(err), errors.WithID("http.media.parse_range_start"))
+	}
+
+	return int64(startRange), int64(endRange), nil
 }

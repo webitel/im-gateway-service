@@ -17,6 +17,7 @@ type SearchMessageHistoryRequest struct {
 	DomainID    int32                 `json:"domain_id"`
 	Cursor      *HistoryMessageCursor `json:"cursor,omitempty"`
 	Size        uint32                `json:"size"`
+	CallerID    string
 }
 
 type HistoryDocument struct {

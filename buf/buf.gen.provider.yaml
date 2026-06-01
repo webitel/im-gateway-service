@@ -1,0 +1,28 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package
+      value: "github.com/webitel/im-gateway-service/gen/go/provider/v1;provider"
+  disable:
+    - module: buf.build/googleapis/googleapis
+    - module: buf.build/bufbuild/protovalidate
+    - module: buf.build/grpc-ecosystem/grpc-gateway
+
+plugins:
+  - remote: buf.build/protocolbuffers/go:v1.34.1
+    out: ../gen/go/provider
+    opt:
+      - module=github.com/webitel/im-gateway-service/gen/go/provider
+
+  - remote: buf.build/grpc/go:v1.5.1
+    out: ../gen/go/provider
+    include_imports: true
+    opt:
+      - module=github.com/webitel/im-gateway-service/gen/go/provider
+
+inputs:
+  - git_repo: https://github.com/webitel/protos.git
+    branch: main
+    subdir: im
+    depth: 1

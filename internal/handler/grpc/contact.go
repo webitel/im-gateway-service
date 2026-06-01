@@ -37,7 +37,19 @@ func (c *ContactService) Create(ctx context.Context, req *impb.CreateContactRequ
 	if err != nil {
 		return nil, err
 	}
-	return mapper.Convert(out, new(impb.Contact))
+
+	return &impb.Contact{
+		Iss:       out.GetIssId(),
+		AppId:     out.GetAppId(),
+		Type:      out.GetType(),
+		Name:      out.GetName(),
+		Username:  out.GetUsername(),
+		Metadata:  out.GetMetadata(),
+		CreatedAt: out.GetCreatedAt(),
+		UpdatedAt: out.GetUpdatedAt(),
+		Sub:       out.GetSubject(),
+		IsBot:     out.GetIsBot(),
+	}, nil
 }
 
 func (c *ContactService) Search(ctx context.Context, request *impb.SearchContactRequest) (*impb.ContactList, error) {
@@ -50,6 +62,7 @@ func (c *ContactService) Search(ctx context.Context, request *impb.SearchContact
 	if err != nil {
 		return nil, err
 	}
+
 	return mapContactsToGatewayResponseProto(out), nil
 }
 
@@ -76,8 +89,54 @@ func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *im
 			UpdatedAt: c.GetUpdatedAt(),
 			Sub:       c.GetSubject(),
 			IsBot:     c.GetIsBot(),
+			Vias:      ConvertInternalViaToOut(c.GetVias()),
 		})
 	}
 
 	return cl
+}
+
+func (c *ContactService) Locate(ctx context.Context, req *impb.LocateConatctRequest) (*impb.LocateContactResponse, error) {
+	response, err := c.contacter.Locate(ctx, &contactservice.LocateContactRequest{
+		Id:       req.GetId(),
+		DomainId: req.GetDomainId(),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &impb.LocateContactResponse{
+		Item: &impb.Contact{
+			Iss:       response.GetItem().GetIssId(),
+			AppId:     response.GetItem().GetAppId(),
+			Type:      response.GetItem().GetType(),
+			Name:      response.GetItem().GetName(),
+			Username:  response.GetItem().GetUsername(),
+			Metadata:  response.GetItem().GetMetadata(),
+			CreatedAt: response.GetItem().GetCreatedAt(),
+			UpdatedAt: response.GetItem().GetUpdatedAt(),
+			Sub:       response.GetItem().GetSubject(),
+			IsBot:     response.GetItem().GetIsBot(),
+			Vias:      ConvertInternalViaToOut(response.GetItem().GetVias()),
+		},
+	}, nil
+}
+
+func ConvertInternalViaToOut(items []*contactservice.Via) []*impb.Via {
+	converted := make([]*impb.Via, len(items))
+
+	for i, via := range items {
+		converted[i] = &impb.Via{
+			ContactId:     via.GetContactId(),
+			Via:           via.GetVia(),
+			Disable:       via.GetDisable(),
+			DisableReason: via.DisableReason,
+			CreatedAt:     via.GetCreatedAt(),
+			UpdatedAt:     via.GetUpdatedAt(),
+			Metadata:      via.GetMetadata(),
+		}
+	}
+
+	return converted
 }
