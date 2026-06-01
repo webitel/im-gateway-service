@@ -569,7 +569,7 @@ func convertDocuments(reqDocs []*threadv1.Document) []*gtwthread.Document {
 	docs := make([]*gtwthread.Document, len(reqDocs))
 	for i, d := range reqDocs {
 		docs[i] = &gtwthread.Document{
-			Id:        d.GetId(),
+			Id:        d.GetFileId(),
 			MessageId: d.GetMessageId(),
 			FileId:    d.GetFileId(),
 			Name:      d.GetName(),
