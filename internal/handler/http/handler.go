@@ -31,6 +31,7 @@ func NewHandler(
 		media:  media,
 	}
 	h.registerRoutes(mux, authMW, bodyLimitMW)
+
 	return h
 }
 
@@ -82,6 +83,9 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, service.ErrSessionConflict), errors.Is(err, service.ErrSessionDone):
 		httpCode = http.StatusConflict
 		id = "api.conflict"
+	case errors.Is(err, service.ErrEmptyBody):
+		httpCode = http.StatusBadRequest
+		id = "api.bad_args"
 	default:
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
