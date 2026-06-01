@@ -31,6 +31,7 @@ func NewHandler(
 		media:  media,
 	}
 	h.registerRoutes(mux, authMW, bodyLimitMW)
+
 	return h
 }
 

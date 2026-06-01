@@ -11,11 +11,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	storagev1 "github.com/webitel/im-gateway-service/gen/go/storage/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 type Media interface {
@@ -28,7 +30,7 @@ type Media interface {
 var (
 	ErrSessionNotFound = errors.New("upload session not found")
 	ErrSessionConflict = errors.New("upload already in progress for this session")
-	ErrSessionDone     = errors.New("upload session already complete or cancelled")
+	ErrSessionDone     = errors.New("upload session already complete or canceled")
 	ErrEmptyBody       = errors.New("upload: empty body")
 )
 
@@ -76,6 +78,7 @@ func (s *MediaService) Download(ctx context.Context, req *dto.MediaDownloadReque
 	})
 	if err != nil {
 		cancel()
+
 		return nil, err
 	}
 
@@ -83,12 +86,14 @@ func (s *MediaService) Download(ctx context.Context, req *dto.MediaDownloadReque
 	firstMsg, err := stream.Recv()
 	if err != nil {
 		cancel()
+
 		return nil, err
 	}
 
 	meta := firstMsg.GetMetadata()
 	if meta == nil {
 		cancel()
+
 		return nil, errors.New("storage: expected metadata as first stream message")
 	}
 
@@ -130,10 +135,13 @@ func (s *MediaService) CreateUploadSession(ctx context.Context, name string) (st
 		case <-sess.terminateChan:
 		case <-time.After(uploadMaxTTL):
 		}
+
 		s.mu.Lock()
 		delete(s.sessions, id)
 		s.mu.Unlock()
+
 		_ = sess.terminate()
+
 		s.logger.Debug("upload session removed", slog.String("upload_id", id))
 	}()
 
@@ -164,14 +172,17 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 
 	if err := s.startStorageStream(ctx, sess, reader); err != nil {
 		_ = sess.terminate()
+
 		return nil, err
 	}
 
 	buf := make([]byte, s.chunkSize)
+
 	for {
 		select {
 		case <-ctx.Done():
 			_ = sess.terminate()
+
 			return nil, ctx.Err()
 		default:
 		}
@@ -182,6 +193,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
 			}); sendErr != nil {
 				_ = sess.terminate()
+
 				return nil, sendErr
 			}
 
@@ -199,6 +211,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 		if readErr == io.EOF {
 			break
 		}
+
 		if readErr != nil {
 			return nil, readErr
 		}
@@ -207,6 +220,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	meta, err := sess.finalize()
 	if err != nil {
 		_ = sess.terminate()
+
 		return nil, err
 	}
 
@@ -232,6 +246,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	if peekErr != nil && peekErr != io.EOF {
 		return peekErr
 	}
+
 	if len(sniff) == 0 {
 		return ErrEmptyBody
 	}
@@ -243,6 +258,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	stream, releaseFn, err := s.storageClient.SafeUploadFile(streamCtx)
 	if err != nil {
 		cancelFn()
+
 		return err
 	}
 
@@ -257,6 +273,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	}); err != nil {
 		cancelFn()
 		releaseFn()
+
 		return err
 	}
 
@@ -264,16 +281,20 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	if err != nil {
 		cancelFn()
 		releaseFn()
+
 		return err
 	}
+
 	part := msg.GetPart()
 	if part == nil || part.GetUploadId() == "" {
 		cancelFn()
 		releaseFn()
+
 		return errors.New("storage: expected non-empty Part as first stream response")
 	}
 
 	sess.attachStream(stream, cancelFn, releaseFn)
+
 	return nil
 }
 
@@ -288,6 +309,7 @@ func (s *MediaService) GetUploadFileInfo(ctx context.Context, uploadID string) (
 	if !found {
 		return 0, ErrSessionNotFound
 	}
+
 	if !sess.isActive() {
 		return 0, ErrSessionDone
 	}
@@ -295,6 +317,7 @@ func (s *MediaService) GetUploadFileInfo(ctx context.Context, uploadID string) (
 	sess.mu.Lock()
 	offset := sess.lastOffset
 	sess.mu.Unlock()
+
 	return offset, nil
 }
 
@@ -312,6 +335,7 @@ func (r *streamReader) Read(p []byte) (int, error) {
 	if r.pos < len(r.buf) {
 		n := copy(p, r.buf[r.pos:])
 		r.pos += n
+
 		return n, nil
 	}
 
@@ -330,6 +354,7 @@ func (r *streamReader) Read(p []byte) (int, error) {
 	r.pos = 0
 	n := copy(p, r.buf)
 	r.pos += n
+
 	return n, nil
 }
 
@@ -337,6 +362,7 @@ func (r *streamReader) Close() error {
 	if r.cancelFn != nil {
 		r.cancelFn()
 	}
+
 	return nil
 }
 
@@ -381,6 +407,7 @@ func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFile
 	s.stream = stream
 	s.cancelFn = cancelFn
 	s.releaseFn = releaseFn
+
 	s.mu.Unlock()
 	go s.heartbeat()
 }
@@ -388,6 +415,7 @@ func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFile
 func (s *uploadSession) isActive() bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return !s.inactive
 }
 
@@ -395,6 +423,7 @@ func (s *uploadSession) isActive() bool {
 func (s *uploadSession) heartbeat() {
 	ticker := time.NewTicker(uploadIdleTimeout)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-s.terminateChan:
@@ -403,6 +432,7 @@ func (s *uploadSession) heartbeat() {
 			ticker.Reset(uploadIdleTimeout)
 		case <-ticker.C:
 			_ = s.terminate()
+
 			return
 		}
 	}
@@ -417,14 +447,17 @@ func (s *uploadSession) terminate() error {
 		if s.cancelFn != nil {
 			s.cancelFn()
 		}
+
 		release := s.releaseFn
 		s.inactive = true
 		close(s.terminateChan)
 		s.mu.Unlock()
+
 		if release != nil {
 			release()
 		}
 	})
+
 	return nil
 }
 
