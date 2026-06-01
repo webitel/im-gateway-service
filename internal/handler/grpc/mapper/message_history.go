@@ -77,7 +77,7 @@ func toProtoDocuments(docs []dto.HistoryDocument) []*pb.Document {
 	res := make([]*pb.Document, len(docs))
 	for i, d := range docs {
 		res[i] = &pb.Document{
-			Id:        d.ID,
+			Id:        d.FileID,
 			MessageId: d.MessageID,
 			FileId:    d.FileID,
 			Name:      d.Name,
