@@ -213,6 +213,8 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 		}
 
 		if readErr != nil {
+			_ = sess.terminate()
+
 			return nil, readErr
 		}
 	}
