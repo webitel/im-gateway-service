@@ -51,7 +51,7 @@ func ProvideServer(
 	finalHandler := loggingMiddleware(wrapped)
 
 	srv := &http.Server{
-		Addr:      cfg.Service.HTTP.Address,
+		Addr:      cfg.Service.HTTP.Addr,
 		Handler:   finalHandler,
 		TLSConfig: tlsCfg,
 	}
@@ -59,7 +59,7 @@ func ProvideServer(
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTP.Address))
+				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTP.Addr))
 				var err error
 				if tlsCfg != nil {
 					err = srv.ListenAndServeTLS("", "")

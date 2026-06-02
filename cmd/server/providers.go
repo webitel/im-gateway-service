@@ -79,7 +79,7 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
 		service := resource.NewSchemaless(
 			semconv.ServiceName(model.ServiceName),
 			semconv.ServiceVersion(model.Version),
-			semconv.ServiceInstanceID(cfg.Service.Id),
+			semconv.ServiceInstanceID(cfg.Service.ID),
 			semconv.ServiceNamespace(model.ServiceNamespace),
 		)
 		otelHandler := otelslog.NewHandler("slog")
@@ -183,7 +183,7 @@ func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery
 	provider, err := discovery.DefaultFactory.CreateProvider(
 		discovery.ProviderConsul,
 		log,
-		cfg.Consul.Address,
+		cfg.Consul.Addr,
 		discovery.WithHeartbeat[discovery.DiscoveryProvider](true),
 		discovery.WithTimeout[discovery.DiscoveryProvider](time.Second*30),
 	)
@@ -193,7 +193,7 @@ func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery
 
 	si := new(discovery.ServiceInstance)
 	{
-		si.Id = cfg.Service.Id
+		si.Id = cfg.Service.ID
 		si.Name = model.ServiceName
 		si.Version = model.Version
 		si.Metadata = map[string]string{
@@ -202,7 +202,7 @@ func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery
 			"branch":         model.Branch,
 			"buildTimestamp": model.BuildTimestamp,
 		}
-		si.Endpoints = []string{(&url.URL{Scheme: "grpc", Host: cfg.Service.GRPC.Address}).String()}
+		si.Endpoints = []string{(&url.URL{Scheme: "grpc", Host: cfg.Service.GRPC.Addr}).String()}
 	}
 
 	lc.Append(fx.Hook{
