@@ -1,6 +1,7 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"maps"
@@ -616,7 +617,7 @@ func convertToContact(c *contact.Contact) *gtwthread.Contact {
 		Iss:      c.GetIssId(),
 		Sub:      c.GetSubject(),
 		Type:     c.GetType(),
-		Name:     coalesceString(c.GetName(), c.GetUsername(), NoNameRecipient),
+		Name:     cmp.Or(c.GetName(), c.GetUsername(), NoNameRecipient),
 		IsBot:    c.GetIsBot(),
 		Username: c.GetUsername(),
 	}
@@ -649,7 +650,7 @@ func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv
 			Iss:   c.GetIssId(),
 			Sub:   c.GetSubject(),
 			Type:  c.GetType(),
-			Name:  coalesceString(c.GetName(), c.GetUsername(), NoNameRecipient),
+			Name:  cmp.Or(c.GetName(), c.GetUsername(), NoNameRecipient),
 			IsBot: c.IsBot,
 		}
 	}

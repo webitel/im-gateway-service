@@ -30,6 +30,7 @@ func MapToSendImageRequest(in *impb.SendImageRequest) *dto.SendImageRequest {
 		To:     MapPeerFromProto(in.GetTo()),
 		SendID: in.GetSendId(),
 		Image:  imgReq,
+		SendAs: in.SendAs,
 	}
 }
 
