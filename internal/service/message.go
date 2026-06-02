@@ -1,11 +1,13 @@
 package service
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
@@ -15,6 +17,7 @@ import (
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
+	"github.com/webitel/im-gateway-service/internal/domain/model"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
@@ -52,7 +55,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, mapper.MapPeerFromProto(in.To), int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.To), in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +74,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		Metadata:    in.Metadata,
 		SendId:      in.SendId,
 		DomainId:    int32(identity.GetDomainID()),
+		SendAs:      sendAs.GetContactIDPtr(),
 	})
 
 	if err != nil {
@@ -90,7 +94,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, mapper.MapPeerFromProto(in.To), int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.To), in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -109,6 +113,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		},
 	}
 	converted.DomainId = int32(identity.GetDomainID())
+	converted.SendAs = sendAs.GetContactIDPtr()
 
 	resp, err := m.threader.SendInteractive(ctx, converted)
 	if err != nil {
@@ -158,7 +163,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, mapper.MapPeerFromProto(in.To), int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.To), in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +183,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		Metadata:  in.Metadata,
 		SendId:    in.SendId,
 		DomainId:  int32(identity.GetDomainID()),
+		SendAs:    sendAs.GetContactIDPtr(),
 	})
 
 	if err != nil {
@@ -205,7 +211,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -222,6 +228,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		Body:     in.Body,
 		DomainId: identity.GetDomainID(),
 		SendId:   in.SendID,
+		SendAs:   sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
@@ -238,7 +245,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +263,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 		SendId:   in.SendID,
 		Body:     in.Image.Body,
 		Images:   m.mapImages(in.Image.Images),
+		SendAs:   sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
 		return nil, err
@@ -271,7 +279,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +297,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		SendId:    in.SendID,
 		Body:      in.Document.Body,
 		Documents: m.mapDocuments(in.Document.Documents),
+		SendAs:    sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
 		return nil, err
@@ -303,7 +312,7 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSyst
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, err := m.resolveRecipient(ctx, in.To, int32(identity.GetDomainID()))
+	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +330,7 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSyst
 		Metadata: in.Metadata,
 		SendId:   in.SendID,
 		DomainId: int32(identity.GetDomainID()),
+		SendAs:   sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
 		return nil, err
@@ -399,19 +409,10 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, vi
 	return &threadv1.Peer{
 		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
-			Name: coalesceString(contact.GetName(), contact.GetUsername(), NoNameRecipient),
+			Name: cmp.Or(contact.GetName(), contact.GetUsername(), NoNameRecipient),
 			Via:  via,
 		},
 	}, nil
-}
-
-func coalesceString(args ...string) string {
-	for _, s := range args {
-		if s != "" {
-			return s
-		}
-	}
-	return ""
 }
 
 func (m *MessageService) mapImages(src []*dto.Image) []*threadv1.ImageInput {
@@ -455,4 +456,71 @@ func (m *MessageService) parseUUID(id string) uuid.UUID {
 		return uuid.Nil
 	}
 	return res
+}
+
+func (m *MessageService) guardSendAsAction(ctx context.Context, sendAs *api.PeerIdentity, session auth.Identifier) (*model.AuthContact, error) {
+	if sendAs == nil {
+		return nil, nil
+	}
+
+	if session.GetIssuer() != "webitel" {
+		return nil, errors.Forbidden(
+			"use send as functionality can only webitel users",
+			errors.WithID("service.message.guard_send_as_action.not_webitel_user"),
+		)
+	}
+
+	searchOnlyBot := true
+
+	contacts, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
+		Size:     1,
+		IssId:    []string{sendAs.Iss},
+		Subjects: []string{sendAs.Sub},
+		OnlyBots: &searchOnlyBot,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(contacts.GetContacts()) < 1 {
+		return nil, errors.Forbidden("found zero bots for send as parameter", errors.WithID("service.message.guard_send_as_action.zero_contacts"))
+	}
+
+	contact := contacts.GetContacts()[0]
+
+	return &model.AuthContact{
+		DC:        int64(contact.GetDomainId()),
+		ContactID: contact.GetId(),
+		Sub:       contact.GetSubject(),
+		Iss:       contact.GetIssId(),
+		Name:      contact.GetName(),
+	}, nil
+}
+
+func (m *MessageService) resolveSendMetadata(ctx context.Context, toPeer shared.Peer, sendAsPeer *api.PeerIdentity, session auth.Identifier) (*threadv1.Peer, *model.AuthContact, error) {
+	var (
+		to     *threadv1.Peer
+		sendAs *model.AuthContact
+	)
+
+	egroup, ectx := errgroup.WithContext(ctx)
+
+	egroup.Go(func() error {
+		var err error
+		to, err = m.resolveRecipient(ectx, toPeer, int32(session.GetDomainID()))
+		return err
+	})
+
+	egroup.Go(func() error {
+		var err error
+		sendAs, err = m.guardSendAsAction(ectx, sendAsPeer, session)
+		return err
+	})
+
+	if err := egroup.Wait(); err != nil {
+		return nil, nil, err
+	}
+
+	return to, sendAs, nil
 }
