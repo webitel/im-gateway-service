@@ -22,7 +22,7 @@ type Config struct {
 
 func ProvideTLSConfig(cfg *config.Config) (*Config, error) {
 	var (
-		connConfig = cfg.Service.GRPC.Connection
+		connConfig = cfg.Service.Connection
 		conf       = &Config{}
 		err        error
 	)

@@ -23,16 +23,11 @@ type Config struct {
 }
 
 type ServiceConfig struct {
-	ID              string     `mapstructure:"id"`
-	GRPC            GRPCConfig `mapstructure:"grpc"`
-	HTTP            HTTPConfig `mapstructure:"http"`
-	MaxUploadSize   int64      `mapstructure:"max_upload_size"`
-	UploadChunkSize int        `mapstructure:"upload_chunk_size"`
-}
-
-type GRPCConfig struct {
-	Addr       string             `mapstructure:"addr"`
-	Connection appconfig.GRPCConn `mapstructure:"conn"`
+	Addr            string             `mapstructure:"addr"`
+	Connection      appconfig.GRPCConn `mapstructure:"conn"`
+	HTTP            HTTPConfig         `mapstructure:"http"`
+	MaxUploadSize   int64              `mapstructure:"max_upload_size"`
+	UploadChunkSize int                `mapstructure:"upload_chunk_size"`
 }
 
 type HTTPConfig struct {
@@ -87,18 +82,8 @@ func LoadConfig() (*Config, error) {
 }
 
 func registerServiceFlags() {
-	pflag.String("service.id", "", "Service instance ID (required)")
-	pflag.Int64("service.max_upload_size", 0, "Max upload body size in bytes (0 = unlimited)")
-	pflag.Int("service.upload_chunk_size", 4096, "Upload chunk size in bytes for streaming uploads to storage")
-
-	pflag.String("service.grpc.addr", "localhost:8080", "gRPC listen address")
-	pflag.Bool("service.grpc.conn.verify_certs", true, "Verify TLS certificates on outbound gRPC connections")
-	pflag.String("service.grpc.conn.ca", "", "CA certificate path")
-	pflag.String("service.grpc.conn.cert", "", "Server certificate path")
-	pflag.String("service.grpc.conn.key", "", "Server certificate key path")
-	pflag.String("service.grpc.conn.client.ca", "", "Client CA certificate path")
-	pflag.String("service.grpc.conn.client.cert", "", "Client certificate path")
-	pflag.String("service.grpc.conn.client.key", "", "Client certificate key path")
+	pflag.String("service.addr", "localhost:8080", "gRPC listen address")
+	appconfig.RegisterGRPCConnFlags(pflag.CommandLine, "service.conn", true)
 
 	pflag.String("service.http.addr", "localhost:8081", "HTTP listen address")
 	pflag.Bool("service.http.verify_certs", false, "Enable TLS for HTTP")
@@ -106,19 +91,19 @@ func registerServiceFlags() {
 	pflag.String("service.http.tls.cert", "", "HTTP certificate path")
 	pflag.String("service.http.tls.key", "", "HTTP certificate key path")
 	pflag.String("service.http.cors.allowed_origins", "*", "Allowed CORS origins")
+
+	pflag.Int64("service.max_upload_size", 0, "Max upload body size in bytes (0 = unlimited)")
+	pflag.Int("service.upload_chunk_size", 4096, "Upload chunk size in bytes for streaming uploads to storage")
 }
 
 func (c *Config) validate() error {
-	if c.Service.ID == "" {
-		return fmt.Errorf("config: service.id is required (use --service.id or SERVICE_ID env)")
-	}
-	if c.Service.GRPC.Addr == "" {
-		return fmt.Errorf("config: service.grpc.addr is required")
+	if c.Service.Addr == "" {
+		return fmt.Errorf("config: service.addr is required")
 	}
 	if c.Service.UploadChunkSize < minUploadChunkSize {
 		return fmt.Errorf("config: service.upload_chunk_size must be >= %d bytes (mime sniff window)", minUploadChunkSize)
 	}
-	if err := appconfig.ValidateGRPCConn("service.grpc.conn", c.Service.GRPC.Connection); err != nil {
+	if err := appconfig.ValidateGRPCConn("service.conn", c.Service.Connection); err != nil {
 		return err
 	}
 	if c.Service.HTTP.VerifyCerts {
