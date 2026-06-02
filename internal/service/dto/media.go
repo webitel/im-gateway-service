@@ -23,8 +23,8 @@ type FileMetadata struct {
 
 // FileInfoResponse contains the file loading info status
 type FileInfoResponse struct {
-	UploadID string `json:"uploadId,omitempty"`
-	Size     int64  `json:"size,omitempty"`
+	UploadID string `json:"uploadId"`
+	Size     int64  `json:"size"`
 	MimeType string `json:"mimeType,omitempty"`
 	Name     string `json:"name,omitempty"`
 	Hash     []byte `json:"hash,omitempty"`
