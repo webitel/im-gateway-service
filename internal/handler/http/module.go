@@ -24,6 +24,7 @@ var Module = fx.Module("http_handler",
 		),
 		func(cfg *config.Config, mux *http.ServeMux) http.Handler {
 			var h http.Handler = mux
+
 			return httpmw.WithCORS(cfg.Service.HTTP.CORS.AllowedOrigins, h)
 		},
 		fx.Annotate(

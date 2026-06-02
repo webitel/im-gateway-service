@@ -127,3 +127,20 @@ func (c *Client) Close() error {
 	}
 	return nil
 }
+
+func (c *Client) LocateContact(ctx context.Context, req *contactv1.LocateContactRequest) (*contactv1.LocateContactResponse, error) {
+	var resp *contactv1.LocateContactResponse
+
+	err := c.rpc.Execute(ctx, func(cc contactv1.ContactsClient) error {
+		contact, err := cc.Locate(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		resp = contact
+
+		return nil
+	})
+
+	return resp, err
+}

@@ -1,7 +1,12 @@
 package service
 
 import (
+	"log/slog"
+
 	"go.uber.org/fx"
+
+	"github.com/webitel/im-gateway-service/config"
+	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
 )
 
 var Module = fx.Module(
@@ -15,7 +20,9 @@ var Module = fx.Module(
 		),
 
 		fx.Annotate(
-			NewMediaService,
+			func(logger *slog.Logger, storageClient *storageclient.Client, cfg *config.Config) Media {
+				return NewMediaService(logger, storageClient, cfg.Service.UploadChunkSize)
+			},
 			fx.As(new(Media)),
 		),
 
@@ -51,5 +58,6 @@ var Module = fx.Module(
 			NewContactSettingsService,
 			fx.As(new(ContactSettingsManager)),
 		),
+		fx.Annotate(newVia, fx.As(new(Via))),
 	),
 )

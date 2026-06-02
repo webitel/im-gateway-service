@@ -39,9 +39,10 @@ type Messenger interface {
 }
 
 type MessageService struct {
-	logger    *slog.Logger
-	threader  *imthread.Client
-	contacter *imcontact.Client
+	logger     *slog.Logger
+	threader   *imthread.Client
+	contacter  *imcontact.Client
+	viasClient *imcontact.ViaClient
 }
 
 // SendContact implements Messenger.
@@ -104,6 +105,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		Identity: &threadv1.Identity{
 			Name: identity.GetName(),
+			Via:  identity.GetViaPtr(),
 		},
 	}
 	converted.DomainId = int32(identity.GetDomainID())
@@ -143,7 +145,6 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.In
 	}
 
 	return &api.InteractiveCallbackResponse{
-		ReactedBy:    in.ReactedBy,
 		InReplyTo:    resp.InReplyTo,
 		ButtonCode:   resp.ButtonCode,
 		CallbackData: resp.CallbackData,
@@ -214,6 +215,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
 				Name: identity.GetName(),
+				Via:  identity.GetViaPtr(),
 			},
 		},
 		To:       to,
@@ -246,6 +248,7 @@ func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
 				Name: identity.GetName(),
+				Via:  identity.GetViaPtr(),
 			},
 		},
 		To:       to,
@@ -278,6 +281,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
 				Name: identity.GetName(),
+				Via:  identity.GetViaPtr(),
 			},
 		},
 		To:        to,
@@ -362,7 +366,7 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 			Kind: &threadv1.Peer_ChannelId{ChannelId: p.ID},
 		}, nil
 	case shared.PeerContact:
-		return m.resolveContact(ctx, p.ID, p.Issuer, domainID)
+		return m.resolveContact(ctx, p.ID, p.Issuer, p.Via, domainID)
 	case shared.PeerThread:
 		return &threadv1.Peer{
 			Kind: &threadv1.Peer_ThreadId{ThreadId: p.ID},
@@ -372,7 +376,7 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 	}
 }
 
-func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, domainID int32) (*threadv1.Peer, error) {
+func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, via *string, domainID int32) (*threadv1.Peer, error) {
 	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
 		Subjects: []string{sub},
 		IssId:    []string{iss},
@@ -396,6 +400,7 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, do
 		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
 			Name: coalesceString(contact.GetName(), contact.GetUsername(), NoNameRecipient),
+			Via:  via,
 		},
 	}, nil
 }

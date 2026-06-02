@@ -10,6 +10,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+const minUploadChunkSize = 512
+
 type Config struct {
 	Service  ServiceConfig  `mapstructure:"service"`
 	Log      LogConfig      `mapstructure:"log"`
@@ -21,10 +23,11 @@ type Config struct {
 }
 
 type ServiceConfig struct {
-	Id            string     `mapstructure:"id"`
-	GRPC          GRPCConfig `mapstructure:"grpc"`
-	HTTP          HTTPConfig `mapstructure:"http"`
-	MaxUploadSize int64      `mapstructure:"max_upload_size"`
+	Id              string     `mapstructure:"id"`
+	GRPC            GRPCConfig `mapstructure:"grpc"`
+	HTTP            HTTPConfig `mapstructure:"http"`
+	MaxUploadSize   int64      `mapstructure:"max_upload_size"`
+	UploadChunkSize int        `mapstructure:"upload_chunk_size"`
 }
 
 type GRPCConfig struct {
@@ -146,6 +149,7 @@ func defineFlags() {
 
 	pflag.String("service.id", "", "Service ID")
 	pflag.Int64("service.max_upload_size", 0, "Max upload body size in bytes (0 = unlimited)")
+	pflag.Int("service.upload_chunk_size", 4096, "Upload chunk size in bytes for streaming uploads to storage")
 
 	pflag.String("service.grpc.addr", "localhost:8080", "gRPC service address")
 	pflag.Bool("service.grpc.conn.verify_certs", true, "Determine whether to verify certificates")
@@ -192,6 +196,10 @@ func (c *Config) validate() error {
 
 	if c.Service.GRPC.Address == "" {
 		return fmt.Errorf("config: service.grpc.addr is required")
+	}
+
+	if c.Service.UploadChunkSize < minUploadChunkSize {
+		return fmt.Errorf("config: service.upload_chunk_size must be >= %d bytes (mime sniff window)", minUploadChunkSize)
 	}
 
 	if err := validateConnectionConfig(c.Service.GRPC.Connection); err != nil {

@@ -23,6 +23,7 @@ type Peer struct {
 	ID     string
 	Issuer string
 	Type   PeerType
+	Via    *string
 }
 
 type BaseModel struct {

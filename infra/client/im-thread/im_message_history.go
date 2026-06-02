@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"log/slog"
 
+	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	"github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
+	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
@@ -84,6 +87,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 		DomainId:  searchQuery.DomainID,
 		Cursor:    cursor,
 		Size:      searchQuery.Size,
+		CallerId:  searchQuery.CallerID,
 	}
 
 	var (
@@ -105,6 +109,64 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	respDto := ToSearchHistoryResponseDTO(response)
 
 	return respDto, response.GetFrom(), nil
+}
+
+// SearchLeftThreads retrieves message history covering the user's closed
+// membership periods within a thread.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query for the left-threads message history
+//
+// Returns:
+//   - *dto.SearchMessageHistoryResponse: flat search result
+//   - []*threadv1.ThreadMember: internal participants used for sender enrichment
+//   - error: any error encountered during the search operation
+func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
+	log := c.logger.With(
+		slog.Int("domain_id", int(query.DomainID)),
+		slog.Uint64("size", uint64(query.Size)),
+		slog.String("thread_id", query.ThreadID),
+		slog.Any("cursor", query.Cursor),
+	)
+
+	var cursor *threadv1.HistoryMessageCursorRequest
+	if query.Cursor != nil {
+		cursor = &threadv1.HistoryMessageCursorRequest{
+			Id:     query.Cursor.ID,
+			Before: query.Cursor.Before,
+		}
+	}
+
+	req := &threadv1.SearchLeftThreadsMessageHistoryRequest{
+		Fields:     query.Fields,
+		ThreadId:   query.ThreadID,
+		DomainId:   query.DomainID,
+		SenderIds:  query.SenderIDs,
+		Types:      query.Types,
+		PeriodFrom: query.PeriodFrom,
+		PeriodTo:   query.PeriodTo,
+		Cursor:     cursor,
+		Size:       query.Size,
+	}
+
+	var (
+		response *threadv1.SearchMessageHistoryResponse
+		err      error
+	)
+	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
+		response, err = mhc.SearchLeftThreadsMessageHistory(ctx, req)
+		return err
+	})
+	if err != nil {
+		log.Error("failed to search left threads message history",
+			slog.Any("error", err),
+			slog.Any("request", query),
+		)
+		return nil, nil, err
+	}
+
+	return ToSearchHistoryResponseDTO(response), response.GetFrom(), nil
 }
 
 // Close gracefully shuts down the underlying gRPC connection pool.
@@ -154,19 +216,57 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 	res := make([]*dto.HistoryMessage, len(pbMsgs))
 	for i, m := range pbMsgs {
 		res[i] = &dto.HistoryMessage{
-			ID:        m.Id,
-			ThreadID:  m.ThreadId,
-			SenderID:  m.SenderId,
-			Type:      m.Type,
-			Body:      m.Body,
-			Metadata:  m.Metadata.AsMap(),
-			CreatedAt: m.CreatedAt,
-			UpdatedAt: m.UpdatedAt,
-			Documents: mapDocuments(m.Documents),
-			Images:    mapImages(m.Images),
+			ID:          m.Id,
+			ThreadID:    m.ThreadId,
+			SenderID:    m.SenderId,
+			Type:        m.Type,
+			Body:        m.Body,
+			Metadata:    m.Metadata.AsMap(),
+			CreatedAt:   m.CreatedAt,
+			UpdatedAt:   m.UpdatedAt,
+			Documents:   mapDocuments(m.Documents),
+			Images:      mapImages(m.Images),
+			Location:    MapLocation(m.Location),
+			Contact:     MapContact(m.Contact),
+			Interactive: MapInteractive(m.Interactive),
 		}
 	}
 	return res
+}
+
+func MapInteractive(interactive *threadv1.Interactive) *api.Interactive {
+	if interactive == nil {
+		return nil
+	}
+
+	converted, _ := mapper.Convert(interactive, new(api.Interactive))
+
+	return converted
+}
+
+func MapLocation(location *threadv1.Location) *api.MessageLocation {
+	if location == nil {
+		return nil
+	}
+
+	return &api.MessageLocation{
+		Longitude: location.GetLongitude(),
+		Latitude:  location.GetLatitude(),
+		Address:   location.Address,
+		Name:      location.Name,
+	}
+}
+
+func MapContact(contact *thread.Contact) *api.MessageContact {
+	if contact == nil {
+		return nil
+	}
+
+	return &api.MessageContact{
+		Name:  contact.Name,
+		Email: contact.Email,
+		Phone: contact.PhoneNumber,
+	}
 }
 
 // mapDocuments maps a slice of DocumentDTOs to a slice of HistoryDocuments.

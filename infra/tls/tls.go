@@ -5,9 +5,8 @@ import (
 	"crypto/x509"
 	"os"
 
-	"go.uber.org/fx"
-
 	"github.com/webitel/im-gateway-service/config"
+	"go.uber.org/fx"
 )
 
 var Module = fx.Module("tls",

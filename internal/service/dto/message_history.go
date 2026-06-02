@@ -1,5 +1,7 @@
 package dto
 
+import api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+
 type HistoryMessageCursor struct {
 	ID     string `json:"id"`
 	Before bool
@@ -15,6 +17,7 @@ type SearchMessageHistoryRequest struct {
 	DomainID    int32                 `json:"domain_id"`
 	Cursor      *HistoryMessageCursor `json:"cursor,omitempty"`
 	Size        uint32                `json:"size"`
+	CallerID    string
 }
 
 type HistoryDocument struct {
@@ -51,7 +54,10 @@ type HistoryMessage struct {
 	Documents []HistoryDocument `json:"documents,omitempty"`
 	Images    []HistoryImage    `json:"images,omitempty"`
 
-	Sender *MessageSender `json:"sender"`
+	Sender      *MessageSender       `json:"sender"`
+	Location    *api.MessageLocation `json:"location"`
+	Contact     *api.MessageContact  `json:"contact"`
+	Interactive *api.Interactive     `json:"interactive"`
 }
 
 type Cursors struct {
@@ -68,6 +74,18 @@ type SearchMessageHistoryResponse struct {
 	NextCursor     *HistoryMessageCursor `json:"next_cursor,omitempty"`
 	PrevCursor     *HistoryMessageCursor
 	MessageSenders []*MessageSender `json:"message_senders"`
+}
+
+type SearchLeftThreadsMessageHistoryRequest struct {
+	Fields     []string              `json:"fields,omitempty"`
+	ThreadID   string                `json:"thread_id"`
+	SenderIDs  []string              `json:"sender_ids,omitempty"`
+	Types      []int32               `json:"types,omitempty"`
+	PeriodFrom int64                 `json:"period_from,omitempty"`
+	PeriodTo   int64                 `json:"period_to,omitempty"`
+	DomainID   int32                 `json:"domain_id"`
+	Cursor     *HistoryMessageCursor `json:"cursor,omitempty"`
+	Size       uint32                `json:"size"`
 }
 
 type MessageSender struct {

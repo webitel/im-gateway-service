@@ -6,7 +6,9 @@ import (
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"google.golang.org/grpc/metadata"
 
+	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
+	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -22,11 +24,12 @@ type Accounter interface {
 }
 
 type AccountService struct {
-	client *imauth.Client
+	client        *imauth.Client
+	contactClient *imcontact.Client
 }
 
-func NewAccountService(client *imauth.Client) *AccountService {
-	return &AccountService{client: client}
+func NewAccountService(client *imauth.Client, contactClient *imcontact.Client) *AccountService {
+	return &AccountService{client: client, contactClient: contactClient}
 }
 
 func (s *AccountService) Inspect(ctx context.Context, headers metadata.MD) (*dto.Authorization, error) {
@@ -36,7 +39,12 @@ func (s *AccountService) Inspect(ctx context.Context, headers metadata.MD) (*dto
 
 	outCtx := metadata.NewOutgoingContext(ctx, headers)
 
-	return s.client.Inspect(outCtx)
+	auth, err := s.client.Inspect(outCtx)
+	if err != nil {
+		return nil, err
+	}
+	s.enrichContactType(ctx, auth)
+	return auth, nil
 }
 
 func (s *AccountService) Token(ctx context.Context, request *dto.TokenRequest) (*dto.Authorization, error) {
@@ -44,7 +52,30 @@ func (s *AccountService) Token(ctx context.Context, request *dto.TokenRequest) (
 		return nil, errors.New("headers required for token")
 	}
 	outCtx := metadata.NewOutgoingContext(ctx, request.Headers)
-	return s.client.Token(outCtx, request)
+	auth, err := s.client.Token(outCtx, request)
+	if err != nil {
+		return nil, err
+	}
+	s.enrichContactType(ctx, auth)
+	return auth, nil
+}
+
+// enrichContactType fetches contact.type from the contact service and sets it on the authorization.
+// The auth service does not populate this field, so we look it up by contact ID.
+func (s *AccountService) enrichContactType(ctx context.Context, auth *dto.Authorization) {
+	if auth == nil || auth.Contact == nil || auth.Contact.Id == "" {
+		return
+	}
+	res, err := s.contactClient.SearchContact(ctx, &contactv1.SearchContactRequest{
+		Ids:      []string{auth.Contact.Id},
+		Fields:   []string{"id", "type"},
+		DomainId: int32(auth.Dc),
+		Size:     1,
+	})
+	if err != nil || len(res.GetContacts()) == 0 {
+		return
+	}
+	auth.Contact.Type = res.GetContacts()[0].GetType()
 }
 
 func (s *AccountService) Logout(ctx context.Context, headers metadata.MD) error {

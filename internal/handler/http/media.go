@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -17,6 +19,7 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	fileID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		renderError(w, http.StatusBadRequest, "api.bad_args", "invalid file id")
+
 		return
 	}
 
@@ -26,12 +29,14 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		h.writeError(w, err)
+
 		return
 	}
 	defer result.Body.Close()
 
 	w.Header().Set("Content-Type", result.Metadata.MimeType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, result.Metadata.Name))
+
 	if result.Metadata.Size > 0 {
 		w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
 	}
@@ -46,21 +51,26 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	fileID, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
 		renderError(w, http.StatusBadRequest, "api.bad_args", "invalid file id")
+
 		return
 	}
 
 	var (
 		offset         int64
+		end            int64
 		isRangeRequest bool
 	)
 
 	if rangeHeader := r.Header.Get("Range"); rangeHeader != "" {
 		var parseErr error
-		offset, parseErr = parseRangeStart(rangeHeader)
+
+		offset, end, parseErr = parseRangeStart(rangeHeader)
 		if parseErr != nil {
 			renderError(w, http.StatusRequestedRangeNotSatisfiable, "api.bad_args", "invalid Range header")
+
 			return
 		}
+
 		isRangeRequest = true
 	}
 
@@ -70,6 +80,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		h.writeError(w, err)
+
 		return
 	}
 	defer result.Body.Close()
@@ -78,11 +89,32 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Accept-Ranges", "bytes")
 
 	if isRangeRequest {
-		if result.Metadata.Size > 0 {
-			w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", offset, result.Metadata.Size-1, result.Metadata.Size))
-			w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size-offset, 10))
+		if result.Metadata.Size > 0 && offset >= result.Metadata.Size {
+			w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", result.Metadata.Size))
+			renderError(w, http.StatusRequestedRangeNotSatisfiable, "api.bad_range", "requested range not satisfiable")
+
+			return
 		}
+
+		actualEnd := end
+		if actualEnd < 0 || actualEnd >= result.Metadata.Size {
+			actualEnd = result.Metadata.Size - 1
+		}
+
+		bytesToRead := actualEnd - offset + 1
+
+		w.Header().Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", offset, actualEnd, result.Metadata.Size))
+		w.Header().Set("Content-Length", strconv.FormatInt(bytesToRead, 10))
 		w.WriteHeader(http.StatusPartialContent)
+
+		reader := io.LimitReader(result.Body, bytesToRead)
+		if _, err := io.Copy(w, reader); err != nil {
+			h.logger.Error("copying result body into limit reader response", "error", err)
+
+			return
+		}
+
+		return
 	} else {
 		if result.Metadata.Size > 0 {
 			w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
@@ -90,7 +122,9 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := io.Copy(w, result.Body); err != nil {
+		h.logger.Error("copying download storage result", "error", err)
 		h.writeError(w, err)
+
 		return
 	}
 }
@@ -100,17 +134,20 @@ func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateUploadSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		renderError(w, http.StatusBadRequest, "api.bad_args", "invalid request body")
+
 		return
 	}
 
-	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name, req.MimeType)
+	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name)
 	if err != nil {
 		h.logger.Error("failed to create upload session", slog.String("error", err.Error()))
 		h.writeError(w, err)
+
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	if err := json.NewEncoder(w).Encode(dto.CreateUploadSessionResponse{UploadID: uploadID}); err != nil {
 		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
 	}
@@ -121,6 +158,7 @@ func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.URL.Query().Get("uploadId")
 	if uploadID == "" {
 		renderError(w, http.StatusBadRequest, "api.bad_args", "missing uploadId")
+
 		return
 	}
 
@@ -128,10 +166,12 @@ func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.logger.Error("failed to get upload file info", slog.String("error", err.Error()))
 		h.writeError(w, err)
+
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	if err := json.NewEncoder(w).Encode(dto.FileInfoResponse{UploadID: uploadID, Size: size}); err != nil {
 		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
 	}
@@ -142,16 +182,19 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	uploadID := r.URL.Query().Get("uploadId")
 	if uploadID == "" {
 		renderError(w, http.StatusBadRequest, "api.bad_args", "missing uploadId")
+
 		return
 	}
 
 	meta, err := h.media.AppendContent(r.Context(), uploadID, r.Body)
 	if err != nil {
 		h.writeError(w, err)
+
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
 	if err := json.NewEncoder(w).Encode(dto.SuccessfullyUploadResponse{
 		FileID:   meta.ID,
 		Name:     meta.Name,
@@ -165,15 +208,34 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 // parseRangeStart extracts the start byte offset from a Range header value.
 // Accepts "bytes=START-" and "bytes=START-END" formats.
-func parseRangeStart(rangeHeader string) (int64, error) {
+func parseRangeStart(rangeHeader string) (int64, int64, error) {
 	const prefix = "bytes="
 	if !strings.HasPrefix(rangeHeader, prefix) {
-		return 0, fmt.Errorf("unsupported range unit in %q", rangeHeader)
+		return 0, 0, errors.InvalidArgument("unsupported range unit", errors.WithID("http.media.parse_range_stat"))
 	}
+
 	spec := strings.TrimPrefix(rangeHeader, prefix)
+
 	parts := strings.SplitN(spec, "-", 2)
 	if len(parts) == 0 || parts[0] == "" {
-		return 0, fmt.Errorf("missing range start in %q", rangeHeader)
+		return 0, 0, errors.InvalidArgument("missing range start", errors.WithID("http.media.parse_range_start"))
 	}
-	return strconv.ParseInt(parts[0], 10, 64)
+
+	endRange := int64(-1)
+
+	if len(parts) == 2 && parts[1] != "" {
+		end, err := strconv.ParseInt(parts[1], 10, 64)
+		if err != nil {
+			return 0, 0, errors.InvalidArgument("invalid end range value", errors.WithCause(err), errors.WithID("http.media.parse_range_start"))
+		}
+
+		endRange = end
+	}
+
+	startRange, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, errors.InvalidArgument("invalid start range value", errors.WithCause(err), errors.WithID("http.media.parse_range_start"))
+	}
+
+	return int64(startRange), int64(endRange), nil
 }
