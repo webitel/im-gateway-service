@@ -204,8 +204,6 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 			sess.mu.Lock()
 			sess.lastOffset += int64(n)
 			sess.mu.Unlock()
-
-			time.Sleep(500 * time.Millisecond)
 		}
 
 		if readErr == io.EOF {
