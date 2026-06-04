@@ -24,6 +24,7 @@ type Media interface {
 	Download(ctx context.Context, req *dto.MediaDownloadRequest) (*dto.FileDownloadResult, error)
 	CreateUploadSession(ctx context.Context, name string) (string, error)
 	AppendContent(ctx context.Context, uploadID string, body io.Reader) (*dto.FileMetadata, error)
+	TerminateUploadSession(uploadID string) error
 	GetUploadFileInfo(ctx context.Context, uploadID string) (int64, error)
 }
 
@@ -231,6 +232,18 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	s.mu.Unlock()
 
 	return meta, nil
+}
+
+func (s *MediaService) TerminateUploadSession(uploadID string) error {
+	s.mu.Lock()
+	sess, found := s.sessions[uploadID]
+	s.mu.Unlock()
+
+	if !found {
+		return ErrSessionNotFound
+	}
+
+	return sess.terminate()
 }
 
 // startStorageStream peeks the first 512 bytes of body, detects the mime type,
