@@ -206,6 +206,24 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) terminateUploadSession(w http.ResponseWriter, r *http.Request) {
+	uploadID := r.URL.Query().Get("uploadId")
+	if uploadID == "" {
+		renderError(w, http.StatusBadRequest, "api.bad_args", "missing uploadId")
+
+		return
+	}
+
+	if err := h.media.TerminateUploadSession(uploadID); err != nil {
+		h.logger.Error("failed to terminate upload session", slog.String("error", err.Error()))
+		h.writeError(w, err)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // parseRangeStart extracts the start byte offset from a Range header value.
 // Accepts "bytes=START-" and "bytes=START-END" formats.
 func parseRangeStart(rangeHeader string) (int64, int64, error) {

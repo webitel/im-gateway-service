@@ -41,6 +41,7 @@ func (h *Handler) registerRoutes(mux *http.ServeMux, authMW, bodyLimitMW func(ht
 	mux.Handle("GET /media", authMW(http.HandlerFunc(h.getUploadFileInfo)))
 	mux.Handle("PUT /media", authMW(bodyLimitMW(http.HandlerFunc(h.uploadFile))))
 	mux.Handle("POST /media", authMW(http.HandlerFunc(h.createUploadSession)))
+	mux.Handle("DELETE /media", authMW(http.HandlerFunc(h.terminateUploadSession)))
 }
 
 type apiError struct {
