@@ -130,18 +130,19 @@ func (s *MediaService) CreateUploadSession(ctx context.Context, name string) (st
 
 	s.logger.Debug("upload session created", slog.String("upload_id", id))
 
-	// Cleanup goroutine: removes the session after it terminates or after the max TTL.
+	// Cleanup goroutine: removes the session after the max TTL. Sessions that
+	// complete, are canceled, or fail mid-upload delete their own map entry
+	// eagerly; this backstop also keeps idle/heartbeat-terminated sessions
+	// reachable (found but inactive) until the TTL so GetUploadFileInfo can fall
+	// back to the storage service for their final size.
 	go func() {
-		select {
-		case <-sess.terminateChan:
-		case <-time.After(uploadMaxTTL):
-		}
+		<-time.After(uploadMaxTTL)
 
 		s.mu.Lock()
 		delete(s.sessions, id)
 		s.mu.Unlock()
 
-		_ = sess.terminate()
+		sess.terminate()
 
 		s.logger.Debug("upload session removed", slog.String("upload_id", id))
 	}()
@@ -172,7 +173,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	reader := bufio.NewReaderSize(body, s.chunkSize)
 
 	if err := s.startStorageStream(ctx, sess, reader); err != nil {
-		_ = sess.terminate()
+		sess.terminate()
 
 		return nil, err
 	}
@@ -182,6 +183,8 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	for {
 		select {
 		case <-ctx.Done():
+			sess.terminate()
+
 			return nil, ctx.Err()
 		default:
 		}
@@ -191,7 +194,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 			if sendErr := sess.stream.Send(&storagev1.SafeUploadFileRequest{
 				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
 			}); sendErr != nil {
-				_ = sess.terminate()
+				sess.terminate()
 
 				return nil, sendErr
 			}
@@ -207,12 +210,16 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 			sess.mu.Unlock()
 		}
 
-		if readErr == io.EOF {
-			break
-		}
-
 		if readErr != nil {
-			_ = sess.terminate()
+			if errors.Is(readErr, io.EOF) {
+				break
+			}
+
+			sess.terminate()
+
+			s.mu.Lock()
+			delete(s.sessions, uploadID)
+			s.mu.Unlock()
 
 			return nil, readErr
 		}
@@ -220,12 +227,12 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 
 	meta, err := sess.finalize()
 	if err != nil {
-		_ = sess.terminate()
+		sess.terminate()
 
 		return nil, err
 	}
 
-	_ = sess.terminate()
+	sess.terminate()
 
 	s.mu.Lock()
 	delete(s.sessions, uploadID)
@@ -243,7 +250,13 @@ func (s *MediaService) TerminateUploadSession(uploadID string) error {
 		return ErrSessionNotFound
 	}
 
-	return sess.terminate()
+	sess.terminate()
+
+	s.mu.Lock()
+	delete(s.sessions, uploadID)
+	s.mu.Unlock()
+
+	return nil
 }
 
 // startStorageStream peeks the first 512 bytes of body, detects the mime type,
@@ -306,7 +319,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 		return errors.New("storage: expected non-empty Part as first stream response")
 	}
 
-	if !sess.attachStream(stream, cancelFn, releaseFn) {
+	if !sess.attachStream(stream, cancelFn, releaseFn, part.GetUploadId()) {
 		return ErrSessionDone
 	}
 
@@ -325,15 +338,24 @@ func (s *MediaService) GetUploadFileInfo(ctx context.Context, uploadID string) (
 		return 0, ErrSessionNotFound
 	}
 
-	if !sess.isActive() {
-		return 0, ErrSessionDone
+	if sess.isActive() {
+		sess.mu.Lock()
+		offset := sess.lastOffset
+		sess.mu.Unlock()
+
+		return offset, nil
+
 	}
 
 	sess.mu.Lock()
-	offset := sess.lastOffset
+	storageID := sess.storageUploadID
 	sess.mu.Unlock()
 
-	return offset, nil
+	if storageID == "" {
+		return 0, ErrSessionDone
+	}
+
+	return s.storageClient.GetUploadInfo(ctx, storageID)
 }
 
 // streamReader adapts a gRPC server-streaming FileService_DownloadFileClient
@@ -397,6 +419,11 @@ type uploadSession struct {
 	cancelFn  context.CancelFunc
 	releaseFn func()
 
+	// storageUploadID is the upload ID assigned by the storage service, captured
+	// from the first SafeUploadFile Part response. Used to query storage for the
+	// authoritative uploaded size after the local stream goes inactive.
+	storageUploadID string
+
 	inactive      bool
 	lastOffset    int64
 	terminateOnce sync.Once
@@ -423,7 +450,7 @@ func newUploadSession(name string) *uploadSession {
 // terminate() ran with no stream attached and will not run again (sync.Once),
 // so the stream is released here to avoid leaking the gRPC stream and
 // connection, and the caller must abort the upload.
-func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFileClient, cancelFn context.CancelFunc, releaseFn func()) bool {
+func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFileClient, cancelFn context.CancelFunc, releaseFn func(), storageUploadID string) bool {
 	s.mu.Lock()
 	if s.inactive {
 		s.mu.Unlock()
@@ -437,6 +464,7 @@ func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFile
 	s.stream = stream
 	s.cancelFn = cancelFn
 	s.releaseFn = releaseFn
+	s.storageUploadID = storageUploadID
 	s.mu.Unlock()
 
 	go s.heartbeat()
@@ -463,7 +491,7 @@ func (s *uploadSession) heartbeat() {
 		case <-s.aliveChan:
 			ticker.Reset(uploadIdleTimeout)
 		case <-ticker.C:
-			_ = s.terminate()
+			s.terminate()
 
 			return
 		}
@@ -473,7 +501,7 @@ func (s *uploadSession) heartbeat() {
 // terminate cancels the underlying gRPC stream (if attached) and marks the
 // session inactive. Safe to call multiple times and from multiple goroutines,
 // and safe to call before a stream is attached.
-func (s *uploadSession) terminate() error {
+func (s *uploadSession) terminate() {
 	s.terminateOnce.Do(func() {
 		s.mu.Lock()
 		if s.cancelFn != nil {
@@ -489,8 +517,6 @@ func (s *uploadSession) terminate() error {
 			release()
 		}
 	})
-
-	return nil
 }
 
 // finalize signals EOF to the storage server by sending an empty chunk, then
