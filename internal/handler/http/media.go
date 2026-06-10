@@ -115,10 +115,10 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		return
-	} else {
-		if result.Metadata.Size > 0 {
-			w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
-		}
+	}
+
+	if result.Metadata.Size > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
 	}
 
 	if _, err := io.Copy(w, result.Body); err != nil {
@@ -255,5 +255,5 @@ func parseRangeStart(rangeHeader string) (int64, int64, error) {
 		return 0, 0, errors.InvalidArgument("invalid start range value", errors.WithCause(err), errors.WithID("http.media.parse_range_start"))
 	}
 
-	return int64(startRange), int64(endRange), nil
+	return int64(startRange), endRange, nil
 }
