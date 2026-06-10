@@ -160,6 +160,8 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	s.mu.Unlock()
 
 	if !found {
+		s.logger.Debug("append content: session not found", slog.String("upload_id", uploadID))
+
 		return nil, ErrSessionNotFound
 	}
 
@@ -167,12 +169,19 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	defer sess.writeLock.Unlock()
 
 	if !sess.isActive() {
+		s.logger.Debug("append content: session already inactive", slog.String("upload_id", uploadID))
+
 		return nil, ErrSessionDone
 	}
+
+	s.logger.Debug("append content started", slog.String("upload_id", uploadID))
 
 	reader := bufio.NewReaderSize(body, s.chunkSize)
 
 	if err := s.startStorageStream(ctx, sess, reader); err != nil {
+		s.logger.Debug("append content: failed to start storage stream",
+			slog.String("upload_id", uploadID), slog.String("error", err.Error()))
+
 		sess.terminate()
 
 		return nil, err
@@ -183,6 +192,9 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	for {
 		select {
 		case <-ctx.Done():
+			s.logger.Debug("append content: context canceled",
+				slog.String("upload_id", uploadID), slog.String("error", ctx.Err().Error()))
+
 			sess.terminate()
 
 			return nil, ctx.Err()
@@ -194,6 +206,9 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 			if sendErr := sess.stream.Send(&storagev1.SafeUploadFileRequest{
 				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
 			}); sendErr != nil {
+				s.logger.Debug("append content: failed to send chunk to storage",
+					slog.String("upload_id", uploadID), slog.Int("chunk_bytes", n), slog.String("error", sendErr.Error()))
+
 				sess.terminate()
 
 				return nil, sendErr
@@ -215,6 +230,9 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 				break
 			}
 
+			s.logger.Debug("append content: read error",
+				slog.String("upload_id", uploadID), slog.String("error", readErr.Error()))
+
 			sess.terminate()
 
 			s.mu.Lock()
@@ -225,12 +243,28 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 		}
 	}
 
+	sess.mu.Lock()
+	streamed := sess.lastOffset
+	sess.mu.Unlock()
+
+	s.logger.Debug("append content: body fully read, finalizing",
+		slog.String("upload_id", uploadID), slog.Int64("bytes_streamed", streamed))
+
 	meta, err := sess.finalize()
 	if err != nil {
+		s.logger.Debug("append content: finalize failed",
+			slog.String("upload_id", uploadID), slog.String("error", err.Error()))
+
 		sess.terminate()
 
 		return nil, err
 	}
+
+	s.logger.Debug("append content: upload finalized",
+		slog.String("upload_id", uploadID),
+		slog.String("file_id", meta.ID),
+		slog.Int64("size", meta.Size),
+		slog.String("mime_type", meta.MimeType))
 
 	sess.terminate()
 
@@ -256,6 +290,8 @@ func (s *MediaService) TerminateUploadSession(uploadID string) error {
 	delete(s.sessions, uploadID)
 	s.mu.Unlock()
 
+	s.logger.Debug("upload session terminated by user", slog.String("upload_id", uploadID))
+
 	return nil
 }
 
@@ -270,14 +306,22 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 
 	sniff, peekErr := reader.Peek(sniffSize)
 	if peekErr != nil && peekErr != io.EOF {
+		s.logger.Debug("start storage stream: peek failed",
+			slog.String("name", sess.name), slog.String("error", peekErr.Error()))
+
 		return peekErr
 	}
 
 	if len(sniff) == 0 {
+		s.logger.Debug("start storage stream: empty body", slog.String("name", sess.name))
+
 		return ErrEmptyBody
 	}
 
 	mime := http.DetectContentType(sniff)
+
+	s.logger.Debug("start storage stream: sniffed mime type",
+		slog.String("name", sess.name), slog.String("mime_type", mime), slog.Int("sniff_bytes", len(sniff)))
 
 	streamCtx, cancelFn := context.WithCancel(context.Background())
 
@@ -320,8 +364,14 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	}
 
 	if !sess.attachStream(stream, cancelFn, releaseFn, part.GetUploadId()) {
+		s.logger.Debug("start storage stream: session terminated before attach",
+			slog.String("name", sess.name), slog.String("storage_upload_id", part.GetUploadId()))
+
 		return ErrSessionDone
 	}
+
+	s.logger.Debug("start storage stream: storage session opened",
+		slog.String("name", sess.name), slog.String("storage_upload_id", part.GetUploadId()), slog.String("mime_type", mime))
 
 	return nil
 }
