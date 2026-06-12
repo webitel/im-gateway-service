@@ -235,10 +235,6 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 
 			sess.terminate()
 
-			s.mu.Lock()
-			delete(s.sessions, uploadID)
-			s.mu.Unlock()
-
 			return nil, readErr
 		}
 	}
