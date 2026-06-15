@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
+
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
@@ -38,7 +40,7 @@ type (
 //   - *MessageHistoryClient: a new instance of the MessageHistoryClient
 //   - error: any error encountered during initialization
 func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*MessageHistoryClient, error) {
-	log := logger.With(slog.String("component", "im-message-history-client"))
+	log := logger.With(slog.String(semconv.ComponentKey, "im-message-history-client"))
 
 	factory := func(conn *grpc.ClientConn) threadv1.MessageHistoryClient {
 		return threadv1.NewMessageHistoryClient(conn)
@@ -46,7 +48,7 @@ func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryP
 
 	c, err := webitel.New(logger, discovery, ServiceName, tls, factory)
 	if err != nil {
-		log.Error("initialization failed", slog.Any("error", err))
+		log.Error("initialization failed", slog.Any(semconv.ErrorKey, err))
 		return nil, fmt.Errorf("[im-message-history-client] initialization failed: %w", err)
 	}
 
@@ -64,7 +66,7 @@ func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryP
 //   - error: any error encountered during the search operation
 func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
 	log := c.logger.With(
-		slog.Int("domain_id", int(searchQuery.DomainID)),
+		slog.Int(semconv.DomainIDKey, int(searchQuery.DomainID)),
 		slog.Uint64("size", uint64(searchQuery.Size)),
 		slog.Any("thread_ids", searchQuery.ThreadIDs),
 		slog.Any("cursor", searchQuery.Cursor),
@@ -100,7 +102,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	})
 	if err != nil {
 		log.Error("failed to search message history",
-			slog.Any("error", err),
+			slog.Any(semconv.ErrorKey, err),
 			slog.Any("request", searchQuery),
 		)
 		return nil, nil, err
@@ -124,7 +126,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 //   - error: any error encountered during the search operation
 func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
 	log := c.logger.With(
-		slog.Int("domain_id", int(query.DomainID)),
+		slog.Int(semconv.DomainIDKey, int(query.DomainID)),
 		slog.Uint64("size", uint64(query.Size)),
 		slog.String("thread_id", query.ThreadID),
 		slog.Any("cursor", query.Cursor),
@@ -160,7 +162,7 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 	})
 	if err != nil {
 		log.Error("failed to search left threads message history",
-			slog.Any("error", err),
+			slog.Any(semconv.ErrorKey, err),
 			slog.Any("request", query),
 		)
 		return nil, nil, err

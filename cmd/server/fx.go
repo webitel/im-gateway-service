@@ -2,7 +2,10 @@ package server
 
 import (
 	"github.com/webitel/webitel-go-kit/infra/profiler"
+	"github.com/webitel/webitel-go-kit/pkg/depenlog"
+	"github.com/webitel/webitel-go-kit/pkg/logger"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 
@@ -26,6 +29,7 @@ func NewApp(cfg *config.Config) *fx.App {
 			ProvideSD,
 			ProvideProfile,
 		),
+		fx.WithLogger(func(l logger.Logger) fxevent.Logger { return depenlog.FxLogger(l) }),
 		fx.Invoke(func(discovery discovery.DiscoveryProvider) error { return nil }),
 		webiteldi.Module,
 		defaultauth.Module,

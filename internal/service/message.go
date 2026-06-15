@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 
 	impb "github.com/webitel/im-gateway-service/gen/go/contact/v1" // ADDED FOR SEARCH
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
@@ -231,7 +232,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		SendAs:   sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
-		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+		m.logger.Error("SendText", semconv.ErrorKey, err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
 		return nil, err
 	}
 

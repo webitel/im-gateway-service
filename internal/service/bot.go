@@ -53,7 +53,7 @@ func (m *BotService) CreateBot(ctx context.Context, in *dto.CreateBotRequest) (*
 		Metadata: in.Metadata,
 		Subject:  in.SchemaID,
 		DomainId: int32(identity.GetDomainID()),
-		IsBot: true,
+		IsBot:    true,
 	})
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (m *BotService) DeleteBot(ctx context.Context, in *dto.DeleteBotRequest) (*
 	bot := contacts.GetContacts()[0]
 
 	resp, err := m.contactClient.DeleteContact(ctx, &contactv1.DeleteContactRequest{
-		Id: bot.GetId(),
+		Id:       bot.GetId(),
 		DomainId: bot.GetDomainId(),
 	})
 	if err != nil {
@@ -138,4 +138,3 @@ func (m *BotService) toBot(p *contactv1.Contact) *dto.Bot {
 
 	return out
 }
-

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -34,7 +35,7 @@ func NewAuthMiddleware(authorizer auth.Authorizer) func(http.Handler) http.Handl
 
 			newCtx, err := authorizer.SetIdentity(ctx)
 			if err != nil {
-				slog.Error("auth failed", "error", err)
+				slog.Error("auth failed", semconv.ErrorKey, err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}

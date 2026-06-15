@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/webitel/webitel-go-kit/pkg/depenlog"
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	kitlog "github.com/webitel/webitel-go-kit/pkg/logger"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/fx"
 
 	"github.com/webitel/im-gateway-service/config"
-	"github.com/webitel/im-gateway-service/infra/server/http/middleware"
 	apptls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/im-gateway-service/internal/model"
 )
@@ -24,6 +26,7 @@ var Module = fx.Module("http_server",
 func ProvideServer(
 	cfg *config.Config,
 	logger *slog.Logger,
+	kit kitlog.Logger,
 	handler http.Handler,
 	lc fx.Lifecycle,
 ) error {
@@ -47,13 +50,14 @@ func ProvideServer(
 		)
 	}
 
-	loggingMiddleware := middleware.LoggingMiddleware(logger)
+	loggingMiddleware := depenlog.Middleware(kit)
 	finalHandler := loggingMiddleware(wrapped)
 
 	srv := &http.Server{
 		Addr:      cfg.Service.HTTP.Addr,
 		Handler:   finalHandler,
 		TLSConfig: tlsCfg,
+		ErrorLog:  depenlog.ErrorLog(kit),
 	}
 
 	lc.Append(fx.Hook{
@@ -67,7 +71,7 @@ func ProvideServer(
 					err = srv.ListenAndServe()
 				}
 				if err != nil && !errors.Is(err, http.ErrServerClosed) {
-					logger.Error("http server error", "err", err)
+					logger.Error("http server error", semconv.ErrorKey, err)
 				}
 			}()
 			return nil

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
@@ -109,7 +110,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 
 		reader := io.LimitReader(result.Body, bytesToRead)
 		if _, err := io.Copy(w, reader); err != nil {
-			h.logger.Error("copying result body into limit reader response", "error", err)
+			h.logger.Error("copying result body into limit reader response", semconv.ErrorKey, err)
 
 			return
 		}
@@ -122,7 +123,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := io.Copy(w, result.Body); err != nil {
-		h.logger.Error("copying download storage result", "error", err)
+		h.logger.Error("copying download storage result", semconv.ErrorKey, err)
 		h.writeError(w, err)
 
 		return
@@ -140,7 +141,7 @@ func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 
 	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name)
 	if err != nil {
-		h.logger.Error("failed to create upload session", slog.String("error", err.Error()))
+		h.logger.Error("failed to create upload session", slog.String(semconv.ErrorKey, err.Error()))
 		h.writeError(w, err)
 
 		return
@@ -149,7 +150,7 @@ func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(dto.CreateUploadSessionResponse{UploadID: uploadID}); err != nil {
-		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
+		h.logger.Error("failed to encode response", slog.String(semconv.ErrorKey, err.Error()))
 	}
 }
 
@@ -164,7 +165,7 @@ func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 
 	size, err := h.media.GetUploadFileInfo(r.Context(), uploadID)
 	if err != nil {
-		h.logger.Error("failed to get upload file info", slog.String("error", err.Error()))
+		h.logger.Error("failed to get upload file info", slog.String(semconv.ErrorKey, err.Error()))
 		h.writeError(w, err)
 
 		return
@@ -173,7 +174,7 @@ func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(dto.FileInfoResponse{UploadID: uploadID, Size: size}); err != nil {
-		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
+		h.logger.Error("failed to encode response", slog.String(semconv.ErrorKey, err.Error()))
 	}
 }
 
@@ -202,7 +203,7 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 		Size:     meta.Size,
 		Hash:     meta.Hash,
 	}); err != nil {
-		h.logger.Error("failed to encode response", slog.String("error", err.Error()))
+		h.logger.Error("failed to encode response", slog.String(semconv.ErrorKey, err.Error()))
 	}
 }
 
@@ -215,7 +216,7 @@ func (h *Handler) terminateUploadSession(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.media.TerminateUploadSession(uploadID); err != nil {
-		h.logger.Error("failed to terminate upload session", slog.String("error", err.Error()))
+		h.logger.Error("failed to terminate upload session", slog.String(semconv.ErrorKey, err.Error()))
 		h.writeError(w, err)
 
 		return
