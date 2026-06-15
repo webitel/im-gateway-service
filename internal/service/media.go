@@ -36,9 +36,8 @@ var (
 )
 
 const (
-	uploadIdleTimeout = 3 * time.Minute
-	uploadMaxTTL      = 10 * time.Minute
-	sniffSize         = 512
+	uploadMaxTTL = 10 * time.Minute
+	sniffSize    = 512
 )
 
 type MediaService struct {
@@ -123,31 +122,53 @@ func (s *MediaService) CreateUploadSession(ctx context.Context, name string) (st
 
 	id := uuid.NewString()
 	sess := newUploadSession(name)
+	log := s.logger.With(slog.String("upload_id", id))
 
 	s.mu.Lock()
 	s.sessions[id] = sess
 	s.mu.Unlock()
 
-	s.logger.Debug("upload session created", slog.String("upload_id", id))
+	log.Debug("upload session created")
 
-	// Cleanup goroutine: removes the session after the max TTL. Sessions that
-	// complete, are canceled, or fail mid-upload delete their own map entry
-	// eagerly; this backstop also keeps idle/heartbeat-terminated sessions
-	// reachable (found but inactive) until the TTL so GetUploadFileInfo can fall
-	// back to the storage service for their final size.
 	go func() {
-		<-time.After(uploadMaxTTL)
+		select {
+		case <-sess.terminateChan:
+		case <-time.After(uploadMaxTTL):
+			sess.terminate()
+		}
 
 		s.mu.Lock()
 		delete(s.sessions, id)
 		s.mu.Unlock()
 
-		sess.terminate()
-
-		s.logger.Debug("upload session removed", slog.String("upload_id", id))
+		log.Debug("upload session removed")
 	}()
 
 	return id, nil
+}
+
+// GetUploadFileInfo returns the number of bytes uploaded so far for the given
+// session. Returns 0 if the storage stream has not yet been opened (no chunks
+// uploaded via AppendContent).
+func (s *MediaService) GetUploadFileInfo(ctx context.Context, uploadID string) (int64, error) {
+	s.mu.Lock()
+	sess, found := s.sessions[uploadID]
+	s.mu.Unlock()
+
+	if !found {
+		return 0, ErrSessionNotFound
+	}
+
+	if sess.isActive() {
+		return sess.offset(), nil
+	}
+
+	storageID := sess.storageID()
+	if storageID == "" {
+		return 0, ErrSessionDone
+	}
+
+	return s.storageClient.GetUploadInfo(ctx, storageID)
 }
 
 // AppendContent streams body chunks to storage. On the first call for a session
@@ -155,12 +176,14 @@ func (s *MediaService) CreateUploadSession(ctx context.Context, name string) (st
 // opened and the Metadata frame is sent with the sniffed mime. Subsequent bytes
 // (including the peeked ones) are forwarded chunk-by-chunk.
 func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body io.Reader) (*dto.FileMetadata, error) {
+	log := s.logger.With(slog.String("upload_id", uploadID))
+
 	s.mu.Lock()
 	sess, found := s.sessions[uploadID]
 	s.mu.Unlock()
 
 	if !found {
-		s.logger.Debug("append content: session not found", slog.String("upload_id", uploadID))
+		log.Debug("append content: session not found")
 
 		return nil, ErrSessionNotFound
 	}
@@ -169,108 +192,53 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 	defer sess.writeLock.Unlock()
 
 	if !sess.isActive() {
-		s.logger.Debug("append content: session already inactive", slog.String("upload_id", uploadID))
+		log.Debug("append content: session already inactive")
 
 		return nil, ErrSessionDone
 	}
 
-	s.logger.Debug("append content started", slog.String("upload_id", uploadID))
+	log.Debug("append content started")
 
 	reader := bufio.NewReaderSize(body, s.chunkSize)
 
-	if err := s.startStorageStream(ctx, sess, reader); err != nil {
-		s.logger.Debug("append content: failed to start storage stream",
-			slog.String("upload_id", uploadID), slog.String("error", err.Error()))
+	if sess.stream == nil {
+		if err := s.startStorageStream(ctx, sess, reader); err != nil {
+			log.Debug("append content: failed to start storage stream", slog.String("error", err.Error()))
 
-		sess.terminate()
+			return nil, err
+		}
+	}
 
+	if err := s.streamChunks(ctx, sess, reader, log); err != nil {
 		return nil, err
 	}
 
-	buf := make([]byte, s.chunkSize)
-
-	for {
-		select {
-		case <-ctx.Done():
-			s.logger.Debug("append content: context canceled",
-				slog.String("upload_id", uploadID), slog.String("error", ctx.Err().Error()))
-
-			sess.terminate()
-
-			return nil, ctx.Err()
-		default:
-		}
-
-		n, readErr := reader.Read(buf)
-		if n > 0 {
-			if sendErr := sess.stream.Send(&storagev1.SafeUploadFileRequest{
-				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
-			}); sendErr != nil {
-				s.logger.Debug("append content: failed to send chunk to storage",
-					slog.String("upload_id", uploadID), slog.Int("chunk_bytes", n), slog.String("error", sendErr.Error()))
-
-				sess.terminate()
-
-				return nil, sendErr
-			}
-
-			// Signal the heartbeat goroutine that the session is still active.
-			select {
-			case sess.aliveChan <- struct{}{}:
-			default:
-			}
-
-			sess.mu.Lock()
-			sess.lastOffset += int64(n)
-			sess.mu.Unlock()
-		}
-
-		if readErr != nil {
-			if errors.Is(readErr, io.EOF) {
-				break
-			}
-
-			s.logger.Debug("append content: read error",
-				slog.String("upload_id", uploadID), slog.String("error", readErr.Error()))
-
-			sess.terminate()
-
-			return nil, readErr
-		}
-	}
-
-	sess.mu.Lock()
-	streamed := sess.lastOffset
-	sess.mu.Unlock()
-
-	s.logger.Debug("append content: body fully read, finalizing",
-		slog.String("upload_id", uploadID), slog.Int64("bytes_streamed", streamed))
+	log.Debug("append content: body fully read, finalizing", slog.Int64("bytes_streamed", sess.offset()))
 
 	meta, err := sess.finalize()
 	if err != nil {
-		s.logger.Debug("append content: finalize failed",
-			slog.String("upload_id", uploadID), slog.String("error", err.Error()))
+		log.Debug("append content: finalize failed", slog.String("error", err.Error()))
 
 		sess.terminate()
 
 		return nil, err
 	}
 
-	s.logger.Debug("append content: upload finalized",
-		slog.String("upload_id", uploadID),
+	log.Debug("append content: upload finalized",
 		slog.String("file_id", meta.ID),
 		slog.Int64("size", meta.Size),
 		slog.String("mime_type", meta.MimeType))
 
 	sess.terminate()
 
-	s.mu.Lock()
-	delete(s.sessions, uploadID)
-	s.mu.Unlock()
-
 	return meta, nil
 }
 
+// TerminateUploadSession cancels an in-progress upload session, marking it
+// inactive and aborting the underlying storage stream if one was attached. The
+// partial upload is discarded rather than finalized, and the session is removed
+// from the registry by its janitor goroutine. Returns ErrSessionNotFound if no
+// session exists for the given ID.
 func (s *MediaService) TerminateUploadSession(uploadID string) error {
 	s.mu.Lock()
 	sess, found := s.sessions[uploadID]
@@ -282,42 +250,90 @@ func (s *MediaService) TerminateUploadSession(uploadID string) error {
 
 	sess.terminate()
 
-	s.mu.Lock()
-	delete(s.sessions, uploadID)
-	s.mu.Unlock()
-
 	s.logger.Debug("upload session terminated by user", slog.String("upload_id", uploadID))
 
 	return nil
+}
+
+// streamChunks forwards body from reader to the storage stream chunk-by-chunk,
+// updating the session offset and pinging the heartbeat after each chunk. It
+// returns nil when the body is exhausted, or the first send/read/context error.
+// A send error terminates the session (the storage stream is broken); a read
+// error leaves the session resumable.
+func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, reader *bufio.Reader, log *slog.Logger) error {
+	buf := make([]byte, s.chunkSize)
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Debug("append content: context canceled", slog.String("error", ctx.Err().Error()))
+
+			return ctx.Err()
+		default:
+		}
+
+		n, readErr := reader.Read(buf)
+		if n > 0 {
+			if sendErr := sess.stream.Send(&storagev1.SafeUploadFileRequest{
+				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
+			}); sendErr != nil {
+				log.Debug("append content: failed to send chunk to storage",
+					slog.Int("chunk_bytes", n), slog.String("error", sendErr.Error()))
+
+				sess.terminate()
+
+				return sendErr
+			}
+
+			// Signal the heartbeat goroutine that the session is still active.
+			select {
+			case sess.aliveChan <- struct{}{}:
+			default:
+			}
+
+			sess.addOffset(n)
+		}
+
+		if readErr != nil {
+			if errors.Is(readErr, io.EOF) {
+				return nil
+			}
+
+			log.Debug("append content: read error", slog.String("error", readErr.Error()))
+
+			return readErr
+		}
+	}
 }
 
 // startStorageStream peeks the first 512 bytes of body, detects the mime type,
 // opens the SafeUploadFile gRPC stream, and sends the Metadata frame with the
 // sniffed mime. The peeked bytes remain in reader for the chunk loop to forward.
 func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSession, reader *bufio.Reader) error {
+	log := s.logger.With(slog.String("name", sess.name))
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
 
 	sniff, peekErr := reader.Peek(sniffSize)
-	if peekErr != nil && peekErr != io.EOF {
-		s.logger.Debug("start storage stream: peek failed",
-			slog.String("name", sess.name), slog.String("error", peekErr.Error()))
+	if peekErr != nil && !errors.Is(peekErr, io.EOF) {
+		log.Debug("start storage stream: peek failed", slog.String("error", peekErr.Error()))
 
 		return peekErr
 	}
 
 	if len(sniff) == 0 {
-		s.logger.Debug("start storage stream: empty body", slog.String("name", sess.name))
+		log.Debug("start storage stream: empty body")
 
 		return ErrEmptyBody
 	}
 
 	mime := http.DetectContentType(sniff)
 
-	s.logger.Debug("start storage stream: sniffed mime type",
-		slog.String("name", sess.name), slog.String("mime_type", mime), slog.Int("sniff_bytes", len(sniff)))
+	log.Debug("start storage stream: sniffed mime type",
+		slog.String("mime_type", mime), slog.Int("sniff_bytes", len(sniff)))
 
 	streamCtx, cancelFn := context.WithCancel(context.Background())
 
@@ -360,48 +376,16 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	}
 
 	if !sess.attachStream(stream, cancelFn, releaseFn, part.GetUploadId()) {
-		s.logger.Debug("start storage stream: session terminated before attach",
-			slog.String("name", sess.name), slog.String("storage_upload_id", part.GetUploadId()))
+		log.Debug("start storage stream: session terminated before attach",
+			slog.String("storage_upload_id", part.GetUploadId()))
 
 		return ErrSessionDone
 	}
 
-	s.logger.Debug("start storage stream: storage session opened",
-		slog.String("name", sess.name), slog.String("storage_upload_id", part.GetUploadId()), slog.String("mime_type", mime))
+	log.Debug("start storage stream: storage session opened",
+		slog.String("storage_upload_id", part.GetUploadId()), slog.String("mime_type", mime))
 
 	return nil
-}
-
-// GetUploadFileInfo returns the number of bytes uploaded so far for the given
-// session. Returns 0 if the storage stream has not yet been opened (no chunks
-// uploaded via AppendContent).
-func (s *MediaService) GetUploadFileInfo(ctx context.Context, uploadID string) (int64, error) {
-	s.mu.Lock()
-	sess, found := s.sessions[uploadID]
-	s.mu.Unlock()
-
-	if !found {
-		return 0, ErrSessionNotFound
-	}
-
-	if sess.isActive() {
-		sess.mu.Lock()
-		offset := sess.lastOffset
-		sess.mu.Unlock()
-
-		return offset, nil
-
-	}
-
-	sess.mu.Lock()
-	storageID := sess.storageUploadID
-	sess.mu.Unlock()
-
-	if storageID == "" {
-		return 0, ErrSessionDone
-	}
-
-	return s.storageClient.GetUploadInfo(ctx, storageID)
 }
 
 // streamReader adapts a gRPC server-streaming FileService_DownloadFileClient
@@ -447,149 +431,4 @@ func (r *streamReader) Close() error {
 	}
 
 	return nil
-}
-
-// uploadSession holds upload state across the POST→PUT lifecycle. The gRPC
-// stream to storage is attached lazily on the first AppendContent call, after
-// the mime type has been sniffed from the body. A heartbeat goroutine guards
-// against idle streams once attached.
-type uploadSession struct {
-	// Set at creation, never changes.
-	name string
-
-	mu        sync.Mutex
-	writeLock sync.Mutex
-
-	// Stream-side fields. nil/false until attachStream is called.
-	stream    storagev1.FileService_SafeUploadFileClient
-	cancelFn  context.CancelFunc
-	releaseFn func()
-
-	// storageUploadID is the upload ID assigned by the storage service, captured
-	// from the first SafeUploadFile Part response. Used to query storage for the
-	// authoritative uploaded size after the local stream goes inactive.
-	storageUploadID string
-
-	inactive      bool
-	lastOffset    int64
-	terminateOnce sync.Once
-
-	// aliveChan receives a signal on each uploaded chunk to reset the idle timer.
-	aliveChan chan struct{}
-
-	// terminateChan is closed when the session is terminated, signaling all
-	// waiting goroutines (heartbeat, cleanup) to exit.
-	terminateChan chan struct{}
-}
-
-func newUploadSession(name string) *uploadSession {
-	return &uploadSession{
-		name:          name,
-		aliveChan:     make(chan struct{}, 1),
-		terminateChan: make(chan struct{}),
-	}
-}
-
-// attachStream binds the freshly-opened storage stream to the session and
-// starts its heartbeat. It returns false if the session was already terminated
-// (idle timeout or max TTL) while the stream was being opened: in that case
-// terminate() ran with no stream attached and will not run again (sync.Once),
-// so the stream is released here to avoid leaking the gRPC stream and
-// connection, and the caller must abort the upload.
-func (s *uploadSession) attachStream(stream storagev1.FileService_SafeUploadFileClient, cancelFn context.CancelFunc, releaseFn func(), storageUploadID string) bool {
-	s.mu.Lock()
-	if s.inactive {
-		s.mu.Unlock()
-
-		cancelFn()
-		releaseFn()
-
-		return false
-	}
-
-	s.stream = stream
-	s.cancelFn = cancelFn
-	s.releaseFn = releaseFn
-	s.storageUploadID = storageUploadID
-	s.mu.Unlock()
-
-	go s.heartbeat()
-
-	return true
-}
-
-func (s *uploadSession) isActive() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return !s.inactive
-}
-
-// heartbeat terminates the session after uploadIdleTimeout of inactivity.
-func (s *uploadSession) heartbeat() {
-	ticker := time.NewTicker(uploadIdleTimeout)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-s.terminateChan:
-			return
-		case <-s.aliveChan:
-			ticker.Reset(uploadIdleTimeout)
-		case <-ticker.C:
-			s.terminate()
-
-			return
-		}
-	}
-}
-
-// terminate cancels the underlying gRPC stream (if attached) and marks the
-// session inactive. Safe to call multiple times and from multiple goroutines,
-// and safe to call before a stream is attached.
-func (s *uploadSession) terminate() {
-	s.terminateOnce.Do(func() {
-		s.mu.Lock()
-		if s.cancelFn != nil {
-			s.cancelFn()
-		}
-
-		release := s.releaseFn
-		s.inactive = true
-		close(s.terminateChan)
-		s.mu.Unlock()
-
-		if release != nil {
-			release()
-		}
-	})
-}
-
-// finalize signals EOF to the storage server by sending an empty chunk, then
-// receives the final file metadata. Only valid after a stream has been attached
-// and at least one chunk has been forwarded.
-func (s *uploadSession) finalize() (*dto.FileMetadata, error) {
-	if err := s.stream.Send(&storagev1.SafeUploadFileRequest{
-		Data: &storagev1.SafeUploadFileRequest_Chunk{},
-	}); err != nil {
-		return nil, err
-	}
-
-	msg, err := s.stream.Recv()
-	if err != nil {
-		return nil, err
-	}
-
-	meta := msg.GetMetadata()
-	if meta == nil {
-		return nil, errors.New("storage: expected Metadata as final stream response")
-	}
-
-	return &dto.FileMetadata{
-		ID:       strconv.FormatInt(meta.GetFileId(), 10),
-		Name:     meta.GetName(),
-		MimeType: meta.GetMimeType(),
-		Size:     meta.GetSize(),
-		Hash:     meta.GetSha256Sum(),
-	}, nil
 }
