@@ -79,10 +79,7 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, logger.Lo
 		}
 	}
 
-	l, err := depenlog.New(depCfg, opts...)
-	if err != nil {
-		return nil, nil, err
-	}
+	l := depenlog.New(depCfg, opts...)
 
 	// depenlog.New calls slog.SetDefault, so slog.Default() is the unified logger.
 	return slog.Default(), l, nil
