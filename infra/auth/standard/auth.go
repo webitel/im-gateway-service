@@ -1,12 +1,14 @@
 package standard
 
 import (
+	"cmp"
 	"context"
 	"log/slog"
 	"strconv"
 	"strings"
 
 	"go.uber.org/fx"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -18,6 +20,8 @@ import (
 	authclient "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	contactclient "github.com/webitel/im-gateway-service/infra/client/im-contact"
 )
+
+const XJwtPayloadHeader string = "x-jwt-payload"
 
 var Module = fx.Module(
 	"default_auth",
@@ -98,18 +102,18 @@ func (da *Authorizer) SetIdentity(ctx context.Context) (context.Context, error) 
 		}
 	}
 
-	resolvedIdentity, err := da.resolveIdentity(ctx)
+	updatedCtx, resolvedIdentity, err := da.resolveIdentity(ctx)
 	if err != nil {
 		return ctx, errors.Unauthenticated(err.Error())
 	}
 
-	newCtx := context.WithValue(ctx, interfaces.AuthContextKey, resolvedIdentity)
+	newCtx := context.WithValue(updatedCtx, interfaces.AuthContextKey, resolvedIdentity)
 
 	return newCtx, nil
 }
 
 // resolveIdentity determines identification path based on connection type and headers
-func (da *Authorizer) resolveIdentity(ctx context.Context) (*Identity, error) {
+func (da *Authorizer) resolveIdentity(ctx context.Context) (context.Context, *Identity, error) {
 	if client, ok := peer.FromContext(ctx); ok && client.AuthInfo != nil {
 		if tlsInfo, ok := client.AuthInfo.(credentials.TLSInfo); ok && len(tlsInfo.State.PeerCertificates) > 0 {
 			return da.resolveServiceIdentity(ctx)
@@ -119,22 +123,23 @@ func (da *Authorizer) resolveIdentity(ctx context.Context) (*Identity, error) {
 	return da.resolveUserIdentity(ctx)
 }
 
-func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (*Identity, error) {
+func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (context.Context, *Identity, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, errors.Forbidden("metadata required for internal identity resolve")
+		return ctx, nil, errors.Forbidden("metadata required for internal identity resolve")
 	}
 	authType := getHeader(md, interfaces.XWebitelTypeHeader)
 	switch authType {
 	case string(interfaces.XWebitelTypeSchema):
-		return da.resolveSchemaIdentity(ctx, md)
+		id, err := da.resolveSchemaIdentity(ctx, md)
+		return ctx, id, err
 	case string(interfaces.XWebitelTypeEngine):
 		return da.resolveUserIdentity(ctx)
 	case string(interfaces.XWebitelTypeProvider):
-		// Gateways [Facebook, Telegram, WhatsApp, etc]
-		return da.resolveProviderIdentity(ctx, md)
+		id, err := da.resolveProviderIdentity(ctx, md)
+		return ctx, id, err
 	default:
-		return nil, errors.Forbidden("unsupported auth type")
+		return ctx, nil, errors.Forbidden("unsupported auth type")
 	}
 }
 
@@ -168,7 +173,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 	return &Identity{
 		ContactID: contact.GetId(),
 		DomainID:  domainID,
-		Name:      coalesce(contact.GetName(), contact.GetUsername(), "Provider"),
+		Name:      cmp.Or(contact.GetName(), contact.GetUsername(), "Provider"),
 		Via:       getHeader(md, interfaces.ViaIdentificationHeader),
 	}, nil
 }
@@ -201,40 +206,45 @@ func (da *Authorizer) resolveSchemaIdentity(ctx context.Context, md metadata.MD)
 	return &Identity{
 		ContactID: res.GetContacts()[0].GetId(),
 		DomainID:  domainID,
-		Name:      coalesce(res.GetContacts()[0].GetName(), res.GetContacts()[0].GetUsername()),
+		Name:      cmp.Or(res.GetContacts()[0].GetName(), res.GetContacts()[0].GetUsername(), "Unknown"),
 	}, nil
 }
 
-func (da *Authorizer) resolveUserIdentity(ctx context.Context) (*Identity, error) {
+func (da *Authorizer) resolveUserIdentity(ctx context.Context) (context.Context, *Identity, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, errors.Forbidden("metadata required for user identity resolve")
+		return ctx, nil, errors.Forbidden("metadata required for user identity resolve")
 	}
 
-	auth, err := da.auther.Inspect(metadata.NewOutgoingContext(ctx, md))
+	var responseHeader metadata.MD
+
+	auth, err := da.auther.Inspect(metadata.NewOutgoingContext(ctx, md), grpc.Header(&responseHeader))
 	if err != nil {
-		return nil, err
+		return ctx, nil, err
 	}
 
 	contact := auth.Contact
 	if contact == nil {
-		return nil, errors.Forbidden("no contact info in authorization")
+		return ctx, nil, errors.Forbidden("no contact info in authorization")
 	}
-	return &Identity{
+
+	if jwtValues := responseHeader.Get(XJwtPayloadHeader); len(jwtValues) > 0 {
+		jwtPayload := jwtValues[0]
+
+		md.Set(XJwtPayloadHeader, jwtPayload)
+		ctx = metadata.NewIncomingContext(ctx, md)
+
+		ctx = metadata.AppendToOutgoingContext(ctx, XJwtPayloadHeader, jwtPayload)
+	}
+
+	identity := &Identity{
 		ContactID: contact.Id,
 		DomainID:  auth.Dc,
 		Issuer:    auth.Contact.Iss,
-		Name:      coalesce(contact.Name, contact.GivenName, contact.Username),
-	}, nil
-}
-
-func coalesce(str ...string) string {
-	for _, s := range str {
-		if s != "" {
-			return s
-		}
+		Name:      cmp.Or(contact.Name, contact.GivenName, contact.Username, "Unknown"),
 	}
-	return "Unknown"
+
+	return ctx, identity, nil
 }
 
 // --- Internal Helpers ---
