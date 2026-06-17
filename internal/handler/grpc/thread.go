@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
+
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/service"
 )
@@ -31,7 +33,7 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 
 	resultThreads, next, err := s.threadManager.Search(ctx, req)
 	if err != nil {
-		log.Error("failed to fetch threads from provider", slog.Any("err", err))
+		log.Error("failed to fetch threads from provider", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -46,7 +48,7 @@ func (s *ThreadService) Get(ctx context.Context, req *impb.GetThreadRequest) (*i
 
 	thread, err := s.threadManager.Get(ctx, req)
 	if err != nil {
-		log.Error("fetch thread from provider", slog.Any("err", err))
+		log.Error("fetch thread from provider", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -58,7 +60,7 @@ func (s *ThreadService) SearchLeft(ctx context.Context, req *impb.SearchLeftRequ
 
 	result, next, err := s.threadManager.SearchLeft(ctx, req)
 	if err != nil {
-		log.Error("list left chats", slog.Any("err", err))
+		log.Error("list left chats", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -73,7 +75,7 @@ func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberReques
 
 	response, err := s.threadManager.AddMember(ctx, req)
 	if err != nil {
-		log.Error("failed to add member to thread", slog.Any("err", err))
+		log.Error("failed to add member to thread", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -85,7 +87,7 @@ func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMember
 
 	err := s.threadManager.RemoveMember(ctx, req)
 	if err != nil {
-		log.Error("failed to remove member from thread", slog.Any("err", err))
+		log.Error("failed to remove member from thread", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -98,7 +100,7 @@ func (s *ThreadService) Transfer(ctx context.Context, req *impb.TransferRequest)
 
 	res, err := s.threadManager.Transfer(ctx, req)
 	if err != nil {
-		log.Error("failed to transfer thread", slog.Any("err", err))
+		log.Error("failed to transfer thread", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 
 	storagev1 "github.com/webitel/im-gateway-service/gen/go/storage/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -203,7 +204,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 
 	if sess.stream == nil {
 		if err := s.startStorageStream(ctx, sess, reader); err != nil {
-			log.Debug("append content: failed to start storage stream", slog.String("error", err.Error()))
+			log.Debug("append content: failed to start storage stream", slog.String(semconv.ErrorKey, err.Error()))
 
 			return nil, err
 		}
@@ -217,7 +218,7 @@ func (s *MediaService) AppendContent(ctx context.Context, uploadID string, body 
 
 	meta, err := sess.finalize()
 	if err != nil {
-		log.Debug("append content: finalize failed", slog.String("error", err.Error()))
+		log.Debug("append content: finalize failed", slog.String(semconv.ErrorKey, err.Error()))
 
 		sess.terminate()
 
@@ -266,7 +267,7 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 	for {
 		select {
 		case <-ctx.Done():
-			log.Debug("append content: context canceled", slog.String("error", ctx.Err().Error()))
+			log.Debug("append content: context canceled", slog.String(semconv.ErrorKey, ctx.Err().Error()))
 
 			return ctx.Err()
 		default:
@@ -278,7 +279,7 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
 			}); sendErr != nil {
 				log.Debug("append content: failed to send chunk to storage",
-					slog.Int("chunk_bytes", n), slog.String("error", sendErr.Error()))
+					slog.Int("chunk_bytes", n), slog.String(semconv.ErrorKey, sendErr.Error()))
 
 				sess.terminate()
 
@@ -299,7 +300,7 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 				return nil
 			}
 
-			log.Debug("append content: read error", slog.String("error", readErr.Error()))
+			log.Debug("append content: read error", slog.String(semconv.ErrorKey, readErr.Error()))
 
 			return readErr
 		}
@@ -319,7 +320,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 
 	sniff, peekErr := reader.Peek(sniffSize)
 	if peekErr != nil && !errors.Is(peekErr, io.EOF) {
-		log.Debug("start storage stream: peek failed", slog.String("error", peekErr.Error()))
+		log.Debug("start storage stream: peek failed", slog.String(semconv.ErrorKey, peekErr.Error()))
 
 		return peekErr
 	}

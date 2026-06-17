@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -217,7 +218,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	})
 
 	if err != nil {
-		log.Error("failed to fetch internal threads", slog.Any("error", err))
+		log.Error("failed to fetch internal threads", slog.Any(semconv.ErrorKey, err))
 		return nil, false, err
 	}
 
@@ -226,7 +227,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	if err != nil {
 		log.Error(
 			"failed to fetch internal contact information for enrichment",
-			slog.Any("error", err),
+			slog.Any(semconv.ErrorKey, err),
 			slog.Any("ids", uniqueContactIds),
 		)
 
@@ -266,7 +267,7 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 		Page:     request.Page,
 	})
 	if err != nil {
-		log.Error("failed to fetch internal threads", slog.Any("error", err))
+		log.Error("failed to fetch internal threads", slog.Any(semconv.ErrorKey, err))
 		return nil, false, err
 	}
 
@@ -275,7 +276,7 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 	if err != nil {
 		log.Error(
 			"failed to fetch internal contact information for enrichment",
-			slog.Any("error", err),
+			slog.Any(semconv.ErrorKey, err),
 			slog.Any("ids", uniqueContactIds),
 		)
 		return nil, false, err
@@ -304,14 +305,14 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		Fields:   req.GetFields(),
 	})
 	if err != nil {
-		log.Error("failed to fetch internal thread", slog.Any("error", err))
+		log.Error("failed to fetch internal thread", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
 	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalThread})
 	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
 	if err != nil {
-		log.Error("failed to fetch contact information for enrichment", slog.Any("error", err))
+		log.Error("failed to fetch contact information for enrichment", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -334,13 +335,13 @@ func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRe
 	})
 
 	if err != nil {
-		log.Error("internal service set variables", "err", err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
+		log.Error("internal service set variables", semconv.ErrorKey, err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
 		return nil, err
 	}
 
 	threadVars, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
 	if err != nil {
-		log.Error("convert to thread variables", "err", err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
+		log.Error("convert to thread variables", semconv.ErrorKey, err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
 		return nil, err
 	}
 
@@ -364,7 +365,7 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 	})
 
 	if err != nil {
-		log.Error("search variables", "err", err)
+		log.Error("search variables", semconv.ErrorKey, err)
 		return nil, err
 	}
 
@@ -372,7 +373,7 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 	for _, item := range response.GetItems() {
 		v, err := t.convertToThreadVariables(ctx, item, int32(identity.GetDomainID()))
 		if err != nil {
-			log.Error("convert to thread variables", "err", err)
+			log.Error("convert to thread variables", semconv.ErrorKey, err)
 			return nil, err
 		}
 		vars = append(vars, v)
@@ -398,13 +399,13 @@ func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVaria
 	})
 
 	if err != nil {
-		log.Error("locate variables", "err", err)
+		log.Error("locate variables", semconv.ErrorKey, err)
 		return nil, err
 	}
 
 	v, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
 	if err != nil {
-		log.Error("convert to thread variables", "err", err)
+		log.Error("convert to thread variables", semconv.ErrorKey, err)
 		return nil, err
 	}
 
@@ -427,13 +428,13 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 	})
 
 	if err != nil {
-		log.Error("flush variables", "err", err)
+		log.Error("flush variables", semconv.ErrorKey, err)
 		return nil, err
 	}
 
 	v, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
 	if err != nil {
-		log.Error("convert to thread variables", "err", err)
+		log.Error("convert to thread variables", semconv.ErrorKey, err)
 		return nil, err
 	}
 
@@ -640,7 +641,7 @@ func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv
 	})
 
 	if err != nil {
-		log.ErrorContext(ctx, "search variables setters contacts", "err", err)
+		log.ErrorContext(ctx, "search variables setters contacts", semconv.ErrorKey, err)
 		return nil, err
 	}
 

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
@@ -23,7 +24,7 @@ type via struct {
 }
 
 func newVia(logger *slog.Logger, viaClient *imcontact.ViaClient) *via {
-	return &via{logger: logger.With("component", "via"), viaClient: viaClient}
+	return &via{logger: logger.With(semconv.ComponentKey, "via"), viaClient: viaClient}
 }
 
 func (via *via) Search(ctx context.Context, req *contact.SearchViaRequest) (*contact.SearchViaResponse, error) {
@@ -31,7 +32,7 @@ func (via *via) Search(ctx context.Context, req *contact.SearchViaRequest) (*con
 
 	response, err := via.viaClient.Search(ctx, req)
 	if err != nil {
-		log.Error("executing search contact vias request", "error", err)
+		log.Error("executing search contact vias request", semconv.ErrorKey, err)
 
 		return nil, errors.Wrap(err, errors.WithID("services.via.search"))
 	}
@@ -44,7 +45,7 @@ func (via *via) Update(ctx context.Context, req *contact.UpdateViaRequest) (*con
 
 	response, err := via.viaClient.Update(ctx, req)
 	if err != nil {
-		log.Error("updating client via", "error", err)
+		log.Error("updating client via", semconv.ErrorKey, err)
 
 		return nil, errors.Wrap(err, errors.WithID("service.via.update"))
 	}
@@ -70,7 +71,7 @@ func (via *via) PartialUpdate(ctx context.Context, req *contact.PartialUpdateVia
 
 	response, err := via.viaClient.PartialUpdate(ctx, req)
 	if err != nil {
-		log.Error("executing core API request", "error", err)
+		log.Error("executing core API request", semconv.ErrorKey, err)
 
 		return nil, errors.Wrap(err, errors.WithID("service.via.partial_update"))
 	}

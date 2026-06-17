@@ -7,6 +7,8 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
+
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
@@ -73,13 +75,13 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
 	if err != nil {
-		log.Error("failed to fetch message history", slog.Any("err", err))
+		log.Error("failed to fetch message history", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal)
 	if err != nil {
-		log.Error("failed to fetch participants info", slog.Any("err", err))
+		log.Error("failed to fetch participants info", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -114,13 +116,13 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 
 	response, fromInternal, err := s.historyClient.SearchLeftThreads(ctx, query)
 	if err != nil {
-		log.Error("failed to fetch left threads message history", slog.Any("err", err))
+		log.Error("failed to fetch left threads message history", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal)
 	if err != nil {
-		log.Error("failed to fetch participants info", slog.Any("err", err))
+		log.Error("failed to fetch participants info", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 

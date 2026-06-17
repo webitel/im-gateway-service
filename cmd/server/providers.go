@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/url"
-	"os"
 	"time"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -15,6 +14,7 @@ import (
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	otelsdk "github.com/webitel/webitel-go-kit/infra/otel/sdk"
 	"github.com/webitel/webitel-go-kit/infra/profiler"
+	"github.com/webitel/webitel-go-kit/pkg/depenlog"
 	"github.com/webitel/webitel-go-kit/pkg/logger"
 
 	"github.com/webitel/im-gateway-service/config"
@@ -29,51 +29,21 @@ import (
 	_ "github.com/webitel/webitel-go-kit/infra/otel/sdk/trace/stdout"
 )
 
-func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
+func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, logger.Logger, error) {
 	logSettings := cfg.Log
 
 	if !logSettings.Console && !logSettings.Otel && logSettings.File == "" {
 		logSettings.Console = true
 	}
 
-	level := parseLevel(logSettings.Level)
-	opts := &slog.HandlerOptions{
-		Level: level,
+	depCfg := depenlog.Config{
+		Level:   logSettings.Level,
+		JSON:    logSettings.JSON,
+		File:    logSettings.File,
+		Console: logSettings.Console,
 	}
 
-	var handlers []slog.Handler
-
-	if logSettings.Console {
-		var h slog.Handler
-		if logSettings.JSON {
-			h = slog.NewJSONHandler(os.Stdout, opts)
-		} else {
-			h = slog.NewTextHandler(os.Stdout, opts)
-		}
-		handlers = append(handlers, h)
-	}
-
-	// File Handler
-	if logSettings.File != "" {
-		f, err := os.OpenFile(logSettings.File, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-		if err != nil {
-			return nil, err
-		}
-
-		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
-				return f.Close()
-			},
-		})
-
-		var h slog.Handler
-		if logSettings.JSON {
-			h = slog.NewJSONHandler(f, opts)
-		} else {
-			h = slog.NewTextHandler(f, opts)
-		}
-		handlers = append(handlers, h)
-	}
+	var opts []depenlog.Option
 
 	if logSettings.Otel {
 		service := resource.NewSchemaless(
@@ -82,101 +52,37 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
 			semconv.ServiceInstanceID(discovery.GenerateInstanceID(model.ServiceName)),
 			semconv.ServiceNamespace(model.ServiceNamespace),
 		)
-		otelHandler := otelslog.NewHandler("slog")
 
+		// The bridge hook fires (synchronously, during Configure) only when an
+		// OTel logs exporter is active; otherwise otelHandler stays nil and we
+		// fall back to depenlog's console/file output.
+		var otelHandler slog.Handler
 		shutdown, err := otelsdk.Configure(context.Background(), otelsdk.WithResource(service),
 			otelsdk.WithLogBridge(
 				func() {
-					handlers = append(handlers, otelHandler)
+					otelHandler = otelslog.NewHandler("slog")
 				},
 			),
 		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		handlers = append(handlers)
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				return shutdown(ctx)
 			},
 		})
-	}
 
-	var finalHandler slog.Handler
-	if len(handlers) == 0 {
-		finalHandler = slog.NewTextHandler(os.Stdout, opts)
-	} else if len(handlers) == 1 {
-		finalHandler = handlers[0]
-	} else {
-		finalHandler = MultiHandler(handlers...)
-	}
-
-	logger := slog.New(finalHandler)
-	slog.SetDefault(logger)
-
-	return logger, nil
-}
-
-func parseLevel(lvl string) slog.Level {
-	switch lvl {
-	case "debug":
-		return slog.LevelDebug
-	case "info":
-		return slog.LevelInfo
-	case "warn":
-		return slog.LevelWarn
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
-}
-
-type multiHandler struct {
-	handlers []slog.Handler
-}
-
-func MultiHandler(handlers ...slog.Handler) slog.Handler {
-	return &multiHandler{handlers: handlers}
-}
-
-func (h *multiHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	for _, hh := range h.handlers {
-		if hh.Enabled(ctx, level) {
-			return true
+		if otelHandler != nil {
+			opts = append(opts, depenlog.WithHandler(otelHandler))
 		}
 	}
 
-	return false
-}
+	l := depenlog.New(depCfg, opts...)
 
-func (h *multiHandler) Handle(ctx context.Context, r slog.Record) error {
-	for _, hh := range h.handlers {
-		if hh.Enabled(ctx, r.Level) {
-			_ = hh.Handle(ctx, r)
-		}
-	}
-
-	return nil
-}
-
-func (h *multiHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	newHandlers := make([]slog.Handler, len(h.handlers))
-	for i, hh := range h.handlers {
-		newHandlers[i] = hh.WithAttrs(attrs)
-	}
-
-	return &multiHandler{handlers: newHandlers}
-}
-
-func (h *multiHandler) WithGroup(name string) slog.Handler {
-	newHandlers := make([]slog.Handler, len(h.handlers))
-	for i, hh := range h.handlers {
-		newHandlers[i] = hh.WithGroup(name)
-	}
-
-	return &multiHandler{handlers: newHandlers}
+	// depenlog.New calls slog.SetDefault, so slog.Default() is the unified logger.
+	return slog.Default(), l, nil
 }
 
 func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery.DiscoveryProvider, error) {
@@ -225,10 +131,10 @@ func ProvideSD(cfg *config.Config, log *slog.Logger, lc fx.Lifecycle) (discovery
 	return provider, nil
 }
 
-func ProvideProfile(cfg *config.Config, l *slog.Logger) (profiler.Config, logger.Logger) {
+func ProvideProfile(cfg *config.Config) profiler.Config {
 	return profiler.Config{
 		Addr:                 cfg.Profiler.Addr,
 		MutexProfileFraction: cfg.Profiler.MutexFraction,
 		BlockProfileRate:     cfg.Profiler.BlockRate,
-	}, logger.NewSlog(l)
+	}
 }

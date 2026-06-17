@@ -20,7 +20,7 @@ require (
 	github.com/webitel/webitel-go-kit/infra/transport v0.0.0-20260406211014-f7c4f5d66ae8
 	github.com/webitel/webitel-go-kit/pkg/errors v0.1.0
 	github.com/webitel/webitel-go-kit/pkg/interceptors v0.1.1
-	github.com/webitel/webitel-go-kit/pkg/logger v0.1.1
+	github.com/webitel/webitel-go-kit/pkg/logger v0.1.2-0.20260616092333-51ced8c22b68
 	go.opentelemetry.io/contrib/bridges/otelslog v0.18.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.68.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0
@@ -106,4 +106,10 @@ require (
 	google.golang.org/protobuf v1.36.11
 )
 
-require github.com/webitel/webitel-go-kit/appconfig v0.0.0-20260602143553-df89d5e34680
+require (
+	github.com/webitel/webitel-go-kit/appconfig v0.0.0-20260602143553-df89d5e34680
+	github.com/webitel/webitel-go-kit/pkg/depenlog v0.0.0-20260616092333-51ced8c22b68
+	github.com/webitel/webitel-go-kit/pkg/semconv v0.0.0
+)
+
+replace github.com/webitel/webitel-go-kit/pkg/semconv => github.com/webitel/webitel-go-kit/pkg/semconv v0.0.0-20260616092333-51ced8c22b68

@@ -9,6 +9,7 @@ import (
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+	"github.com/webitel/webitel-go-kit/pkg/semconv"
 	"google.golang.org/grpc"
 )
 
@@ -19,7 +20,7 @@ type ThreadClient struct {
 }
 
 func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*ThreadClient, error) {
-	log := logger.With(slog.String("component", "im-thread-management-client"))
+	log := logger.With(slog.String(semconv.ComponentKey, "im-thread-management-client"))
 
 	factory := func(conn *grpc.ClientConn) threadv1.ThreadManagementClient {
 		return threadv1.NewThreadManagementClient(conn)
@@ -27,7 +28,7 @@ func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider,
 
 	c, err := webitel.New(log, discovery, ServiceName, tls, factory)
 	if err != nil {
-		log.Error("initialization failed", slog.Any("error", err))
+		log.Error("initialization failed", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -54,7 +55,7 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 	})
 
 	if err != nil {
-		log.Error("failed to fetch thread information from provider", slog.Any("error", err))
+		log.Error("failed to fetch thread information from provider", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 
@@ -63,7 +64,7 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 
 func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftRequest) (*threadv1.SearchLeftResponse, error) {
 	log := c.logger.With(
-		slog.Any("domain_id", req.DomainId),
+		slog.Any(semconv.DomainIDKey, req.DomainId),
 		slog.Any("member_id", req.MemberId),
 	)
 
@@ -77,7 +78,7 @@ func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftR
 		return err
 	})
 	if err != nil {
-		log.Error("failed to fetch thread information from provider", slog.Any("error", err))
+		log.Error("failed to fetch thread information from provider", slog.Any(semconv.ErrorKey, err))
 		return nil, err
 	}
 

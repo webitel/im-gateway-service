@@ -70,7 +70,7 @@ func TestConvert_SourceFieldsNotInDstAreDiscarded(t *testing.T) {
 	in := &contactv1.SearchContactRequest{
 		Page:     3,
 		Q:        "bot",
-		DomainId: 999,   // not present in gateway.SearchContactRequest
+		DomainId: 999,               // not present in gateway.SearchContactRequest
 		AppId:    []string{"app-1"}, // not present in gateway.SearchContactRequest
 	}
 
