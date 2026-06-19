@@ -6,9 +6,13 @@ import (
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/webitel/im-gateway-service/gen/go/auth/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
+	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	stdauth "github.com/webitel/im-gateway-service/infra/auth"
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
+	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -21,11 +25,33 @@ type Accounter interface {
 	Logout(ctx context.Context, headers metadata.MD) error
 	RegisterDevice(ctx context.Context, headers metadata.MD, request *dto.RegisterDeviceRequest) error
 	UnregisterDevice(ctx context.Context, headers metadata.MD, request *dto.UnregisterDeviceRequest) error
+	GetAuthorizations(ctx context.Context, request *impb.AccountGetAuthorizationsRequest) (*impb.AccountGetAuthorizationsResponse, error)
 }
 
 type AccountService struct {
 	client        *imauth.Client
 	contactClient *imcontact.Client
+}
+
+func (s *AccountService) GetAuthorizations(ctx context.Context, request *impb.AccountGetAuthorizationsRequest) (*impb.AccountGetAuthorizationsResponse, error) {
+	session, ok := stdauth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, stdauth.IdentityNotFoundErr
+	}
+
+	ouboundRequest := &auth.GetAuthorizationRequest{Dc: session.GetDomainID()}
+
+	mapper.ConvertByProtoReflect(request.ProtoReflect(), ouboundRequest.ProtoReflect())
+
+	internalResponse, err := s.client.GetAuthorizations(ctx, ouboundRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	parsed := &impb.AccountGetAuthorizationsResponse{}
+	mapper.ConvertByProtoReflect(internalResponse.ProtoReflect(), parsed.ProtoReflect())
+
+	return parsed, nil
 }
 
 func NewAccountService(client *imauth.Client, contactClient *imcontact.Client) *AccountService {

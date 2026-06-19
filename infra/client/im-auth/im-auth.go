@@ -121,6 +121,21 @@ func (c *Client) UnregisterDevice(ctx context.Context, in *dto.UnregisterDeviceR
 	})
 }
 
+func (c *Client) GetAuthorizations(ctx context.Context, in *authv1.GetAuthorizationRequest, opts ...grpc.CallOption) (*authv1.AuthorizationList, error) {
+	var response *authv1.AuthorizationList
+	err := c.rpc.Execute(ctx, func(ac authv1.AccountClient) error {
+		var err error
+		response, err = ac.GetAuthorizations(ctx, in)
+		return err
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
