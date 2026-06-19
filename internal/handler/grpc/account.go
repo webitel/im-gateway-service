@@ -95,6 +95,15 @@ func (a *AccountService) UnregisterDevice(ctx context.Context, request *impb.Unr
 	return &impb.UnregisterDeviceResponse{}, nil
 }
 
+func (a *AccountService) AccountGetAuthorizations(ctx context.Context, request *impb.AccountGetAuthorizationsRequest) (*impb.AccountGetAuthorizationsResponse, error) {
+	response, err := a.accounter.GetAuthorizations(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func NewAccountService(logger *slog.Logger, accounter service.Accounter) *AccountService {
 	return &AccountService{
 		logger:    logger,
