@@ -69,6 +69,7 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.Role),
 		InitiatorContactId: &initiatorContactId,
+		DomainId:           int32(identity.GetDomainID()),
 	}
 
 	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
