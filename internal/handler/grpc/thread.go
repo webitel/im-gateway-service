@@ -10,14 +10,12 @@ import (
 
 var _ impb.ThreadManagementServer = (*ThreadService)(nil)
 
-type (
-	ThreadService struct {
-		impb.UnimplementedThreadManagementServer
+type ThreadService struct {
+	impb.UnimplementedThreadManagementServer
 
-		logger        *slog.Logger
-		threadManager service.ThreadManager
-	}
-)
+	logger        *slog.Logger
+	threadManager service.ThreadManager
+}
 
 func NewThreadService(logger *slog.Logger, threadManager service.ThreadManager) *ThreadService {
 	return &ThreadService{
@@ -39,6 +37,10 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 		Items: resultThreads,
 		Next:  next,
 	}, nil
+}
+
+func (s *ThreadService) Create(ctx context.Context, req *impb.ThreadManagementCreateRequest) (*impb.ThreadManagementCreateResponse, error) {
+	return s.threadManager.Create(ctx, req)
 }
 
 func (s *ThreadService) Get(ctx context.Context, req *impb.GetThreadRequest) (*impb.Thread, error) {

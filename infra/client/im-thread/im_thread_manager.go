@@ -221,6 +221,23 @@ func (c *ThreadClient) FlushVariables(ctx context.Context, req *threadv1.FlushVa
 	return resp, nil
 }
 
+func (c *ThreadClient) Create(ctx context.Context, req *threadv1.ThreadManagementCreateRequest) (*threadv1.ThreadManagementCreateResponse, error) {
+	var response *threadv1.ThreadManagementCreateResponse
+	err := c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		var err error
+		if response, err = tmc.Create(ctx, req); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 func (c *ThreadClient) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()

@@ -3,6 +3,7 @@ package service
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"log/slog"
 	"maps"
 	"slices"
@@ -33,6 +34,7 @@ type ThreadManager interface {
 	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
 	LocateVariables(ctx context.Context, req *gtwthread.LocateVariablesRequest) (*gtwthread.ThreadVariables, error)
 	FlushVariables(ctx context.Context, req *gtwthread.FlushVariablesRequest) (*gtwthread.ThreadVariables, error)
+	Create(cxt context.Context, req *gtwthread.ThreadManagementCreateRequest) (*gtwthread.ThreadManagementCreateResponse, error)
 }
 
 type thread struct {
@@ -40,6 +42,79 @@ type thread struct {
 
 	threadClient  *imthread.ThreadClient
 	contactClient *imcontact.Client
+}
+
+func (t *thread) prepareCreateDirectConfig(ctx context.Context, req *gtwthread.ThreadManagementCreateRequest, session auth.Identifier) (*threadv1.ThreadManagementCreateRequest, error) {
+	directConfig, ok := req.Config.(*gtwthread.ThreadManagementCreateRequest_Direct)
+	if !ok {
+		return nil, errors.InvalidArgument("received non direct config call", errors.WithID("service.thread.prepare_create_direct_config.assert"), errors.WithValue("type", fmt.Sprintf("%T", req.Config)))
+	}
+
+	directMember, err := t.fetchContact(ctx, directConfig.Direct.GetMember().GetSub(), directConfig.Direct.GetMember().GetIss(), int32(session.GetDomainID()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &threadv1.ThreadManagementCreateRequest{
+		DomainId: session.GetDomainID(),
+		Initiator: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{
+				ContactId: session.GetContactID(),
+			},
+			Identity: &threadv1.Identity{
+				Issuer: session.GetIssuer(),
+				Name:   session.GetName(),
+			},
+		},
+		Config: &threadv1.ThreadManagementCreateRequest_Direct{
+			Direct: &threadv1.DirectConfig{
+				Member: &threadv1.Peer{
+					Kind: &threadv1.Peer_ContactId{ContactId: directMember.Id},
+					Identity: &threadv1.Identity{
+						Issuer: directMember.GetIssId(),
+						Name:   directMember.GetName(),
+					},
+				},
+			},
+		},
+	}, nil
+}
+
+func (t *thread) Create(ctx context.Context, req *gtwthread.ThreadManagementCreateRequest) (*gtwthread.ThreadManagementCreateResponse, error) {
+	session, exists := auth.GetIdentityFromContext(ctx)
+	if !exists {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	var internalRequest *threadv1.ThreadManagementCreateRequest
+	switch req.Config.(type) {
+	case *gtwthread.ThreadManagementCreateRequest_Direct:
+		directCfg, err := t.prepareCreateDirectConfig(ctx, req, session)
+		if err != nil {
+			return nil, err
+		}
+
+		internalRequest = directCfg
+	default:
+		return nil, errors.InvalidArgument("received unknown type of thread create request", errors.WithID("service.thread.create.unknown_type"))
+	}
+
+	internalResponse, err := t.threadClient.Create(ctx, internalRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	//TODO: fetch in other routine when thread creation is in progress
+	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalResponse.GetThread()})
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(session.GetDomainID()))
+	if err != nil {
+		t.logger.Error("failed to fetch contact information for enrichment", slog.Any("error", err))
+		return nil, err
+	}
+
+	response := convertToThread(internalResponse.GetThread(), contacts)
+
+	return &gtwthread.ThreadManagementCreateResponse{Thread: response}, nil
 }
 
 func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error) {
