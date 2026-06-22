@@ -21,7 +21,10 @@ import (
 	contactclient "github.com/webitel/im-gateway-service/infra/client/im-contact"
 )
 
-const XJwtPayloadHeader string = "x-jwt-payload"
+const (
+	XJwtPayloadHeader string = "x-jwt-payload"
+	XDeviceHeader     string = "x-webitel-device"
+)
 
 var Module = fx.Module(
 	"default_auth",
@@ -210,6 +213,16 @@ func (da *Authorizer) resolveSchemaIdentity(ctx context.Context, md metadata.MD)
 	}, nil
 }
 
+func (da *Authorizer) propogateDeviceToOutgoingContext(ctx context.Context, md metadata.MD) context.Context {
+	if devicePayload := md.Get(XDeviceHeader); len(devicePayload) != 0 {
+		device := devicePayload[0]
+		newCtx := metadata.AppendToOutgoingContext(ctx, XDeviceHeader, device)
+		return newCtx
+	}
+
+	return ctx
+}
+
 func (da *Authorizer) resolveUserIdentity(ctx context.Context) (context.Context, *Identity, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
@@ -236,6 +249,8 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (context.Context,
 
 		ctx = metadata.AppendToOutgoingContext(ctx, XJwtPayloadHeader, jwtPayload)
 	}
+
+	ctx = da.propogateDeviceToOutgoingContext(ctx, md)
 
 	identity := &Identity{
 		ContactID: contact.Id,
