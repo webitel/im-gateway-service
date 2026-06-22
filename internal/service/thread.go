@@ -114,6 +114,16 @@ func (t *thread) Create(ctx context.Context, req *gtwthread.ThreadManagementCrea
 
 	response := convertToThread(internalResponse.GetThread(), contacts)
 
+	threadSubject := ""
+	for _, c := range contacts {
+		if c.Id != session.GetContactID() {
+			threadSubject = cmp.Or(c.GetName(), c.GetUsername())
+			break
+		}
+	}
+
+	response.Subject = threadSubject
+
 	return &gtwthread.ThreadManagementCreateResponse{Thread: response}, nil
 }
 
