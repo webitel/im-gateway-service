@@ -36,15 +36,6 @@ func (m *MessageService) SendText(ctx context.Context, in *impb.SendTextRequest)
 	return mapper.MapToSendTextResponse(out), nil
 }
 
-func (m *MessageService) SendImage(ctx context.Context, in *impb.SendImageRequest) (*impb.SendImageResponse, error) {
-	out, err := m.messenger.SendImage(ctx, mapper.MapToSendImageRequest(in))
-	if err != nil {
-		return nil, err
-	}
-
-	return mapper.MapToSendImageResponse(out), nil
-}
-
 func (m *MessageService) SendDocument(ctx context.Context, in *impb.SendDocumentRequest) (*impb.SendDocumentResponse, error) {
 	out, err := m.messenger.SendDocument(ctx, mapper.MapToSendDocumentRequest(in))
 	if err != nil {
