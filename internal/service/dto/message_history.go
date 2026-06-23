@@ -58,6 +58,7 @@ type HistoryMessage struct {
 	Location    *api.MessageLocation `json:"location"`
 	Contact     *api.MessageContact  `json:"contact"`
 	Interactive *api.Interactive     `json:"interactive"`
+	System      *api.System          `json:"system"`
 }
 
 type Cursors struct {
