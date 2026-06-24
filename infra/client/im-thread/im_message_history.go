@@ -229,9 +229,22 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			Location:    MapLocation(m.Location),
 			Contact:     MapContact(m.Contact),
 			Interactive: MapInteractive(m.Interactive),
+			System:      mapSystem(m.System),
 		}
 	}
 	return res
+}
+
+func mapSystem(system *threadv1.System) *api.System {
+	if system == nil {
+		return nil
+	}
+
+	return &api.System{
+		Type:      system.GetType(),
+		Metadata:  system.GetMetadata(),
+		MessageId: system.GetMessageId(),
+	}
 }
 
 func MapInteractive(interactive *threadv1.Interactive) *api.Interactive {

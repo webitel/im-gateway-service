@@ -67,6 +67,7 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			Contact:     m.Contact,
 			Location:    m.Location,
 			Interactive: m.Interactive,
+			System:      m.System,
 		}
 	}
 	return protoMsgs

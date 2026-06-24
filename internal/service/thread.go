@@ -45,9 +45,9 @@ type thread struct {
 }
 
 func (t *thread) prepareCreateDirectConfig(ctx context.Context, req *gtwthread.ThreadManagementCreateRequest, session auth.Identifier) (*threadv1.ThreadManagementCreateRequest, error) {
-	directConfig, ok := req.Config.(*gtwthread.ThreadManagementCreateRequest_Direct)
+	directConfig, ok := req.GetType().(*gtwthread.ThreadManagementCreateRequest_Direct)
 	if !ok {
-		return nil, errors.InvalidArgument("received non direct config call", errors.WithID("service.thread.prepare_create_direct_config.assert"), errors.WithValue("type", fmt.Sprintf("%T", req.Config)))
+		return nil, errors.InvalidArgument("received non direct config call", errors.WithID("service.thread.prepare_create_direct_config.assert"), errors.WithValue("type", fmt.Sprintf("%T", req.GetType())))
 	}
 
 	directMember, err := t.fetchContact(ctx, directConfig.Direct.GetMember().GetSub(), directConfig.Direct.GetMember().GetIss(), int32(session.GetDomainID()))
@@ -87,7 +87,7 @@ func (t *thread) Create(ctx context.Context, req *gtwthread.ThreadManagementCrea
 	}
 
 	var internalRequest *threadv1.ThreadManagementCreateRequest
-	switch req.Config.(type) {
+	switch req.GetType().(type) {
 	case *gtwthread.ThreadManagementCreateRequest_Direct:
 		directCfg, err := t.prepareCreateDirectConfig(ctx, req, session)
 		if err != nil {
