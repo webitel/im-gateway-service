@@ -229,13 +229,13 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			Location:    MapLocation(m.Location),
 			Contact:     MapContact(m.Contact),
 			Interactive: MapInteractive(m.Interactive),
-			System:      mapSystem(m.System),
+			System:      MapSystem(m.System),
 		}
 	}
 	return res
 }
 
-func mapSystem(system *threadv1.System) *api.System {
+func MapSystem(system *threadv1.System) *api.System {
 	if system == nil {
 		return nil
 	}

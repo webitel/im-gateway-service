@@ -645,6 +645,7 @@ func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMemb
 		Contact:     imthread.MapContact(req.GetContact()),
 		Location:    imthread.MapLocation(req.GetLocation()),
 		Interactive: imthread.MapInteractive(req.GetInteractive()),
+		System:      imthread.MapSystem(req.GetSystem()),
 		Sender:      sender,
 	}
 }
