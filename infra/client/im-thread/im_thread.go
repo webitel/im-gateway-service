@@ -120,21 +120,6 @@ func (c *Client) SendDocument(ctx context.Context, in *threadv1.SendDocumentRequ
 	return resp, err
 }
 
-// SendImage delivers an image message through the Thread service.
-func (c *Client) SendImage(ctx context.Context, in *threadv1.SendImageRequest, opts ...grpc.CallOption) (*threadv1.SendImageResponse, error) {
-	var resp *threadv1.SendImageResponse
-
-	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
-		c.logger.Debug("THREAD.SEND_IMAGE", slog.Any("req", in))
-
-		var err error
-		resp, err = api.SendImage(ctx, in, opts...)
-		return err
-	})
-
-	return resp, err
-}
-
 func (c *Client) SendSystemMessage(ctx context.Context, in *threadv1.SendSystemMessageRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
 	var resp *threadv1.SendMessageResponse
 

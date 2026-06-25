@@ -31,7 +31,6 @@ var _ Messenger = (*MessageService)(nil)
 
 type Messenger interface {
 	SendText(ctx context.Context, in *dto.SendTextRequest) (*dto.SendTextResponse, error)
-	SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error)
 	SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error)
 	Read(ctx context.Context, in *dto.ReadMessageRequest) error
 	SendContact(ctx context.Context, in *api.SendContactRequest) (*api.SendMessageResponse, error)
@@ -238,40 +237,6 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 	return &dto.SendTextResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
 }
 
-// SendImage handles image gallery delivery
-func (m *MessageService) SendImage(ctx context.Context, in *dto.SendImageRequest) (*dto.SendImageResponse, error) {
-	identity, ok := auth.GetIdentityFromContext(ctx)
-	if !ok {
-		return nil, auth.IdentityNotFoundErr
-	}
-
-	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := m.threader.SendImage(ctx, &threadv1.SendImageRequest{
-		From: &threadv1.Peer{
-			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
-			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
-				Via:  identity.GetViaPtr(),
-			},
-		},
-		To:       to,
-		DomainId: identity.GetDomainID(),
-		SendId:   in.SendID,
-		Body:     in.Image.Body,
-		Images:   m.mapImages(in.Image.Images),
-		SendAs:   sendAs.GetContactIDPtr(),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.SendImageResponse{To: in.To, ID: m.parseUUID(resp.GetId())}, nil
-}
-
 // SendDocument handles file/attachment delivery
 func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentRequest) (*dto.SendDocumentResponse, error) {
 	identity, ok := auth.GetIdentityFromContext(ctx)
@@ -413,22 +378,6 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, vi
 			Via:  via,
 		},
 	}, nil
-}
-
-func (m *MessageService) mapImages(src []*dto.Image) []*threadv1.ImageInput {
-	res := make([]*threadv1.ImageInput, 0, len(src))
-	for _, img := range src {
-		if img == nil {
-			continue
-		}
-		res = append(res, &threadv1.ImageInput{
-			Id:       fmt.Sprintf("%d", img.ID),
-			Name:     img.Name,
-			Link:     img.URL,
-			MimeType: img.MimeType,
-		})
-	}
-	return res
 }
 
 func (m *MessageService) mapDocuments(src []*dto.Document) []*threadv1.DocumentInput {
