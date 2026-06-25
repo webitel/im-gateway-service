@@ -66,7 +66,7 @@ func (t *thread) prepareCreateDirectConfig(ctx context.Context, req *gtwthread.T
 				Name:   session.GetName(),
 			},
 		},
-		Config: &threadv1.ThreadManagementCreateRequest_Direct{
+		Type: &threadv1.ThreadManagementCreateRequest_Direct{
 			Direct: &threadv1.DirectConfig{
 				Member: &threadv1.Peer{
 					Kind: &threadv1.Peer_ContactId{ContactId: directMember.Id},
