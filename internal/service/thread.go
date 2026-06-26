@@ -194,6 +194,7 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.Role),
 		InitiatorContactId: initiatorContactId,
+		TargetIsBot:        target.GetIsBot(),
 	}
 
 	response, err := t.threadClient.Transfer(ctx, transferRequest)
