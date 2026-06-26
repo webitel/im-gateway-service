@@ -54,23 +54,39 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 		}
 
 		protoMsgs[i] = &pb.HistoryMessage{
-			Id:          m.ID,
-			ThreadId:    m.ThreadID,
-			Sender:      toProtoMessageSender(m.Sender),
-			Type:        m.Type,
-			Body:        m.Body,
-			Metadata:    md,
-			CreatedAt:   m.CreatedAt,
-			EditedAt:    m.UpdatedAt,
-			Documents:   toProtoDocuments(m.Documents),
-			Images:      toProtoImages(m.Images),
-			Contact:     m.Contact,
-			Location:    m.Location,
-			Interactive: m.Interactive,
-			System:      m.System,
+			Id:              m.ID,
+			ThreadId:        m.ThreadID,
+			Sender:          toProtoMessageSender(m.Sender),
+			Type:            m.Type,
+			Body:            m.Body,
+			Metadata:        md,
+			CreatedAt:       m.CreatedAt,
+			EditedAt:        m.UpdatedAt,
+			Documents:       toProtoDocuments(m.Documents),
+			Images:          toProtoImages(m.Images),
+			Contact:         m.Contact,
+			Location:        m.Location,
+			Interactive:     m.Interactive,
+			System:          m.System,
+			ReactedMetadata: toProtoReactedMetadta(m.ReactedMetadata),
 		}
 	}
+
 	return protoMsgs
+}
+
+func toProtoReactedMetadta(reactedMetadata *dto.ApiInteractiveCallbackWrapper) *pb.InteractiveCallback {
+	if reactedMetadata == nil {
+		return nil
+	}
+
+	return &pb.InteractiveCallback{
+		ReactedBy:    reactedMetadata.GetReactedBy(),
+		InReplyTo:    reactedMetadata.GetInReplyTo(),
+		ButtonCode:   reactedMetadata.GetButtonCode(),
+		CallbackData: reactedMetadata.GetCallbackData(),
+		ReactedAt:    reactedMetadata.GetReactedAt(),
+	}
 }
 
 // toProtoDocuments maps a slice of HistoryDocumentDTOs to a slice of Documents.

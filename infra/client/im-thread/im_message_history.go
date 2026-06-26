@@ -2,7 +2,6 @@ package imthread
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
 	"google.golang.org/grpc"
-	"google.golang.org/protobuf/types/known/anypb"
 )
 
 type (
@@ -216,23 +214,41 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 	res := make([]*dto.HistoryMessage, len(pbMsgs))
 	for i, m := range pbMsgs {
 		res[i] = &dto.HistoryMessage{
-			ID:          m.Id,
-			ThreadID:    m.ThreadId,
-			SenderID:    m.SenderId,
-			Type:        m.Type,
-			Body:        m.Body,
-			Metadata:    m.Metadata.AsMap(),
-			CreatedAt:   m.CreatedAt,
-			UpdatedAt:   m.UpdatedAt,
-			Documents:   mapDocuments(m.Documents),
-			Images:      mapImages(m.Images),
-			Location:    MapLocation(m.Location),
-			Contact:     MapContact(m.Contact),
-			Interactive: MapInteractive(m.Interactive),
-			System:      MapSystem(m.System),
+			ID:              m.Id,
+			ThreadID:        m.ThreadId,
+			SenderID:        m.SenderId,
+			Type:            m.Type,
+			Body:            m.Body,
+			Metadata:        m.Metadata.AsMap(),
+			CreatedAt:       m.CreatedAt,
+			UpdatedAt:       m.UpdatedAt,
+			Documents:       mapDocuments(m.Documents),
+			Images:          mapImages(m.Images),
+			Location:        MapLocation(m.Location),
+			Contact:         MapContact(m.Contact),
+			Interactive:     MapInteractive(m.Interactive),
+			System:          MapSystem(m.System),
+			ReactedMetadata: MapInteractiveCallback(m.ReactedMetadata),
 		}
 	}
 	return res
+}
+
+func MapInteractiveCallback(callback *threadv1.InteractiveCallback) *dto.ApiInteractiveCallbackWrapper {
+	if callback == nil {
+		return nil
+	}
+
+	return &dto.ApiInteractiveCallbackWrapper{
+		InteractiveCallback: &api.InteractiveCallback{
+			ReactedBy:    &api.Peer{},
+			InReplyTo:    callback.GetInReplyTo(),
+			ButtonCode:   callback.GetButtonCode(),
+			CallbackData: callback.GetButtonCode(),
+			ReactedAt:    callback.GetReactedAt(),
+		},
+		ContactID: callback.GetReactedBy(),
+	}
 }
 
 func MapSystem(system *threadv1.System) *api.System {
@@ -345,29 +361,4 @@ func mapCursor(c *threadv1.HistoryMessageCursorResponse) *dto.HistoryMessageCurs
 	return &dto.HistoryMessageCursor{
 		ID: c.Id,
 	}
-}
-
-// unmarshalMetadata unmarshals a map of string keys to Any values to a map of string keys to interface values.
-//
-// Args:
-//   - pbMeta: The map of string keys to Any values to be unmarshaled.
-//
-// Returns:
-//   - A map of string keys to interface values. The interface values are the JSON-unmarshalled versions of the Any values.
-//     If an error occurs while unmarshaling a value, it is skipped.
-func unmarshalMetadata(pbMeta map[string]*anypb.Any) map[string]interface{} {
-	if len(pbMeta) == 0 {
-		return nil
-	}
-
-	res := make(map[string]any, len(pbMeta))
-	for k, v := range pbMeta {
-		var temp any
-		if err := json.Unmarshal(v.Value, &temp); err == nil {
-			res[k] = temp
-		} else {
-			res[k] = v.Value
-		}
-	}
-	return res
 }
