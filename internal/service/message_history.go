@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
+	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
@@ -77,7 +78,14 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 		return nil, err
 	}
 
-	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal)
+	reactedBy := make([]string, 0)
+	for _, m := range response.Messages {
+		if m.ReactedMetadata != nil {
+			reactedBy = append(reactedBy, m.ReactedMetadata.ContactID)
+		}
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, reactedBy...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err
@@ -133,7 +141,7 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 // It returns a map of IDs to MessageSender objects from the imap.
 // If there are no IDs provided, it returns an empty map and no error.
 // If there is an error while fetching the participants, it returns an error.
-func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32, internal []*threadv1.ThreadMember) (map[string]*dto.MessageSender, error) {
+func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32, internal []*threadv1.ThreadMember, internalContactIDs ...string) (map[string]*dto.MessageSender, error) {
 	if len(internal) == 0 {
 		return nil, nil
 	}
@@ -143,12 +151,13 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 		uniqunesMap[member.GetContactId()] = member
 	}
 	ids := slices.Collect(maps.Keys(uniqunesMap))
+	concatad := slices.Concat(ids, internalContactIDs)
 
 	external, err := s.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
 		DomainId: domainID,
-		Size:     int32(len(ids)),
-		Ids:      ids,
+		Size:     int32(len(concatad)),
+		Ids:      concatad,
 	})
 	if err != nil {
 		return nil, err
@@ -156,15 +165,15 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 
 	res := make(map[string]*dto.MessageSender, len(external.GetContacts()))
 	for _, p := range external.GetContacts() {
-		if mem, ok := uniqunesMap[p.GetId()]; ok {
+		if mem, ok := uniqunesMap[p.GetId()]; ok || slices.Contains(internalContactIDs, p.GetId()) {
 			res[p.Id] = &dto.MessageSender{
 				Sub:      p.GetSubject(),
 				Iss:      p.GetIssId(),
 				Type:     p.GetType(),
 				Name:     cmp.Or(p.GetName(), p.GetUsername()),
 				IsBot:    p.GetIsBot(),
-				MemberID: mem.Id,
-				Role:     int(mem.Role),
+				MemberID: mem.GetId(),
+				Role:     int(mem.GetRole()),
 				Username: p.GetUsername(),
 			}
 		}
@@ -177,5 +186,17 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, internal []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
 	for _, m := range resp.Messages {
 		m.Sender = imap[m.SenderID]
+
+		if m.ReactedMetadata != nil && imap[m.ReactedMetadata.ContactID] != nil {
+			c := imap[m.ReactedMetadata.ContactID]
+			m.ReactedMetadata.ReactedBy = &api.Peer{
+				Kind: &api.Peer_Contact{
+					Contact: &api.PeerIdentity{
+						Sub: c.Sub,
+						Iss: c.Iss,
+					},
+				},
+			}
+		}
 	}
 }

@@ -42,6 +42,12 @@ type HistoryImage struct {
 	URL       string `json:"url"`
 }
 
+type ApiInteractiveCallbackWrapper struct {
+	*api.InteractiveCallback
+
+	ContactID string
+}
+
 type HistoryMessage struct {
 	ID        string            `json:"id"`
 	ThreadID  string            `json:"thread_id"`
@@ -54,11 +60,12 @@ type HistoryMessage struct {
 	Documents []HistoryDocument `json:"documents,omitempty"`
 	Images    []HistoryImage    `json:"images,omitempty"`
 
-	Sender      *MessageSender       `json:"sender"`
-	Location    *api.MessageLocation `json:"location"`
-	Contact     *api.MessageContact  `json:"contact"`
-	Interactive *api.Interactive     `json:"interactive"`
-	System      *api.System          `json:"system"`
+	Sender          *MessageSender       `json:"sender"`
+	Location        *api.MessageLocation `json:"location"`
+	Contact         *api.MessageContact  `json:"contact"`
+	Interactive     *api.Interactive     `json:"interactive"`
+	System          *api.System          `json:"system"`
+	ReactedMetadata *ApiInteractiveCallbackWrapper
 }
 
 type Cursors struct {
