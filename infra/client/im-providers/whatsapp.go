@@ -31,8 +31,8 @@ func NewWhatsAppClient(logger *slog.Logger, dp discovery.DiscoveryProvider, tls 
 	return &WhatsAppClient{logger: logger, rpc: c}, nil
 }
 
-func (c *WhatsAppClient) CreateWhatsAppGate(ctx context.Context, in *providerv1.ProviderCreateWhatsAppGateRequest, opts ...grpc.CallOption) (*providerv1.ProviderCreateWhatsAppGateResponse, error) {
-	var resp *providerv1.ProviderCreateWhatsAppGateResponse
+func (c *WhatsAppClient) CreateWhatsAppGate(ctx context.Context, in *providerv1.CreateGateRequest, opts ...grpc.CallOption) (*providerv1.GateResponse, error) {
+	var resp *providerv1.GateResponse
 
 	err := c.rpc.Execute(ctx, func(api providerv1.WhatsAppServiceClient) error {
 		var err error

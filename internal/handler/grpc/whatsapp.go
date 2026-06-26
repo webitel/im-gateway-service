@@ -20,7 +20,7 @@ func NewWhatsAppServiceHandler(logger *slog.Logger, client *improviders.WhatsApp
 	return &WhatsAppServiceHandler{logger: logger, client: client}
 }
 
-func (h *WhatsAppServiceHandler) CreateWhatsAppGate(ctx context.Context, req *providerv1.ProviderCreateWhatsAppGateRequest) (*providerv1.ProviderCreateWhatsAppGateResponse, error) {
+func (h *WhatsAppServiceHandler) CreateWhatsAppGate(ctx context.Context, req *providerv1.CreateGateRequest) (*providerv1.GateResponse, error) {
 	return h.client.CreateWhatsAppGate(ctx, req)
 }
 
