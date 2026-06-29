@@ -183,19 +183,23 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 
 // enrichResponse enriches the search message history response by replacing the receiver and sender IDs
 // with the corresponding message sender objects from the imap.
-func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, internal []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
+func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, _ []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
 	for _, m := range resp.Messages {
 		m.Sender = imap[m.SenderID]
 
 		if m.ReactedMetadata != nil && imap[m.ReactedMetadata.ContactID] != nil {
 			c := imap[m.ReactedMetadata.ContactID]
-			m.ReactedMetadata.ReactedBy = &api.Peer{
-				Kind: &api.Peer_Contact{
-					Contact: &api.PeerIdentity{
-						Sub: c.Sub,
-						Iss: c.Iss,
-					},
+			m.ReactedMetadata.ReactedBy = &api.ThreadMember{
+				Contact: &api.Contact{
+					Iss:      c.Iss,
+					Type:     c.Type,
+					Name:     c.Name,
+					Username: c.Username,
+					Sub:      c.Sub,
+					IsBot:    c.IsBot,
 				},
+				Role:        0,
+				Permissions: nil,
 			}
 		}
 	}
