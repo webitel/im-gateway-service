@@ -371,6 +371,14 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, vi
 		return nil, errors.NotFound("too many recipients found")
 	}
 	contact := res.GetContacts()[0]
+	m.logger.DebugContext(ctx, "resolveContact result",
+		slog.String("sub", sub),
+		slog.String("iss", iss),
+		slog.String("contact_id", contact.GetId()),
+		slog.Bool("is_bot", contact.GetIsBot()),
+		slog.String("name", contact.GetName()),
+		slog.String("username", contact.GetUsername()),
+	)
 	return &threadv1.Peer{
 		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
