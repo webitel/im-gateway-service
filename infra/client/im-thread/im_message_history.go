@@ -244,7 +244,7 @@ func MapInteractiveCallback(callback *threadv1.InteractiveCallback) *dto.ApiInte
 			ReactedBy:    &api.ThreadMember{},
 			InReplyTo:    callback.GetInReplyTo(),
 			ButtonCode:   callback.GetButtonCode(),
-			CallbackData: callback.GetButtonCode(),
+			CallbackData: callback.GetCallbackData(),
 			ReactedAt:    callback.GetReactedAt(),
 		},
 		ContactID: callback.GetReactedBy(),
