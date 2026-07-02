@@ -5,7 +5,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"net/http"
+	"mime"
 	"strconv"
 	"sync"
 	"time"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
+	"github.com/gabriel-vasile/mimetype"
 	storagev1 "github.com/webitel/im-gateway-service/gen/go/storage/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
@@ -330,10 +331,16 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 		return ErrEmptyBody
 	}
 
-	mime := http.DetectContentType(sniff)
+	mtype := mimetype.Detect(sniff)
+
+	mimeType, _, err := mime.ParseMediaType(mtype.String())
+	if err != nil {
+		log.Debug("start storage stream: failed to parse mime type", slog.String("error", err.Error()))
+		return err
+	}
 
 	log.Debug("start storage stream: sniffed mime type",
-		slog.String("mime_type", mime), slog.Int("sniff_bytes", len(sniff)))
+		slog.String("mime_type", mimeType), slog.Int("sniff_bytes", len(sniff)))
 
 	streamCtx, cancelFn := context.WithCancel(context.Background())
 
@@ -349,7 +356,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 			Metadata: &storagev1.SafeUploadFileRequest_Metadata{
 				DomainId: identity.GetDomainID(),
 				Name:     sess.name,
-				MimeType: mime,
+				MimeType: mimeType,
 			},
 		},
 	}); err != nil {
@@ -383,7 +390,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	}
 
 	log.Debug("start storage stream: storage session opened",
-		slog.String("storage_upload_id", part.GetUploadId()), slog.String("mime_type", mime))
+		slog.String("storage_upload_id", part.GetUploadId()), slog.String("mime_type", mimeType))
 
 	return nil
 }
