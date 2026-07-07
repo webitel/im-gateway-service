@@ -16,6 +16,24 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
+const forwardedUserAgentHeader = "x-forwarded-user-agent"
+
+func withForwardedUserAgent(headers metadata.MD) metadata.MD {
+	if headers == nil {
+		return headers
+	}
+	if len(headers.Get(forwardedUserAgentHeader)) > 0 {
+		return headers // already forwarded by an upstream hop
+	}
+	ua := headers.Get("user-agent")
+	if len(ua) == 0 {
+		return headers
+	}
+	headers = headers.Copy()
+	headers.Set(forwardedUserAgentHeader, ua[len(ua)-1])
+	return headers
+}
+
 var _ Accounter = (*AccountService)(nil)
 
 // Accounter defines the behavior for session validation.
@@ -63,7 +81,7 @@ func (s *AccountService) Inspect(ctx context.Context, headers metadata.MD) (*dto
 		return nil, errors.New("headers required for inspect")
 	}
 
-	outCtx := metadata.NewOutgoingContext(ctx, headers)
+	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(headers))
 
 	auth, err := s.client.Inspect(outCtx)
 	if err != nil {
@@ -77,7 +95,7 @@ func (s *AccountService) Token(ctx context.Context, request *dto.TokenRequest) (
 	if len(request.Headers) == 0 {
 		return nil, errors.New("headers required for token")
 	}
-	outCtx := metadata.NewOutgoingContext(ctx, request.Headers)
+	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(request.Headers))
 	auth, err := s.client.Token(outCtx, request)
 	if err != nil {
 		return nil, err
@@ -109,7 +127,7 @@ func (s *AccountService) Logout(ctx context.Context, headers metadata.MD) error 
 		return errors.New("headers required for logout")
 	}
 
-	outCtx := metadata.NewOutgoingContext(ctx, headers)
+	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(headers))
 
 	return s.client.Logout(outCtx)
 }
@@ -118,7 +136,7 @@ func (s *AccountService) RegisterDevice(ctx context.Context, headers metadata.MD
 	if headers == nil {
 		return errors.New("headers required for register device")
 	}
-	outCtx := metadata.NewOutgoingContext(ctx, headers)
+	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(headers))
 	return s.client.RegisterDevice(outCtx, request)
 }
 
@@ -126,6 +144,6 @@ func (s *AccountService) UnregisterDevice(ctx context.Context, headers metadata.
 	if headers == nil {
 		return errors.New("headers required for unregister device")
 	}
-	outCtx := metadata.NewOutgoingContext(ctx, headers)
+	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(headers))
 	return s.client.UnregisterDevice(outCtx, request)
 }
