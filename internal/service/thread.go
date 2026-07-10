@@ -281,6 +281,23 @@ func gtwThreadKindToInternal(kinds []gtwthread.ThreadKind) []threadv1.ThreadKind
 	return internal
 }
 
+// participantsToInternal maps gateway PeerIdentity filters to the thread-service ContactIdentity
+// form, forwarding only (sub, iss); resolution to a contact happens inside the thread service.
+func participantsToInternal(participants []*gtwthread.PeerIdentity) []*threadv1.ContactIdentity {
+	if len(participants) == 0 {
+		return nil
+	}
+
+	internal := make([]*threadv1.ContactIdentity, 0, len(participants))
+	for _, p := range participants {
+		internal = append(internal, &threadv1.ContactIdentity{
+			Sub: p.GetSub(),
+			Iss: p.GetIss(),
+		})
+	}
+	return internal
+}
+
 func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error) {
 	log := t.logger.With(slog.String("op", "thread.Search"))
 
@@ -291,16 +308,17 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
-		Fields:    searchQuery.Fields,
-		Ids:       searchQuery.Ids,
-		DomainIds: []int32{int32(identity.GetDomainID())},
-		Q:         searchQuery.Q,
-		SelfId:    identity.GetContactID(),
-		MemberIds: searchQuery.ContactIds,
-		Size:      searchQuery.Size,
-		Sort:      searchQuery.Sort,
-		Page:      searchQuery.Page,
-		Kinds:     gtwThreadKindToInternal(searchQuery.Types),
+		Fields:       searchQuery.Fields,
+		Ids:          searchQuery.Ids,
+		DomainIds:    []int32{int32(identity.GetDomainID())},
+		Q:            searchQuery.Q,
+		SelfId:       identity.GetContactID(),
+		MemberIds:    searchQuery.ContactIds,
+		Participants: participantsToInternal(searchQuery.GetParticipants()),
+		Size:         searchQuery.Size,
+		Sort:         searchQuery.Sort,
+		Page:         searchQuery.Page,
+		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
 	})
 
 	if err != nil {
