@@ -38,7 +38,7 @@ type Messenger interface {
 	SendInteractiveCallback(ctx context.Context, in *api.InteractiveCallbackRequest) (*api.InteractiveCallbackResponse, error)
 	SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error)
 	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
-	EditMessage(ctx context.Context, in *dto.EditMessageRequest) (*dto.EditMessageResponse, error)
+	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
 }
 
 type MessageService struct {
@@ -324,15 +324,15 @@ func (m *MessageService) Read(ctx context.Context, in *dto.ReadMessageRequest) e
 	return nil
 }
 
-func (m *MessageService) EditMessage(ctx context.Context, in *dto.EditMessageRequest) (*dto.EditMessageResponse, error) {
+func (m *MessageService) EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error) {
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
 
 	resp, err := m.threader.EditMessage(ctx, &threadv1.EditMessageRequest{
-		Id:   in.ID,
-		Body: in.Body,
+		Id:   in.GetId(),
+		Body: in.GetBody(),
 		EditedBy: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
@@ -344,8 +344,8 @@ func (m *MessageService) EditMessage(ctx context.Context, in *dto.EditMessageReq
 		return nil, err
 	}
 
-	return &dto.EditMessageResponse{
-		ID:       resp.GetId(),
+	return &api.EditMessageResponse{
+		Id:       resp.GetId(),
 		EditedAt: resp.GetEditedAt(),
 	}, nil
 }

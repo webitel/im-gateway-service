@@ -97,10 +97,5 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *impb.SendSys
 }
 
 func (m *MessageService) EditMessage(ctx context.Context, in *impb.EditMessageRequest) (*impb.EditMessageResponse, error) {
-	out, err := m.messenger.EditMessage(ctx, mapper.MapPbToEditMessageRequest(in))
-	if err != nil {
-		return nil, err
-	}
-
-	return mapper.MapToEditMessageResponse(out), nil
+	return m.messenger.EditMessage(ctx, in)
 }
