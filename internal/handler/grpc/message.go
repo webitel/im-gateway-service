@@ -9,9 +9,7 @@ import (
 	"github.com/webitel/im-gateway-service/internal/service"
 )
 
-var (
-	_ impb.MessageServer = (*MessageService)(nil)
-)
+var _ impb.MessageServer = (*MessageService)(nil)
 
 type MessageService struct {
 	impb.UnimplementedMessageServer
@@ -96,4 +94,8 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *impb.SendSys
 	}
 
 	return mapper.MapToSendSystemMessageResponse(out), nil
+}
+
+func (m *MessageService) EditMessage(ctx context.Context, in *impb.EditMessageRequest) (*impb.EditMessageResponse, error) {
+	return m.messenger.EditMessage(ctx, in)
 }
