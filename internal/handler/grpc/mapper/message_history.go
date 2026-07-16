@@ -69,10 +69,29 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			Interactive:     m.Interactive,
 			System:          m.System,
 			ReactedMetadata: toProtoReactedMetadta(m.ReactedMetadata),
+			ReplyTo:         toProtoReplyTo(m.ReplyTo),
 		}
 	}
 
 	return protoMsgs
+}
+
+func toProtoReplyTo(replyTo *dto.HistoryReplyTo) *pb.ReplyToMessage {
+	if replyTo == nil {
+		return nil
+	}
+
+	return &pb.ReplyToMessage{
+		Id:             replyTo.ID,
+		Sender:         toProtoMessageSender(replyTo.Sender),
+		SenderId:       replyTo.SenderID,
+		Type:           replyTo.Type,
+		Body:           replyTo.Body,
+		CreatedAt:      replyTo.CreatedAt,
+		AttachmentKind: replyTo.AttachmentKind,
+		AttachmentName: replyTo.AttachmentName,
+		AttachmentMime: replyTo.AttachmentMime,
+	}
 }
 
 func toProtoReactedMetadta(reactedMetadata *dto.ApiInteractiveCallbackWrapper) *pb.InteractiveCallback {

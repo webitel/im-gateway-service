@@ -11,10 +11,13 @@ func MapToSendTextRequest(in *impb.SendTextRequest) *dto.SendTextRequest {
 		return nil
 	}
 	return &dto.SendTextRequest{
-		To:     MapPeerFromProto(in.GetTo()),
-		Body:   in.GetBody(),
-		SendID: in.GetSendId(),
-		SendAs: in.SendAs,
+		To:                MapPeerFromProto(in.GetTo()),
+		Body:              in.GetBody(),
+		SendID:            in.GetSendId(),
+		SendAs:            in.SendAs,
+		ReplyToMessageID:  in.ReplyToMessageId,
+		ExternalID:        in.GetExternalId(),
+		ReplyToExternalID: in.GetReplyToExternalId(),
 	}
 }
 

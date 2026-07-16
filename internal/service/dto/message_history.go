@@ -48,6 +48,19 @@ type ApiInteractiveCallbackWrapper struct {
 	ContactID string
 }
 
+type HistoryReplyTo struct {
+	ID             string  `json:"id"`
+	SenderID       string  `json:"sender_id"`
+	Type           int32   `json:"type"`
+	Body           string  `json:"body"`
+	CreatedAt      int64   `json:"created_at"`
+	AttachmentKind *string `json:"attachment_kind,omitempty"`
+	AttachmentName *string `json:"attachment_name,omitempty"`
+	AttachmentMime *string `json:"attachment_mime,omitempty"`
+
+	Sender *MessageSender `json:"sender,omitempty"`
+}
+
 type HistoryMessage struct {
 	ID        string            `json:"id"`
 	ThreadID  string            `json:"thread_id"`
@@ -66,6 +79,7 @@ type HistoryMessage struct {
 	Interactive     *api.Interactive     `json:"interactive"`
 	System          *api.System          `json:"system"`
 	ReactedMetadata *ApiInteractiveCallbackWrapper
+	ReplyTo         *HistoryReplyTo `json:"reply_to,omitempty"`
 }
 
 type Cursors struct {
