@@ -38,6 +38,7 @@ type Messenger interface {
 	SendInteractiveCallback(ctx context.Context, in *api.InteractiveCallbackRequest) (*api.InteractiveCallbackResponse, error)
 	SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error)
 	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
+	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
 }
 
 type MessageService struct {
@@ -76,7 +77,6 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,6 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.In
 		ButtonCode:   in.ButtonCode,
 		CallbackData: in.CallbackData,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,6 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +332,32 @@ func (m *MessageService) Read(ctx context.Context, in *dto.ReadMessageRequest) e
 	return nil
 }
 
+func (m *MessageService) EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.threader.EditMessage(ctx, &threadv1.EditMessageRequest{
+		Id:   in.GetId(),
+		Body: in.GetBody(),
+		EditedBy: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.EditMessageResponse{
+		Id:       resp.GetId(),
+		EditedAt: resp.GetEditedAt(),
+	}, nil
+}
+
 // --- Internal Helpers & Mappers ---
 
 // [INTERNAL] resolveRecipient maps shared.Peer to threadv1.Peer and performs contact lookup if necessary
@@ -443,7 +467,6 @@ func (m *MessageService) guardSendAsAction(ctx context.Context, sendAs *api.Peer
 		Subjects: []string{sendAs.Sub},
 		OnlyBots: &searchOnlyBot,
 	})
-
 	if err != nil {
 		return nil, err
 	}

@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 const ServiceName string = "im-thread-service"
 
-var (
-	_ threadv1.MessageClient = (*Client)(nil)
-)
+var _ threadv1.MessageClient = (*Client)(nil)
 
 type Client struct {
 	logger *slog.Logger
@@ -47,6 +47,7 @@ func (c *Client) SendContact(ctx context.Context, in *threadv1.SendContactReques
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
 		resp, err = api.SendContact(ctx, in, opts...)
+
 		return err
 	})
 
@@ -59,6 +60,7 @@ func (c *Client) SendInteractive(ctx context.Context, in *threadv1.SendInteracti
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
 		resp, err = api.SendInteractive(ctx, in, opts...)
+
 		return err
 	})
 
@@ -71,6 +73,7 @@ func (c *Client) SendInteractiveCallback(ctx context.Context, in *threadv1.Inter
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
 		resp, err = api.SendInteractiveCallback(ctx, in, opts...)
+
 		return err
 	})
 
@@ -83,6 +86,7 @@ func (c *Client) SendLocation(ctx context.Context, in *threadv1.SendLocationRequ
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
 		resp, err = api.SendLocation(ctx, in, opts...)
+
 		return err
 	})
 
@@ -99,6 +103,7 @@ func (c *Client) SendText(ctx context.Context, in *threadv1.SendTextRequest, opt
 
 		var err error
 		resp, err = api.SendText(ctx, in, opts...)
+
 		return err
 	})
 
@@ -114,6 +119,7 @@ func (c *Client) SendDocument(ctx context.Context, in *threadv1.SendDocumentRequ
 
 		var err error
 		resp, err = api.SendDocument(ctx, in, opts...)
+
 		return err
 	})
 
@@ -128,6 +134,7 @@ func (c *Client) SendSystemMessage(ctx context.Context, in *threadv1.SendSystemM
 
 		var err error
 		resp, err = api.SendSystemMessage(ctx, in, opts...)
+
 		return err
 	})
 
@@ -143,6 +150,23 @@ func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts
 
 		var err error
 		resp, err = api.Read(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
+// EditMessage edit a previously delivered message.
+func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageRequest, opts ...grpc.CallOption) (*threadv1.EditMessageResponse, error) {
+	var resp *threadv1.EditMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.EDIT_MESSAGE", slog.Any("req", in))
+
+		var err error
+		resp, err = api.EditMessage(ctx, in, opts...)
+
 		return err
 	})
 
