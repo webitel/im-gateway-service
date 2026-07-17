@@ -229,9 +229,27 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			Interactive:     MapInteractive(m.Interactive),
 			System:          MapSystem(m.System),
 			ReactedMetadata: MapInteractiveCallback(m.ReactedMetadata),
+			ReplyTo:         MapReplyTo(m.ReplyTo),
 		}
 	}
 	return res
+}
+
+func MapReplyTo(replyTo *threadv1.ReplyToMessage) *dto.HistoryReplyTo {
+	if replyTo == nil {
+		return nil
+	}
+
+	return &dto.HistoryReplyTo{
+		ID:             replyTo.GetId(),
+		SenderID:       replyTo.GetSenderId(),
+		Type:           replyTo.GetType(),
+		Body:           replyTo.GetBody(),
+		CreatedAt:      replyTo.GetCreatedAt(),
+		AttachmentKind: replyTo.AttachmentKind,
+		AttachmentName: replyTo.AttachmentName,
+		AttachmentMime: replyTo.AttachmentMime,
+	}
 }
 
 func MapInteractiveCallback(callback *threadv1.InteractiveCallback) *dto.ApiInteractiveCallbackWrapper {

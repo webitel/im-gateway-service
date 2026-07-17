@@ -26,6 +26,10 @@ type SendDocumentRequest struct {
 	DomainID int64  `json:"domain_id"`
 	SendID   string `json:"send_id"`
 	SendAs   *api.PeerIdentity
+
+	ReplyToMessageID  *string `json:"reply_to_message_id,omitempty"`
+	ExternalID        string  `json:"external_id,omitempty"`
+	ReplyToExternalID string  `json:"reply_to_external_id,omitempty"`
 }
 
 type SendDocumentResponse struct {

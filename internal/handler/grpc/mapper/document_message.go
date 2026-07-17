@@ -29,10 +29,13 @@ func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentReq
 	}
 
 	return &dto.SendDocumentRequest{
-		To:       MapPeerFromProto(in.GetTo()),
-		SendID:   in.GetSendId(),
-		Document: docReq,
-		SendAs:   in.SendAs,
+		To:                MapPeerFromProto(in.GetTo()),
+		SendID:            in.GetSendId(),
+		Document:          docReq,
+		SendAs:            in.SendAs,
+		ReplyToMessageID:  in.ReplyToMessageId,
+		ExternalID:        in.GetExternalId(),
+		ReplyToExternalID: in.GetReplyToExternalId(),
 	}
 }
 

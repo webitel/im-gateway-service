@@ -78,14 +78,18 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 		return nil, err
 	}
 
-	reactedBy := make([]string, 0)
+	extraContactIDs := make([]string, 0)
 	for _, m := range response.Messages {
 		if m.ReactedMetadata != nil {
-			reactedBy = append(reactedBy, m.ReactedMetadata.ContactID)
+			extraContactIDs = append(extraContactIDs, m.ReactedMetadata.ContactID)
+		}
+
+		if m.ReplyTo != nil {
+			extraContactIDs = append(extraContactIDs, m.ReplyTo.SenderID)
 		}
 	}
 
-	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, reactedBy...)
+	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, extraContactIDs...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err
@@ -126,7 +130,14 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 		return nil, err
 	}
 
-	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal)
+	quotedSenders := make([]string, 0)
+	for _, m := range response.Messages {
+		if m.ReplyTo != nil {
+			quotedSenders = append(quotedSenders, m.ReplyTo.SenderID)
+		}
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err
@@ -186,6 +197,10 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, _ []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
 	for _, m := range resp.Messages {
 		m.Sender = imap[m.SenderID]
+
+		if m.ReplyTo != nil {
+			m.ReplyTo.Sender = imap[m.ReplyTo.SenderID]
+		}
 
 		if m.ReactedMetadata != nil && imap[m.ReactedMetadata.ContactID] != nil {
 			c := imap[m.ReactedMetadata.ContactID]
