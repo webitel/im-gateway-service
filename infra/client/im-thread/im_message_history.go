@@ -230,6 +230,8 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			System:          MapSystem(m.System),
 			ReactedMetadata: MapInteractiveCallback(m.ReactedMetadata),
 			ReplyTo:         MapReplyTo(m.ReplyTo),
+			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
+			Statuses:        MapRecipientStatuses(m.Statuses),
 		}
 	}
 	return res
@@ -250,6 +252,34 @@ func MapReplyTo(replyTo *threadv1.ReplyToMessage) *dto.HistoryReplyTo {
 		AttachmentName: replyTo.AttachmentName,
 		AttachmentMime: replyTo.AttachmentMime,
 	}
+}
+
+// MapRecipientStatuses maps per-recipient delivery statuses from the thread
+// service response into the gateway API representation. Enum values match
+// numerically, so a direct cast is safe.
+func MapRecipientStatuses(statuses []*threadv1.MessageRecipientStatus) []*api.MessageRecipientStatus {
+	if len(statuses) == 0 {
+		return nil
+	}
+
+	res := make([]*api.MessageRecipientStatus, 0, len(statuses))
+	for _, st := range statuses {
+		if st == nil {
+			continue
+		}
+
+		res = append(res, &api.MessageRecipientStatus{
+			MemberId:    st.GetMemberId(),
+			Status:      api.MessageDeliveryStatus(st.GetStatus()),
+			DeliveredAt: st.GetDeliveredAt(),
+			ReadAt:      st.GetReadAt(),
+			FailedAt:    st.GetFailedAt(),
+			Via:         st.GetVia(),
+			Error:       st.GetError(),
+		})
+	}
+
+	return res
 }
 
 func MapInteractiveCallback(callback *threadv1.InteractiveCallback) *dto.ApiInteractiveCallbackWrapper {
