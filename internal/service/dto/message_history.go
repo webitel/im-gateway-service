@@ -80,6 +80,11 @@ type HistoryMessage struct {
 	System          *api.System          `json:"system"`
 	ReactedMetadata *ApiInteractiveCallbackWrapper
 	ReplyTo         *HistoryReplyTo `json:"reply_to,omitempty"`
+
+	// DeliveryStatus is the aggregate across recipients; UNSPECIFIED for
+	// messages without per-recipient tracking (historical).
+	DeliveryStatus api.MessageDeliveryStatus     `json:"delivery_status,omitempty"`
+	Statuses       []*api.MessageRecipientStatus `json:"statuses,omitempty"`
 }
 
 type Cursors struct {
