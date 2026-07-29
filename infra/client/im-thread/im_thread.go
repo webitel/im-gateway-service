@@ -157,7 +157,6 @@ func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts
 	return resp, err
 }
 
-// EditMessage edit a previously delivered message.
 func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageRequest, opts ...grpc.CallOption) (*threadv1.EditMessageResponse, error) {
 	var resp *threadv1.EditMessageResponse
 
@@ -166,6 +165,21 @@ func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageReques
 
 		var err error
 		resp, err = api.EditMessage(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) DeleteMessages(ctx context.Context, in *threadv1.DeleteMessagesRequest, opts ...grpc.CallOption) (*threadv1.DeleteMessagesResponse, error) {
+	var resp *threadv1.DeleteMessagesResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.DELETE_MESSAGES", slog.Any("req", in))
+
+		var err error
+		resp, err = api.DeleteMessages(ctx, in, opts...)
 
 		return err
 	})

@@ -72,6 +72,8 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			ReplyTo:         toProtoReplyTo(m.ReplyTo),
 			DeliveryStatus:  m.DeliveryStatus,
 			Statuses:        m.Statuses,
+			Deleted:         m.Deleted,
+			DeletedAt:       m.DeletedAt,
 		}
 	}
 

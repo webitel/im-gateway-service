@@ -81,6 +81,7 @@ func (s *ThreadPermissionService) Update(ctx context.Context, req *gtwperm.Updat
 		CanRemoveMembers:            req.CanRemoveMembers,
 		CanChangeMembersPermissions: req.CanChangeMembersPermissions,
 		CanChangeThreadInfo:         req.CanChangeThreadInfo,
+		CanDeleteMessages:           req.CanDeleteMessages,
 	}
 
 	resp, err := s.threadClient.UpdateThreadPermissions(ctx, internalReq)
@@ -109,5 +110,6 @@ func (s *ThreadPermissionService) convertToThreadPermission(perm *imthread.Threa
 		CanRemoveMembers:            perm.CanRemoveMembers,
 		CanChangeMembersPermissions: perm.CanChangeMembersPermissions,
 		CanChangeThreadInfo:         perm.CanChangeThreadInfo,
+		CanDeleteMessages:           perm.CanDeleteMessages,
 	}
 }
