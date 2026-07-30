@@ -232,6 +232,8 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			ReplyTo:         MapReplyTo(m.ReplyTo),
 			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
 			Statuses:        MapRecipientStatuses(m.Statuses),
+			Deleted:         m.GetDeleted(),
+			DeletedAt:       m.GetDeletedAt(),
 		}
 	}
 	return res

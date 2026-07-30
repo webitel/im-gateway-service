@@ -85,6 +85,11 @@ type HistoryMessage struct {
 	// messages without per-recipient tracking (historical).
 	DeliveryStatus api.MessageDeliveryStatus     `json:"delivery_status,omitempty"`
 	Statuses       []*api.MessageRecipientStatus `json:"statuses,omitempty"`
+
+	// Deleted marks a message removed by its author; its content fields arrive
+	// empty from im-thread-service.
+	Deleted   bool  `json:"deleted,omitempty"`
+	DeletedAt int64 `json:"deleted_at,omitempty"`
 }
 
 type Cursors struct {

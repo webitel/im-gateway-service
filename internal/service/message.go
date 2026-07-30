@@ -39,6 +39,7 @@ type Messenger interface {
 	SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error)
 	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
 	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
+	DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error)
 }
 
 type MessageService struct {
@@ -355,6 +356,34 @@ func (m *MessageService) EditMessage(ctx context.Context, in *api.EditMessageReq
 	return &api.EditMessageResponse{
 		Id:       resp.GetId(),
 		EditedAt: resp.GetEditedAt(),
+	}, nil
+}
+
+// DeleteMessages removes the caller's own messages. Ownership and chat state
+// are enforced by im-thread-service, which sees the caller through deleted_by.
+func (m *MessageService) DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.threader.DeleteMessages(ctx, &threadv1.DeleteMessagesRequest{
+		Ids: in.GetIds(),
+		DeletedBy: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.DeleteMessagesResponse{
+		DeletedIds: resp.GetDeletedIds(),
+		SkippedIds: resp.GetSkippedIds(),
+		DeletedAt:  resp.GetDeletedAt(),
 	}, nil
 }
 

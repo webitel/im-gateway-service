@@ -28,6 +28,7 @@ const (
 	Message_SendContact_FullMethodName             = "/webitel.im.api.gateway.v1.Message/SendContact"
 	Message_SendSystemMessage_FullMethodName       = "/webitel.im.api.gateway.v1.Message/SendSystemMessage"
 	Message_EditMessage_FullMethodName             = "/webitel.im.api.gateway.v1.Message/EditMessage"
+	Message_DeleteMessages_FullMethodName          = "/webitel.im.api.gateway.v1.Message/DeleteMessages"
 )
 
 // MessageClient is the client API for Message service.
@@ -58,6 +59,11 @@ type MessageClient interface {
 	SendSystemMessage(ctx context.Context, in *SendSystemMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	// Edits an existing message by ID. Only the sender or authorized users can edit messages.
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
+	// Deletes one or more messages authored by the caller in an active chat.
+	// The messages disappear for every participant; their content is retained
+	// in storage marked as deleted. Best-effort: the response reports which ids
+	// were actually deleted and which ones were skipped.
+	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error)
 }
 
 type messageClient struct {
@@ -158,6 +164,16 @@ func (c *messageClient) EditMessage(ctx context.Context, in *EditMessageRequest,
 	return out, nil
 }
 
+func (c *messageClient) DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*DeleteMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteMessagesResponse)
+	err := c.cc.Invoke(ctx, Message_DeleteMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServer is the server API for Message service.
 // All implementations must embed UnimplementedMessageServer
 // for forward compatibility.
@@ -186,6 +202,11 @@ type MessageServer interface {
 	SendSystemMessage(context.Context, *SendSystemMessageRequest) (*SendMessageResponse, error)
 	// Edits an existing message by ID. Only the sender or authorized users can edit messages.
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
+	// Deletes one or more messages authored by the caller in an active chat.
+	// The messages disappear for every participant; their content is retained
+	// in storage marked as deleted. Best-effort: the response reports which ids
+	// were actually deleted and which ones were skipped.
+	DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error)
 	mustEmbedUnimplementedMessageServer()
 }
 
@@ -222,6 +243,9 @@ func (UnimplementedMessageServer) SendSystemMessage(context.Context, *SendSystem
 }
 func (UnimplementedMessageServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EditMessage not implemented")
+}
+func (UnimplementedMessageServer) DeleteMessages(context.Context, *DeleteMessagesRequest) (*DeleteMessagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteMessages not implemented")
 }
 func (UnimplementedMessageServer) mustEmbedUnimplementedMessageServer() {}
 func (UnimplementedMessageServer) testEmbeddedByValue()                 {}
@@ -406,6 +430,24 @@ func _Message_EditMessage_Handler(srv interface{}, ctx context.Context, dec func
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Message_DeleteMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).DeleteMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Message_DeleteMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).DeleteMessages(ctx, req.(*DeleteMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Message_ServiceDesc is the grpc.ServiceDesc for Message service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -448,6 +490,10 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EditMessage",
 			Handler:    _Message_EditMessage_Handler,
+		},
+		{
+			MethodName: "DeleteMessages",
+			Handler:    _Message_DeleteMessages_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

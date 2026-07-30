@@ -99,3 +99,7 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *impb.SendSys
 func (m *MessageService) EditMessage(ctx context.Context, in *impb.EditMessageRequest) (*impb.EditMessageResponse, error) {
 	return m.messenger.EditMessage(ctx, in)
 }
+
+func (m *MessageService) DeleteMessages(ctx context.Context, in *impb.DeleteMessagesRequest) (*impb.DeleteMessagesResponse, error) {
+	return m.messenger.DeleteMessages(ctx, in)
+}
