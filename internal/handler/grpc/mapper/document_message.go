@@ -36,6 +36,7 @@ func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentReq
 		ReplyToMessageID:  in.ReplyToMessageId,
 		ExternalID:        in.GetExternalId(),
 		ReplyToExternalID: in.GetReplyToExternalId(),
+		ForwardOrigin:     in.GetForwardOrigin(),
 	}
 }
 

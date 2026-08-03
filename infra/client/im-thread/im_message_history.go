@@ -230,6 +230,7 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			System:          MapSystem(m.System),
 			ReactedMetadata: MapInteractiveCallback(m.ReactedMetadata),
 			ReplyTo:         MapReplyTo(m.ReplyTo),
+			ForwardOrigin:   MapForwardOrigin(m.ForwardOrigin),
 			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
 			Statuses:        MapRecipientStatuses(m.Statuses),
 			Deleted:         m.GetDeleted(),
@@ -253,6 +254,20 @@ func MapReplyTo(replyTo *threadv1.ReplyToMessage) *dto.HistoryReplyTo {
 		AttachmentKind: replyTo.AttachmentKind,
 		AttachmentName: replyTo.AttachmentName,
 		AttachmentMime: replyTo.AttachmentMime,
+	}
+}
+
+func MapForwardOrigin(origin *threadv1.ForwardOrigin) *api.ForwardOrigin {
+	if origin == nil {
+		return nil
+	}
+
+	return &api.ForwardOrigin{
+		Kind:            api.ForwardOriginKind(origin.GetKind()),
+		SenderId:        origin.GetSenderId(),
+		SenderName:      origin.GetSenderName(),
+		OriginalSentAt:  origin.GetOriginalSentAt(),
+		SourceMessageId: origin.GetSourceMessageId(),
 	}
 }
 

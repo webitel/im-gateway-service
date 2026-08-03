@@ -40,6 +40,7 @@ type Messenger interface {
 	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
 	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
 	DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error)
+	ForwardMessages(ctx context.Context, in *api.ForwardMessagesRequest) (*api.ForwardMessagesResponse, error)
 }
 
 type MessageService struct {
@@ -77,6 +78,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		DomainId:         int32(identity.GetDomainID()),
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
+		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
 	})
 	if err != nil {
 		return nil, err
@@ -185,6 +187,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		DomainId:         int32(identity.GetDomainID()),
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
+		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
 	})
 	if err != nil {
 		return nil, err
@@ -232,6 +235,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		ReplyToMessageId:  in.ReplyToMessageID,
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
+		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
@@ -270,6 +274,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		ReplyToMessageId:  in.ReplyToMessageID,
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
+		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
 	})
 	if err != nil {
 		return nil, err
