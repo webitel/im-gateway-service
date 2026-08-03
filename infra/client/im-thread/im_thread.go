@@ -187,6 +187,21 @@ func (c *Client) DeleteMessages(ctx context.Context, in *threadv1.DeleteMessages
 	return resp, err
 }
 
+func (c *Client) ForwardMessages(ctx context.Context, in *threadv1.ForwardMessagesRequest, opts ...grpc.CallOption) (*threadv1.ForwardMessagesResponse, error) {
+	var resp *threadv1.ForwardMessagesResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.FORWARD_MESSAGES", slog.Any("req", in))
+
+		var err error
+		resp, err = api.ForwardMessages(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
 // Close gracefully shuts down the underlying gRPC connection pool.
 func (c *Client) Close() error {
 	if c.rpc != nil {

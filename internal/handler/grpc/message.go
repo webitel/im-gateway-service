@@ -103,3 +103,7 @@ func (m *MessageService) EditMessage(ctx context.Context, in *impb.EditMessageRe
 func (m *MessageService) DeleteMessages(ctx context.Context, in *impb.DeleteMessagesRequest) (*impb.DeleteMessagesResponse, error) {
 	return m.messenger.DeleteMessages(ctx, in)
 }
+
+func (m *MessageService) ForwardMessages(ctx context.Context, in *impb.ForwardMessagesRequest) (*impb.ForwardMessagesResponse, error) {
+	return m.messenger.ForwardMessages(ctx, in)
+}
