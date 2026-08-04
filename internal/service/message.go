@@ -41,6 +41,7 @@ type Messenger interface {
 	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
 	DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error)
 	ForwardMessages(ctx context.Context, in *api.ForwardMessagesRequest) (*api.ForwardMessagesResponse, error)
+	SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error)
 }
 
 type MessageService struct {
@@ -389,6 +390,37 @@ func (m *MessageService) DeleteMessages(ctx context.Context, in *api.DeleteMessa
 		DeletedIds: resp.GetDeletedIds(),
 		SkippedIds: resp.GetSkippedIds(),
 		DeletedAt:  resp.GetDeletedAt(),
+	}, nil
+}
+
+func (m *MessageService) SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.threader.SetReaction(ctx, &threadv1.SetReactionRequest{
+		Reactor: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		MessageId: in.GetMessageId(),
+		Reaction: &threadv1.ReactionContent{
+			Kind: &threadv1.ReactionContent_Emoji{Emoji: in.GetEmoji()},
+		},
+		DomainId: identity.GetDomainID(),
+		SendId:   in.GetSendId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SetReactionResponse{
+		Action:    resp.GetAction().String(),
+		Emoji:     resp.GetReaction().GetEmoji(),
+		ReactedAt: resp.GetReactedAt(),
 	}, nil
 }
 
