@@ -30,6 +30,7 @@ const (
 	Message_EditMessage_FullMethodName             = "/webitel.im.api.gateway.v1.Message/EditMessage"
 	Message_DeleteMessages_FullMethodName          = "/webitel.im.api.gateway.v1.Message/DeleteMessages"
 	Message_ForwardMessages_FullMethodName         = "/webitel.im.api.gateway.v1.Message/ForwardMessages"
+	Message_SetReaction_FullMethodName             = "/webitel.im.api.gateway.v1.Message/SetReaction"
 )
 
 // MessageClient is the client API for Message service.
@@ -67,6 +68,8 @@ type MessageClient interface {
 	// stamping each copy with its original author. The source chat is untouched.
 	// Best-effort: the response reports which sources were skipped.
 	ForwardMessages(ctx context.Context, in *ForwardMessagesRequest, opts ...grpc.CallOption) (*ForwardMessagesResponse, error)
+	// Sets or clears the caller's emoji reaction on a single message.
+	SetReaction(ctx context.Context, in *SetReactionRequest, opts ...grpc.CallOption) (*SetReactionResponse, error)
 }
 
 type messageClient struct {
@@ -187,6 +190,16 @@ func (c *messageClient) ForwardMessages(ctx context.Context, in *ForwardMessages
 	return out, nil
 }
 
+func (c *messageClient) SetReaction(ctx context.Context, in *SetReactionRequest, opts ...grpc.CallOption) (*SetReactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetReactionResponse)
+	err := c.cc.Invoke(ctx, Message_SetReaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServer is the server API for Message service.
 // All implementations must embed UnimplementedMessageServer
 // for forward compatibility.
@@ -222,6 +235,8 @@ type MessageServer interface {
 	// stamping each copy with its original author. The source chat is untouched.
 	// Best-effort: the response reports which sources were skipped.
 	ForwardMessages(context.Context, *ForwardMessagesRequest) (*ForwardMessagesResponse, error)
+	// Sets or clears the caller's emoji reaction on a single message.
+	SetReaction(context.Context, *SetReactionRequest) (*SetReactionResponse, error)
 	mustEmbedUnimplementedMessageServer()
 }
 
@@ -264,6 +279,9 @@ func (UnimplementedMessageServer) DeleteMessages(context.Context, *DeleteMessage
 }
 func (UnimplementedMessageServer) ForwardMessages(context.Context, *ForwardMessagesRequest) (*ForwardMessagesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ForwardMessages not implemented")
+}
+func (UnimplementedMessageServer) SetReaction(context.Context, *SetReactionRequest) (*SetReactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetReaction not implemented")
 }
 func (UnimplementedMessageServer) mustEmbedUnimplementedMessageServer() {}
 func (UnimplementedMessageServer) testEmbeddedByValue()                 {}
@@ -484,6 +502,24 @@ func _Message_ForwardMessages_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Message_SetReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetReactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).SetReaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Message_SetReaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).SetReaction(ctx, req.(*SetReactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Message_ServiceDesc is the grpc.ServiceDesc for Message service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -534,6 +570,10 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ForwardMessages",
 			Handler:    _Message_ForwardMessages_Handler,
+		},
+		{
+			MethodName: "SetReaction",
+			Handler:    _Message_SetReaction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
