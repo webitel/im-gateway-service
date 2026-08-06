@@ -107,3 +107,20 @@ func (m *MessageService) UpdateMessageDelivery(ctx context.Context, in *impb.Upd
 
 	return &impb.UpdateMessageDeliveryResponse{}, nil
 }
+
+func (m *MessageService) DeleteMessages(ctx context.Context, in *impb.DeleteMessagesRequest) (*impb.DeleteMessagesResponse, error) {
+	return m.messenger.DeleteMessages(ctx, in)
+}
+
+func (m *MessageService) ForwardMessages(ctx context.Context, in *impb.ForwardMessagesRequest) (*impb.ForwardMessagesResponse, error) {
+	return m.messenger.ForwardMessages(ctx, in)
+}
+
+func (m *MessageService) SetReaction(ctx context.Context, in *impb.SetReactionRequest) (*impb.SetReactionResponse, error) {
+	out, err := m.messenger.SetReaction(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}

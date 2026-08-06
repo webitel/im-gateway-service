@@ -30,6 +30,8 @@ type SendDocumentRequest struct {
 	ReplyToMessageID  *string `json:"reply_to_message_id,omitempty"`
 	ExternalID        string  `json:"external_id,omitempty"`
 	ReplyToExternalID string  `json:"reply_to_external_id,omitempty"`
+
+	ForwardOrigin *api.ForwardOriginInput `json:"forward_origin,omitempty"`
 }
 
 type SendDocumentResponse struct {

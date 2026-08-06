@@ -641,6 +641,7 @@ func convertToMember(m *threadv1.ThreadMember, contact *contact.Contact) *gtwthr
 			CanRemoveMembers:            m.Permissions.CanRemoveMembers,
 			CanChangeMembersPermissions: m.Permissions.CanChangeMembersPermissions,
 			CanChangeThreadInfo:         m.Permissions.CanChangeThreadInfo,
+			CanDeleteMessages:           m.Permissions.CanDeleteMessages,
 		}
 	}
 	return converted

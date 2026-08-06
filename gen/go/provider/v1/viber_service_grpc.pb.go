@@ -29,15 +29,15 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 //
-// ViberService defines the RPC methods for managing Viber bot gateways.
+// / ViberService defines the RPC methods for managing Viber bot gateways.
 type ViberServiceClient interface {
-	// CreateViberGate registers a Viber bot as a messaging gateway.
+	// / CreateViberGate registers a Viber bot as a messaging gateway.
 	CreateViberGate(ctx context.Context, in *ProviderCreateViberGateRequest, opts ...grpc.CallOption) (*ProviderCreateViberGateResponse, error)
-	// GetViberGate retrieves configuration and status for a Viber gateway.
+	// / GetViberGate retrieves configuration and status for a Viber gateway.
 	GetViberGate(ctx context.Context, in *ProviderGetViberGateRequest, opts ...grpc.CallOption) (*ProviderGetViberGateResponse, error)
-	// UpdateViberGate updates Viber gateway settings.
+	// / UpdateViberGate updates Viber gateway settings.
 	UpdateViberGate(ctx context.Context, in *ProviderUpdateViberGateRequest, opts ...grpc.CallOption) (*ProviderUpdateViberGateResponse, error)
-	// DeleteViberGate removes the Viber gateway integration.
+	// / DeleteViberGate removes the Viber gateway integration.
 	DeleteViberGate(ctx context.Context, in *ProviderDeleteViberGateRequest, opts ...grpc.CallOption) (*ProviderDeleteViberGateResponse, error)
 }
 

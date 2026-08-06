@@ -40,6 +40,9 @@ type Messenger interface {
 	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
 	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
 	UpdateMessageDelivery(ctx context.Context, in *api.UpdateMessageDeliveryRequest) error
+	DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error)
+	ForwardMessages(ctx context.Context, in *api.ForwardMessagesRequest) (*api.ForwardMessagesResponse, error)
+	SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error)
 }
 
 type MessageService struct {
@@ -78,6 +81,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		DomainId:         int32(identity.GetDomainID()),
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
+		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
 	})
 	if err != nil {
 		return nil, err
@@ -189,6 +193,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		DomainId:         int32(identity.GetDomainID()),
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
+		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
 	})
 	if err != nil {
 		return nil, err
@@ -237,6 +242,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		ReplyToMessageId:  in.ReplyToMessageID,
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
+		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
@@ -276,6 +282,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		ReplyToMessageId:  in.ReplyToMessageID,
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
+		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
 	})
 	if err != nil {
 		return nil, err
@@ -395,6 +402,65 @@ func (m *MessageService) EditMessage(ctx context.Context, in *api.EditMessageReq
 	return &api.EditMessageResponse{
 		Id:       resp.GetId(),
 		EditedAt: resp.GetEditedAt(),
+	}, nil
+}
+
+// DeleteMessages removes the caller's own messages. Ownership and chat state
+// are enforced by im-thread-service, which sees the caller through deleted_by.
+func (m *MessageService) DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.threader.DeleteMessages(ctx, &threadv1.DeleteMessagesRequest{
+		Ids: in.GetIds(),
+		DeletedBy: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.DeleteMessagesResponse{
+		DeletedIds: resp.GetDeletedIds(),
+		SkippedIds: resp.GetSkippedIds(),
+		DeletedAt:  resp.GetDeletedAt(),
+	}, nil
+}
+
+func (m *MessageService) SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := m.threader.SetReaction(ctx, &threadv1.SetReactionRequest{
+		Reactor: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		MessageId: in.GetMessageId(),
+		Reaction: &threadv1.ReactionContent{
+			Kind: &threadv1.ReactionContent_Emoji{Emoji: in.GetEmoji()},
+		},
+		DomainId: identity.GetDomainID(),
+		SendId:   in.GetSendId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SetReactionResponse{
+		Action:    resp.GetAction().String(),
+		Emoji:     resp.GetReaction().GetEmoji(),
+		ReactedAt: resp.GetReactedAt(),
 	}, nil
 }
 

@@ -80,6 +80,20 @@ type HistoryMessage struct {
 	System          *api.System          `json:"system"`
 	ReactedMetadata *ApiInteractiveCallbackWrapper
 	ReplyTo         *HistoryReplyTo `json:"reply_to,omitempty"`
+
+	// ForwardOrigin carries no enriched sender: the original author is usually
+	// not a member of this chat, so SenderName is the only usable label.
+	ForwardOrigin *api.ForwardOrigin `json:"forward_origin,omitempty"`
+
+	// DeliveryStatus is the aggregate across recipients; UNSPECIFIED for
+	// messages without per-recipient tracking (historical).
+	DeliveryStatus api.MessageDeliveryStatus     `json:"delivery_status,omitempty"`
+	Statuses       []*api.MessageRecipientStatus `json:"statuses,omitempty"`
+
+	// Deleted marks a message removed by its author; its content fields arrive
+	// empty from im-thread-service.
+	Deleted   bool  `json:"deleted,omitempty"`
+	DeletedAt int64 `json:"deleted_at,omitempty"`
 }
 
 type Cursors struct {

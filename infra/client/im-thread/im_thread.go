@@ -46,6 +46,7 @@ func (c *Client) SendContact(ctx context.Context, in *threadv1.SendContactReques
 
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
+
 		resp, err = api.SendContact(ctx, in, opts...)
 
 		return err
@@ -59,6 +60,7 @@ func (c *Client) SendInteractive(ctx context.Context, in *threadv1.SendInteracti
 
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
+
 		resp, err = api.SendInteractive(ctx, in, opts...)
 
 		return err
@@ -72,6 +74,7 @@ func (c *Client) SendInteractiveCallback(ctx context.Context, in *threadv1.Inter
 
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
+
 		resp, err = api.SendInteractiveCallback(ctx, in, opts...)
 
 		return err
@@ -85,6 +88,7 @@ func (c *Client) SendLocation(ctx context.Context, in *threadv1.SendLocationRequ
 
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
 		var err error
+
 		resp, err = api.SendLocation(ctx, in, opts...)
 
 		return err
@@ -102,6 +106,7 @@ func (c *Client) SendText(ctx context.Context, in *threadv1.SendTextRequest, opt
 		c.logger.Debug("THREAD.SEND_TEXT", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.SendText(ctx, in, opts...)
 
 		return err
@@ -118,6 +123,7 @@ func (c *Client) SendDocument(ctx context.Context, in *threadv1.SendDocumentRequ
 		c.logger.Debug("THREAD.SEND_DOCUMENT", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.SendDocument(ctx, in, opts...)
 
 		return err
@@ -133,6 +139,7 @@ func (c *Client) SendSystemMessage(ctx context.Context, in *threadv1.SendSystemM
 		c.logger.Debug("THREAD.SEND_SYSTEM_MESSAGE", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.SendSystemMessage(ctx, in, opts...)
 
 		return err
@@ -149,6 +156,7 @@ func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts
 		c.logger.Debug("THREAD.READ_MESSAGE", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.Read(ctx, in, opts...)
 
 		return err
@@ -157,7 +165,6 @@ func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts
 	return resp, err
 }
 
-// EditMessage edit a previously delivered message.
 func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageRequest, opts ...grpc.CallOption) (*threadv1.EditMessageResponse, error) {
 	var resp *threadv1.EditMessageResponse
 
@@ -165,6 +172,7 @@ func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageReques
 		c.logger.Debug("THREAD.EDIT_MESSAGE", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.EditMessage(ctx, in, opts...)
 
 		return err
@@ -181,6 +189,70 @@ func (c *Client) UpdateMessageDelivery(ctx context.Context, in *threadv1.UpdateM
 
 		var err error
 		resp, err = api.UpdateMessageDelivery(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
+// DeleteMessages soft-deletes messages authored by the caller.
+func (c *Client) DeleteMessages(ctx context.Context, in *threadv1.DeleteMessagesRequest, opts ...grpc.CallOption) (*threadv1.DeleteMessagesResponse, error) {
+	var resp *threadv1.DeleteMessagesResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.DELETE_MESSAGES", slog.Any("req", in))
+
+		var err error
+
+		resp, err = api.DeleteMessages(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *Client) ForwardMessages(ctx context.Context, in *threadv1.ForwardMessagesRequest, opts ...grpc.CallOption) (*threadv1.ForwardMessagesResponse, error) {
+	var resp *threadv1.ForwardMessagesResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.FORWARD_MESSAGES", slog.Any("req", in))
+
+		var err error
+		resp, err = api.ForwardMessages(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
+// SetReaction sets or clears the caller's emoji reaction on a message.
+func (c *Client) SetReaction(ctx context.Context, in *threadv1.SetReactionRequest, opts ...grpc.CallOption) (*threadv1.SetReactionResponse, error) {
+	var resp *threadv1.SetReactionResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.SET_REACTION", slog.Any("req", in))
+
+		var err error
+
+		resp, err = api.SetReaction(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
+// SendTyping forwards an ephemeral typing indicator through the Thread service.
+func (c *Client) SendTyping(ctx context.Context, in *threadv1.SendTypingRequest, opts ...grpc.CallOption) (*threadv1.SendTypingResponse, error) {
+	var resp *threadv1.SendTypingResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		var err error
+
+		resp, err = api.SendTyping(ctx, in, opts...)
 
 		return err
 	})

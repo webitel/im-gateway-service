@@ -70,6 +70,11 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			System:          m.System,
 			ReactedMetadata: toProtoReactedMetadta(m.ReactedMetadata),
 			ReplyTo:         toProtoReplyTo(m.ReplyTo),
+			ForwardOrigin:   m.ForwardOrigin,
+			DeliveryStatus:  m.DeliveryStatus,
+			Statuses:        m.Statuses,
+			Deleted:         m.Deleted,
+			DeletedAt:       m.DeletedAt,
 		}
 	}
 
