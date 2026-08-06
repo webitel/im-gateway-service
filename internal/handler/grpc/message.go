@@ -100,6 +100,14 @@ func (m *MessageService) EditMessage(ctx context.Context, in *impb.EditMessageRe
 	return m.messenger.EditMessage(ctx, in)
 }
 
+func (m *MessageService) UpdateMessageDelivery(ctx context.Context, in *impb.UpdateMessageDeliveryRequest) (*impb.UpdateMessageDeliveryResponse, error) {
+	if err := m.messenger.UpdateMessageDelivery(ctx, in); err != nil {
+		return nil, err
+	}
+
+	return &impb.UpdateMessageDeliveryResponse{}, nil
+}
+
 func (m *MessageService) DeleteMessages(ctx context.Context, in *impb.DeleteMessagesRequest) (*impb.DeleteMessagesResponse, error) {
 	return m.messenger.DeleteMessages(ctx, in)
 }

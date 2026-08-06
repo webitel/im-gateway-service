@@ -23,7 +23,11 @@ const (
 	ProviderMessageService_SendDocument_FullMethodName      = "/webitel.im.provider.v1.ProviderMessageService/SendDocument"
 	ProviderMessageService_SendImage_FullMethodName         = "/webitel.im.provider.v1.ProviderMessageService/SendImage"
 	ProviderMessageService_SendInteractive_FullMethodName   = "/webitel.im.provider.v1.ProviderMessageService/SendInteractive"
+	ProviderMessageService_SendLocation_FullMethodName      = "/webitel.im.provider.v1.ProviderMessageService/SendLocation"
+	ProviderMessageService_SendContact_FullMethodName       = "/webitel.im.provider.v1.ProviderMessageService/SendContact"
 	ProviderMessageService_SendSystemMessage_FullMethodName = "/webitel.im.provider.v1.ProviderMessageService/SendSystemMessage"
+	ProviderMessageService_SendTyping_FullMethodName        = "/webitel.im.provider.v1.ProviderMessageService/SendTyping"
+	ProviderMessageService_SendReaction_FullMethodName      = "/webitel.im.provider.v1.ProviderMessageService/SendReaction"
 )
 
 // ProviderMessageServiceClient is the client API for ProviderMessageService service.
@@ -40,10 +44,24 @@ type ProviderMessageServiceClient interface {
 	SendImage(ctx context.Context, in *ProviderSendImageRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error)
 	// SendInteractive delivers a message with interactive UI elements (buttons, menus).
 	SendInteractive(ctx context.Context, in *ProviderSendInteractiveRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error)
+	// SendLocation delivers a geographic location to the external chat partner.
+	SendLocation(ctx context.Context, in *ProviderSendLocationRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error)
+	// SendContact delivers a contact card to the external chat partner.
+	SendContact(ctx context.Context, in *ProviderSendContactRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error)
 	// SendSystemMessage delivers a system event notification to the external chat partner.
 	// The im-providers-service resolves the gate-specific template and renders it as text
 	// before forwarding to the underlying provider (Facebook, WhatsApp, etc.).
 	SendSystemMessage(ctx context.Context, in *ProviderSendSystemMessageRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error)
+	// SendTyping forwards an ephemeral "typing…" action to the external chat
+	// partner (e.g. Telegram sendChatAction, Meta sender_action). It is
+	// fire-and-forget and best-effort: channels whose provider does not support
+	// typing are a silent no-op. Nothing is persisted.
+	SendTyping(ctx context.Context, in *ProviderSendTypingRequest, opts ...grpc.CallOption) (*ProviderSendTypingResponse, error)
+	// SendReaction forwards an emoji reaction change to the external chat partner
+	// (e.g. Telegram setMessageReaction). Best-effort and messenger-dependent:
+	// providers without reaction support are a silent no-op. An empty emoji (with
+	// removed=true) clears the caller's reaction on the target message.
+	SendReaction(ctx context.Context, in *ProviderSendReactionRequest, opts ...grpc.CallOption) (*ProviderSendReactionResponse, error)
 }
 
 type providerMessageServiceClient struct {
@@ -94,10 +112,50 @@ func (c *providerMessageServiceClient) SendInteractive(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *providerMessageServiceClient) SendLocation(ctx context.Context, in *ProviderSendLocationRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProviderSendMessageResponse)
+	err := c.cc.Invoke(ctx, ProviderMessageService_SendLocation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *providerMessageServiceClient) SendContact(ctx context.Context, in *ProviderSendContactRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProviderSendMessageResponse)
+	err := c.cc.Invoke(ctx, ProviderMessageService_SendContact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *providerMessageServiceClient) SendSystemMessage(ctx context.Context, in *ProviderSendSystemMessageRequest, opts ...grpc.CallOption) (*ProviderSendMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ProviderSendMessageResponse)
 	err := c.cc.Invoke(ctx, ProviderMessageService_SendSystemMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *providerMessageServiceClient) SendTyping(ctx context.Context, in *ProviderSendTypingRequest, opts ...grpc.CallOption) (*ProviderSendTypingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProviderSendTypingResponse)
+	err := c.cc.Invoke(ctx, ProviderMessageService_SendTyping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *providerMessageServiceClient) SendReaction(ctx context.Context, in *ProviderSendReactionRequest, opts ...grpc.CallOption) (*ProviderSendReactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProviderSendReactionResponse)
+	err := c.cc.Invoke(ctx, ProviderMessageService_SendReaction_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -118,10 +176,24 @@ type ProviderMessageServiceServer interface {
 	SendImage(context.Context, *ProviderSendImageRequest) (*ProviderSendMessageResponse, error)
 	// SendInteractive delivers a message with interactive UI elements (buttons, menus).
 	SendInteractive(context.Context, *ProviderSendInteractiveRequest) (*ProviderSendMessageResponse, error)
+	// SendLocation delivers a geographic location to the external chat partner.
+	SendLocation(context.Context, *ProviderSendLocationRequest) (*ProviderSendMessageResponse, error)
+	// SendContact delivers a contact card to the external chat partner.
+	SendContact(context.Context, *ProviderSendContactRequest) (*ProviderSendMessageResponse, error)
 	// SendSystemMessage delivers a system event notification to the external chat partner.
 	// The im-providers-service resolves the gate-specific template and renders it as text
 	// before forwarding to the underlying provider (Facebook, WhatsApp, etc.).
 	SendSystemMessage(context.Context, *ProviderSendSystemMessageRequest) (*ProviderSendMessageResponse, error)
+	// SendTyping forwards an ephemeral "typing…" action to the external chat
+	// partner (e.g. Telegram sendChatAction, Meta sender_action). It is
+	// fire-and-forget and best-effort: channels whose provider does not support
+	// typing are a silent no-op. Nothing is persisted.
+	SendTyping(context.Context, *ProviderSendTypingRequest) (*ProviderSendTypingResponse, error)
+	// SendReaction forwards an emoji reaction change to the external chat partner
+	// (e.g. Telegram setMessageReaction). Best-effort and messenger-dependent:
+	// providers without reaction support are a silent no-op. An empty emoji (with
+	// removed=true) clears the caller's reaction on the target message.
+	SendReaction(context.Context, *ProviderSendReactionRequest) (*ProviderSendReactionResponse, error)
 	mustEmbedUnimplementedProviderMessageServiceServer()
 }
 
@@ -144,8 +216,20 @@ func (UnimplementedProviderMessageServiceServer) SendImage(context.Context, *Pro
 func (UnimplementedProviderMessageServiceServer) SendInteractive(context.Context, *ProviderSendInteractiveRequest) (*ProviderSendMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendInteractive not implemented")
 }
+func (UnimplementedProviderMessageServiceServer) SendLocation(context.Context, *ProviderSendLocationRequest) (*ProviderSendMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendLocation not implemented")
+}
+func (UnimplementedProviderMessageServiceServer) SendContact(context.Context, *ProviderSendContactRequest) (*ProviderSendMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendContact not implemented")
+}
 func (UnimplementedProviderMessageServiceServer) SendSystemMessage(context.Context, *ProviderSendSystemMessageRequest) (*ProviderSendMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendSystemMessage not implemented")
+}
+func (UnimplementedProviderMessageServiceServer) SendTyping(context.Context, *ProviderSendTypingRequest) (*ProviderSendTypingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendTyping not implemented")
+}
+func (UnimplementedProviderMessageServiceServer) SendReaction(context.Context, *ProviderSendReactionRequest) (*ProviderSendReactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendReaction not implemented")
 }
 func (UnimplementedProviderMessageServiceServer) mustEmbedUnimplementedProviderMessageServiceServer() {
 }
@@ -241,6 +325,42 @@ func _ProviderMessageService_SendInteractive_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProviderMessageService_SendLocation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProviderSendLocationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProviderMessageServiceServer).SendLocation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProviderMessageService_SendLocation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProviderMessageServiceServer).SendLocation(ctx, req.(*ProviderSendLocationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProviderMessageService_SendContact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProviderSendContactRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProviderMessageServiceServer).SendContact(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProviderMessageService_SendContact_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProviderMessageServiceServer).SendContact(ctx, req.(*ProviderSendContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ProviderMessageService_SendSystemMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProviderSendSystemMessageRequest)
 	if err := dec(in); err != nil {
@@ -255,6 +375,42 @@ func _ProviderMessageService_SendSystemMessage_Handler(srv interface{}, ctx cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ProviderMessageServiceServer).SendSystemMessage(ctx, req.(*ProviderSendSystemMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProviderMessageService_SendTyping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProviderSendTypingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProviderMessageServiceServer).SendTyping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProviderMessageService_SendTyping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProviderMessageServiceServer).SendTyping(ctx, req.(*ProviderSendTypingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProviderMessageService_SendReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProviderSendReactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProviderMessageServiceServer).SendReaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProviderMessageService_SendReaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProviderMessageServiceServer).SendReaction(ctx, req.(*ProviderSendReactionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -283,8 +439,24 @@ var ProviderMessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ProviderMessageService_SendInteractive_Handler,
 		},
 		{
+			MethodName: "SendLocation",
+			Handler:    _ProviderMessageService_SendLocation_Handler,
+		},
+		{
+			MethodName: "SendContact",
+			Handler:    _ProviderMessageService_SendContact_Handler,
+		},
+		{
 			MethodName: "SendSystemMessage",
 			Handler:    _ProviderMessageService_SendSystemMessage_Handler,
+		},
+		{
+			MethodName: "SendTyping",
+			Handler:    _ProviderMessageService_SendTyping_Handler,
+		},
+		{
+			MethodName: "SendReaction",
+			Handler:    _ProviderMessageService_SendReaction_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -91,6 +91,7 @@ type AuthContact struct {
 	App                 string
 	Type                string
 	Name                string
+	ChatName            string
 	GivenName           string
 	MiddleName          string
 	FamilyName          string

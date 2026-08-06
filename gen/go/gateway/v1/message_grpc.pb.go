@@ -27,6 +27,7 @@ const (
 	Message_SendLocation_FullMethodName            = "/webitel.im.api.gateway.v1.Message/SendLocation"
 	Message_SendContact_FullMethodName             = "/webitel.im.api.gateway.v1.Message/SendContact"
 	Message_SendSystemMessage_FullMethodName       = "/webitel.im.api.gateway.v1.Message/SendSystemMessage"
+	Message_UpdateMessageDelivery_FullMethodName   = "/webitel.im.api.gateway.v1.Message/UpdateMessageDelivery"
 	Message_EditMessage_FullMethodName             = "/webitel.im.api.gateway.v1.Message/EditMessage"
 	Message_DeleteMessages_FullMethodName          = "/webitel.im.api.gateway.v1.Message/DeleteMessages"
 	Message_ForwardMessages_FullMethodName         = "/webitel.im.api.gateway.v1.Message/ForwardMessages"
@@ -59,6 +60,9 @@ type MessageClient interface {
 	SendContact(ctx context.Context, in *SendContactRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	// Sends a system message (e.g., user joined, user left).
 	SendSystemMessage(ctx context.Context, in *SendSystemMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
+	// Records what an external channel reported about a message we sent through it
+	// (delivered / seen / failed). Called by provider services, not by end clients.
+	UpdateMessageDelivery(ctx context.Context, in *UpdateMessageDeliveryRequest, opts ...grpc.CallOption) (*UpdateMessageDeliveryResponse, error)
 	// Edits an existing message by ID. Only the sender or authorized users can edit messages.
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
 	// Deletes one or more messages authored by the caller in an active chat.
@@ -160,6 +164,16 @@ func (c *messageClient) SendSystemMessage(ctx context.Context, in *SendSystemMes
 	return out, nil
 }
 
+func (c *messageClient) UpdateMessageDelivery(ctx context.Context, in *UpdateMessageDeliveryRequest, opts ...grpc.CallOption) (*UpdateMessageDeliveryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMessageDeliveryResponse)
+	err := c.cc.Invoke(ctx, Message_UpdateMessageDelivery_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageClient) EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EditMessageResponse)
@@ -226,6 +240,9 @@ type MessageServer interface {
 	SendContact(context.Context, *SendContactRequest) (*SendMessageResponse, error)
 	// Sends a system message (e.g., user joined, user left).
 	SendSystemMessage(context.Context, *SendSystemMessageRequest) (*SendMessageResponse, error)
+	// Records what an external channel reported about a message we sent through it
+	// (delivered / seen / failed). Called by provider services, not by end clients.
+	UpdateMessageDelivery(context.Context, *UpdateMessageDeliveryRequest) (*UpdateMessageDeliveryResponse, error)
 	// Edits an existing message by ID. Only the sender or authorized users can edit messages.
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
 	// Deletes one or more messages authored by the caller in an active chat.
@@ -270,6 +287,9 @@ func (UnimplementedMessageServer) SendContact(context.Context, *SendContactReque
 }
 func (UnimplementedMessageServer) SendSystemMessage(context.Context, *SendSystemMessageRequest) (*SendMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendSystemMessage not implemented")
+}
+func (UnimplementedMessageServer) UpdateMessageDelivery(context.Context, *UpdateMessageDeliveryRequest) (*UpdateMessageDeliveryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateMessageDelivery not implemented")
 }
 func (UnimplementedMessageServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EditMessage not implemented")
@@ -448,6 +468,24 @@ func _Message_SendSystemMessage_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Message_UpdateMessageDelivery_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMessageDeliveryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServer).UpdateMessageDelivery(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Message_UpdateMessageDelivery_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServer).UpdateMessageDelivery(ctx, req.(*UpdateMessageDeliveryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Message_EditMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EditMessageRequest)
 	if err := dec(in); err != nil {
@@ -558,6 +596,10 @@ var Message_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SendSystemMessage",
 			Handler:    _Message_SendSystemMessage_Handler,
+		},
+		{
+			MethodName: "UpdateMessageDelivery",
+			Handler:    _Message_UpdateMessageDelivery_Handler,
 		},
 		{
 			MethodName: "EditMessage",

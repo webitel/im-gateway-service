@@ -29,6 +29,7 @@ var Module = fx.Module(
 		improviders.NewFacebookClient,
 		improviders.NewGateClient,
 		improviders.NewWhatsAppClient,
+		improviders.NewViberClient,
 		improviders.NewMetaAppClient,
 		improviders.NewMetaOAuthClient,
 	),
@@ -106,6 +107,9 @@ var Module = fx.Module(
 		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.WhatsAppClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.ViberClient) {
 		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.MetaAppClient) {

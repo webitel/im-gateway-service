@@ -39,6 +39,7 @@ type Messenger interface {
 	SendLocation(ctx context.Context, in *api.SendLocationRequest) (*api.SendMessageResponse, error)
 	SendSystemMessage(ctx context.Context, in *dto.SendSystemMessageRequest) (*dto.SendSystemMessageResponse, error)
 	EditMessage(ctx context.Context, in *api.EditMessageRequest) (*api.EditMessageResponse, error)
+	UpdateMessageDelivery(ctx context.Context, in *api.UpdateMessageDeliveryRequest) error
 	DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error)
 	ForwardMessages(ctx context.Context, in *api.ForwardMessagesRequest) (*api.ForwardMessagesResponse, error)
 	SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error)
@@ -67,7 +68,8 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
 			},
 		},
 		To:               to,
@@ -112,8 +114,9 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 	converted.From = &threadv1.Peer{
 		Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		Identity: &threadv1.Identity{
-			Name: identity.GetName(),
-			Via:  identity.GetViaPtr(),
+			Name:     identity.GetName(),
+			ChatName: identity.GetChatName(),
+			Via:      identity.GetViaPtr(),
 		},
 	}
 	converted.DomainId = int32(identity.GetDomainID())
@@ -141,7 +144,8 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.In
 		ReactedBy: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
 			},
 		},
 		InReplyTo:    in.InReplyTo,
@@ -175,7 +179,8 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
 			},
 		},
 		To:               to,
@@ -224,8 +229,9 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
-				Via:  identity.GetViaPtr(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
+				Via:      identity.GetViaPtr(),
 			},
 		},
 		To:                to,
@@ -262,8 +268,9 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
-				Via:  identity.GetViaPtr(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
+				Via:      identity.GetViaPtr(),
 			},
 		},
 		To:                to,
@@ -299,7 +306,8 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSyst
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
 			},
 		},
 		To:       to,
@@ -318,6 +326,37 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSyst
 		To: in.To,
 		ID: m.parseUUID(resp.GetId()),
 	}, nil
+}
+
+func (m *MessageService) UpdateMessageDelivery(ctx context.Context, in *api.UpdateMessageDeliveryRequest) error {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return auth.IdentityNotFoundErr
+	}
+
+	_, err := m.threader.UpdateMessageDelivery(ctx, &threadv1.UpdateMessageDeliveryRequest{
+		GateId:            in.GetGateId(),
+		ExternalMessageId: in.GetExternalMessageId(),
+		Status:            mapDeliveryStatus(in.GetStatus()),
+		Reason:            in.GetReason(),
+		At:                in.GetAt(),
+		DomainId:          int32(identity.GetDomainID()),
+	})
+
+	return err
+}
+
+func mapDeliveryStatus(in api.MessageDeliveryStatus) threadv1.MessageDeliveryStatus {
+	switch in {
+	case api.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_DELIVERED:
+		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_DELIVERED
+	case api.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_READ:
+		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_READ
+	case api.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_FAILED:
+		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_FAILED
+	default:
+		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_UNSPECIFIED
+	}
 }
 
 // Read implements [Messenger].
@@ -351,7 +390,8 @@ func (m *MessageService) EditMessage(ctx context.Context, in *api.EditMessageReq
 		EditedBy: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
+				Name:     identity.GetName(),
+				ChatName: identity.GetChatName(),
 			},
 		},
 	})

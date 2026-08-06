@@ -181,6 +181,21 @@ func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageReques
 	return resp, err
 }
 
+func (c *Client) UpdateMessageDelivery(ctx context.Context, in *threadv1.UpdateMessageDeliveryRequest, opts ...grpc.CallOption) (*threadv1.UpdateMessageDeliveryResponse, error) {
+	var resp *threadv1.UpdateMessageDeliveryResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.UPDATE_MESSAGE_DELIVERY", slog.Any("req", in))
+
+		var err error
+		resp, err = api.UpdateMessageDelivery(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
 // DeleteMessages soft-deletes messages authored by the caller.
 func (c *Client) DeleteMessages(ctx context.Context, in *threadv1.DeleteMessagesRequest, opts ...grpc.CallOption) (*threadv1.DeleteMessagesResponse, error) {
 	var resp *threadv1.DeleteMessagesResponse
