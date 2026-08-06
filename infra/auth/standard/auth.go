@@ -45,6 +45,7 @@ type Identity struct {
 	DomainID  int64
 	Issuer    string
 	Name      string
+	ChatName  string
 	Via       string
 }
 
@@ -62,6 +63,10 @@ func (i *Identity) GetIssuer() string {
 
 func (i *Identity) GetName() string {
 	return i.Name
+}
+
+func (i *Identity) GetChatName() string {
+	return i.ChatName
 }
 
 func (i *Identity) GetVia() string {
@@ -257,6 +262,7 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (context.Context,
 		DomainID:  auth.Dc,
 		Issuer:    auth.Contact.Iss,
 		Name:      cmp.Or(contact.Name, contact.GivenName, contact.Username, "Unknown"),
+		ChatName:  contact.ChatName,
 	}
 
 	return ctx, identity, nil

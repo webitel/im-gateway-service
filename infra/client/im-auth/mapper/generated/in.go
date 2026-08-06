@@ -41,6 +41,7 @@ func (c *InMapperImpl) ToAuthContact(source *v1.Contact) (*dto.AuthContact, erro
 		dtoAuthContact.App = (*source).App
 		dtoAuthContact.Type = (*source).Type
 		dtoAuthContact.Name = (*source).Name
+		dtoAuthContact.ChatName = (*source).ChatName
 		dtoAuthContact.GivenName = (*source).GivenName
 		dtoAuthContact.MiddleName = (*source).MiddleName
 		dtoAuthContact.FamilyName = (*source).FamilyName

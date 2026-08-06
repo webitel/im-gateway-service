@@ -173,6 +173,21 @@ func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageReques
 	return resp, err
 }
 
+func (c *Client) UpdateMessageDelivery(ctx context.Context, in *threadv1.UpdateMessageDeliveryRequest, opts ...grpc.CallOption) (*threadv1.UpdateMessageDeliveryResponse, error) {
+	var resp *threadv1.UpdateMessageDeliveryResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.UPDATE_MESSAGE_DELIVERY", slog.Any("req", in))
+
+		var err error
+		resp, err = api.UpdateMessageDelivery(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
 // Close gracefully shuts down the underlying gRPC connection pool.
 func (c *Client) Close() error {
 	if c.rpc != nil {

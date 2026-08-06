@@ -41,6 +41,7 @@ type Identifier interface {
 	GetDomainID() int64
 	GetIssuer() string
 	GetName() string
+	GetChatName() string
 	GetVia() string
 	GetViaPtr() *string
 }
