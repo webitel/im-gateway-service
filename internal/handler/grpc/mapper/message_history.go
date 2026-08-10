@@ -93,11 +93,11 @@ func MapToGetMessageRevisionsProto(revisions []*dto.MessageRevision) *pb.GetMess
 	items := make([]*pb.MessageRevision, 0, len(revisions))
 	for _, r := range revisions {
 		items = append(items, &pb.MessageRevision{
-			RevisionNo: r.RevisionNo,
-			Action:     r.Action,
-			Body:       r.Body,
-			ChangedBy:  r.ChangedBy,
-			ChangedAt:  r.ChangedAt,
+			Version:   r.Version,
+			Action:    r.Action,
+			Body:      r.Body,
+			ChangedBy: r.ChangedBy,
+			ChangedAt: r.ChangedAt,
 		})
 	}
 

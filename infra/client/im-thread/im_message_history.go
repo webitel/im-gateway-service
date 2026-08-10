@@ -290,11 +290,11 @@ func MapRevisions(revisions []*threadv1.MessageRevision) []*dto.MessageRevision 
 	res := make([]*dto.MessageRevision, 0, len(revisions))
 	for _, r := range revisions {
 		res = append(res, &dto.MessageRevision{
-			RevisionNo: r.GetRevisionNo(),
-			Action:     api.MessageRevisionAction(r.GetAction()),
-			Body:       r.GetBody(),
-			ChangedBy:  r.GetChangedBy(),
-			ChangedAt:  r.GetChangedAt(),
+			Version:   r.GetVersion(),
+			Action:    api.MessageRevisionAction(r.GetAction()),
+			Body:      r.GetBody(),
+			ChangedBy: r.GetChangedBy(),
+			ChangedAt: r.GetChangedAt(),
 		})
 	}
 

@@ -101,11 +101,11 @@ type HistoryMessage struct {
 }
 
 type MessageRevision struct {
-	RevisionNo int32                     `json:"revision_no"`
-	Action     api.MessageRevisionAction `json:"action"`
-	Body       string                    `json:"body"`
-	ChangedBy  string                    `json:"changed_by"`
-	ChangedAt  int64                     `json:"changed_at"`
+	Version   int32                     `json:"version"`
+	Action    api.MessageRevisionAction `json:"action"`
+	Body      string                    `json:"body"`
+	ChangedBy string                    `json:"changed_by"`
+	ChangedAt int64                     `json:"changed_at"`
 }
 
 type GetMessageRevisionsRequest struct {
