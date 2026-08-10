@@ -91,9 +91,27 @@ type HistoryMessage struct {
 	Statuses       []*api.MessageRecipientStatus `json:"statuses,omitempty"`
 
 	// Deleted marks a message removed by its author; its content fields arrive
-	// empty from im-thread-service.
-	Deleted   bool  `json:"deleted,omitempty"`
-	DeletedAt int64 `json:"deleted_at,omitempty"`
+	// empty from im-thread-service. The removed text stays reachable through
+	// GetMessageRevisions.
+	Deleted   bool   `json:"deleted,omitempty"`
+	DeletedAt int64  `json:"deleted_at,omitempty"`
+	DeletedBy string `json:"deleted_by,omitempty"`
+
+	RevisionCount int32 `json:"revision_count,omitempty"`
+}
+
+type MessageRevision struct {
+	RevisionNo int32                     `json:"revision_no"`
+	Action     api.MessageRevisionAction `json:"action"`
+	Body       string                    `json:"body"`
+	ChangedBy  string                    `json:"changed_by"`
+	ChangedAt  int64                     `json:"changed_at"`
+}
+
+type GetMessageRevisionsRequest struct {
+	MessageID string
+	DomainID  int32
+	CallerID  string
 }
 
 type Cursors struct {

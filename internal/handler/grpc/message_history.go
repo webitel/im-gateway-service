@@ -54,6 +54,25 @@ func (s *MessageHistoryService) SearchThreadMessagesHistory(ctx context.Context,
 	return mappedResp, nil
 }
 
+// GetMessageRevisions returns the edit and deletion history of a single
+// message, oldest first.
+//
+// Args:
+//   - ctx: context of the request
+//   - req: message id to read the history of
+//
+// Returns:
+//   - response: the message's revisions
+//   - error: error if occurred
+func (s *MessageHistoryService) GetMessageRevisions(ctx context.Context, req *pb.GetMessageRevisionsRequest) (*pb.GetMessageRevisionsResponse, error) {
+	revisions, err := s.messageHistorySearcher.GetRevisions(ctx, mapper.MapGetMessageRevisionsRequestToDTO(req))
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToGetMessageRevisionsProto(revisions), nil
+}
+
 // SearchLeftThreadsMessagesHistory performs a search for messages covering the
 // user's closed membership periods within a thread. Active memberships are
 // excluded — their messages are served by SearchThreadMessagesHistory.

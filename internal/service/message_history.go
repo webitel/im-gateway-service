@@ -22,6 +22,7 @@ type (
 	MessageHistorySearcher interface {
 		Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
 		SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
+		GetRevisions(ctx context.Context, query *dto.GetMessageRevisionsRequest) ([]*dto.MessageRevision, error)
 	}
 
 	messageHistory struct {
@@ -146,6 +147,41 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 	s.enrichResponse(response, fromInternal, identityMap)
 
 	return response, nil
+}
+
+// GetRevisions returns the edit and deletion history of a single message.
+// Membership is enforced by im-thread-service, which sees the caller through
+// the caller id set here.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: message id to read the history of
+//
+// Returns:
+//   - []*dto.MessageRevision: the message's revisions, oldest first
+//   - error: any error encountered during the call
+func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessageRevisionsRequest) ([]*dto.MessageRevision, error) {
+	log := s.logger.With(
+		slog.String("op", "messageHistory.GetRevisions"),
+		slog.String("message", query.MessageID),
+	)
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	query.DomainID = int32(identity.GetDomainID())
+	query.CallerID = identity.GetContactID()
+
+	revisions, err := s.historyClient.GetRevisions(ctx, query)
+	if err != nil {
+		log.Error("failed to fetch message revisions", slog.Any("err", err))
+		return nil, err
+	}
+
+	return revisions, nil
 }
 
 // fetchParticipantMap fetches the participant map for the given domain ID and IDs.

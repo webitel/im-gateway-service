@@ -75,10 +75,33 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			Statuses:        m.Statuses,
 			Deleted:         m.Deleted,
 			DeletedAt:       m.DeletedAt,
+			DeletedBy:       m.DeletedBy,
+			RevisionCount:   m.RevisionCount,
 		}
 	}
 
 	return protoMsgs
+}
+
+func MapGetMessageRevisionsRequestToDTO(req *pb.GetMessageRevisionsRequest) *dto.GetMessageRevisionsRequest {
+	return &dto.GetMessageRevisionsRequest{
+		MessageID: req.GetMessageId(),
+	}
+}
+
+func MapToGetMessageRevisionsProto(revisions []*dto.MessageRevision) *pb.GetMessageRevisionsResponse {
+	items := make([]*pb.MessageRevision, 0, len(revisions))
+	for _, r := range revisions {
+		items = append(items, &pb.MessageRevision{
+			RevisionNo: r.RevisionNo,
+			Action:     r.Action,
+			Body:       r.Body,
+			ChangedBy:  r.ChangedBy,
+			ChangedAt:  r.ChangedAt,
+		})
+	}
+
+	return &pb.GetMessageRevisionsResponse{Items: items}
 }
 
 func toProtoReplyTo(replyTo *dto.HistoryReplyTo) *pb.ReplyToMessage {
