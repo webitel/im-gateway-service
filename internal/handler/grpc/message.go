@@ -124,3 +124,7 @@ func (m *MessageService) SetReaction(ctx context.Context, in *impb.SetReactionRe
 
 	return out, nil
 }
+
+func (m *MessageService) SendInternalNote(ctx context.Context, in *impb.SendInternalNoteRequest) (*impb.SendMessageResponse, error) {
+	return m.messenger.SendInternalNote(ctx, in)
+}

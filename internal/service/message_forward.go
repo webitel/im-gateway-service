@@ -24,6 +24,11 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 		return nil, err
 	}
 
+	var internalNote *string
+	if in.InternalNote != nil {
+		internalNote = in.InternalNote
+	}
+
 	resp, err := m.threader.ForwardMessages(ctx, &threadv1.ForwardMessagesRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
@@ -32,11 +37,12 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 				Via:  identity.GetViaPtr(),
 			},
 		},
-		To:         to,
-		MessageIds: in.GetMessageIds(),
-		DomainId:   int32(identity.GetDomainID()),
-		SendId:     in.GetSendId(),
-		SendAs:     sendAs.GetContactIDPtr(),
+		To:           to,
+		MessageIds:   in.GetMessageIds(),
+		DomainId:     int32(identity.GetDomainID()),
+		SendId:       in.GetSendId(),
+		SendAs:       sendAs.GetContactIDPtr(),
+		InternalNote: internalNote,
 	})
 	if err != nil {
 		m.logger.Error("ForwardMessages", "err", err,
@@ -51,6 +57,44 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 		ThreadId:   resp.GetThreadId(),
 		Ids:        resp.GetIds(),
 		SkippedIds: resp.GetSkippedIds(),
+	}, nil
+}
+
+// SendInternalNote posts an operator-only note into the thread. The sender is
+// taken from the caller's identity; the note is never delivered to the client
+// and never forwarded to an external messenger.
+func (m *MessageService) SendInternalNote(ctx context.Context, in *api.SendInternalNoteRequest) (*api.SendMessageResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := m.threader.SendInternalNote(ctx, &threadv1.SendInternalNoteRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		To:               to,
+		Body:             in.GetBody(),
+		DomainId:         int64(identity.GetDomainID()),
+		SendAs:           sendAs.GetContactIDPtr(),
+		ReplyToMessageId: in.ReplyToMessageId,
+		SendId:           in.GetSendId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SendMessageResponse{
+		To: in.GetTo(),
+		Id: resp.GetId(),
 	}, nil
 }
 
