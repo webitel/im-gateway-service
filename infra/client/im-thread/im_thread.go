@@ -228,6 +228,22 @@ func (c *Client) ForwardMessages(ctx context.Context, in *threadv1.ForwardMessag
 	return resp, err
 }
 
+func (c *Client) SendInternalNote(ctx context.Context, in *threadv1.SendInternalNoteRequest, opts ...grpc.CallOption) (*threadv1.SendMessageResponse, error) {
+	var resp *threadv1.SendMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.SEND_INTERNAL_NOTE", slog.Any("req", in))
+
+		var err error
+
+		resp, err = api.SendInternalNote(ctx, in, opts...)
+
+		return err
+	})
+
+	return resp, err
+}
+
 // SetReaction sets or clears the caller's emoji reaction on a message.
 func (c *Client) SetReaction(ctx context.Context, in *threadv1.SetReactionRequest, opts ...grpc.CallOption) (*threadv1.SetReactionResponse, error) {
 	var resp *threadv1.SetReactionResponse
@@ -250,8 +266,9 @@ func (c *Client) SendTyping(ctx context.Context, in *threadv1.SendTypingRequest,
 	var resp *threadv1.SendTypingResponse
 
 	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
-		var err error
+		c.logger.Debug("THREAD.SEND_TYPING", slog.Any("req", in))
 
+		var err error
 		resp, err = api.SendTyping(ctx, in, opts...)
 
 		return err
