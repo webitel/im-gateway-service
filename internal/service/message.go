@@ -43,6 +43,7 @@ type Messenger interface {
 	DeleteMessages(ctx context.Context, in *api.DeleteMessagesRequest) (*api.DeleteMessagesResponse, error)
 	ForwardMessages(ctx context.Context, in *api.ForwardMessagesRequest) (*api.ForwardMessagesResponse, error)
 	SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error)
+	SendInternalNote(ctx context.Context, in *api.SendInternalNoteRequest) (*api.SendMessageResponse, error)
 }
 
 type MessageService struct {
