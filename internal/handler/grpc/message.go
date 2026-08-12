@@ -125,6 +125,15 @@ func (m *MessageService) SetReaction(ctx context.Context, in *impb.SetReactionRe
 	return out, nil
 }
 
+func (m *MessageService) SendTyping(ctx context.Context, in *impb.SendTypingRequest) (*impb.SendTypingResponse, error) {
+	out, err := m.messenger.SendTyping(ctx, in)
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
 func (m *MessageService) SendInternalNote(ctx context.Context, in *impb.SendInternalNoteRequest) (*impb.SendMessageResponse, error) {
 	return m.messenger.SendInternalNote(ctx, in)
 }

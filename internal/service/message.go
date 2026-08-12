@@ -44,6 +44,7 @@ type Messenger interface {
 	ForwardMessages(ctx context.Context, in *api.ForwardMessagesRequest) (*api.ForwardMessagesResponse, error)
 	SetReaction(ctx context.Context, in *api.SetReactionRequest) (*api.SetReactionResponse, error)
 	SendInternalNote(ctx context.Context, in *api.SendInternalNoteRequest) (*api.SendMessageResponse, error)
+	SendTyping(ctx context.Context, in *api.SendTypingRequest) (*api.SendTypingResponse, error)
 }
 
 type MessageService struct {
@@ -463,6 +464,33 @@ func (m *MessageService) SetReaction(ctx context.Context, in *api.SetReactionReq
 		Emoji:     resp.GetReaction().GetEmoji(),
 		ReactedAt: resp.GetReactedAt(),
 	}, nil
+}
+
+func (m *MessageService) SendTyping(ctx context.Context, in *api.SendTypingRequest) (*api.SendTypingResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	_, err := m.threader.SendTyping(ctx, &threadv1.SendTypingRequest{
+		From: &threadv1.Peer{
+			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: &threadv1.Identity{
+				Name: identity.GetName(),
+			},
+		},
+		To: &threadv1.Peer{
+			Kind: &threadv1.Peer_ThreadId{ThreadId: in.GetThreadId()},
+		},
+		DomainId:    identity.GetDomainID(),
+		TimeoutMs:   in.TimeoutMs,
+		PreviewText: in.PreviewText,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.SendTypingResponse{}, nil
 }
 
 // --- Internal Helpers & Mappers ---
