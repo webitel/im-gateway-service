@@ -167,6 +167,44 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 	return ToSearchHistoryResponseDTO(response), response.GetFrom(), nil
 }
 
+// GetRevisions fetches the edit and deletion history of a single message.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: message id plus the caller im-thread-service authorizes against
+//
+// Returns:
+//   - []*dto.MessageRevision: the message's revisions, oldest first
+//   - error: any error encountered during the call
+func (c *MessageHistoryClient) GetRevisions(ctx context.Context, query *dto.GetMessageRevisionsRequest) ([]*dto.MessageRevision, error) {
+	log := c.logger.With(
+		slog.Int("domain_id", int(query.DomainID)),
+		slog.String("message_id", query.MessageID),
+	)
+
+	req := &threadv1.GetMessageRevisionsRequest{
+		MessageId: query.MessageID,
+		DomainId:  query.DomainID,
+		CallerId:  query.CallerID,
+	}
+
+	var (
+		response *threadv1.GetMessageRevisionsResponse
+		err      error
+	)
+
+	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
+		response, err = mhc.GetMessageRevisions(ctx, req)
+		return err
+	})
+	if err != nil {
+		log.Error("failed to fetch message revisions", slog.Any("error", err))
+		return nil, err
+	}
+
+	return MapRevisions(response.GetItems()), nil
+}
+
 // Close gracefully shuts down the underlying gRPC connection pool.
 // If the client is nil, the method does nothing and returns nil.
 //
@@ -235,8 +273,31 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			Statuses:        MapRecipientStatuses(m.Statuses),
 			Deleted:         m.GetDeleted(),
 			DeletedAt:       m.GetDeletedAt(),
+			DeletedBy:       m.GetDeletedBy(),
+			RevisionCount:   m.GetRevisionCount(),
 		}
 	}
+	return res
+}
+
+// MapRevisions maps the change history of a single message onto its DTO form,
+// preserving the oldest-first order im-thread-service returns.
+func MapRevisions(revisions []*threadv1.MessageRevision) []*dto.MessageRevision {
+	if len(revisions) == 0 {
+		return []*dto.MessageRevision{}
+	}
+
+	res := make([]*dto.MessageRevision, 0, len(revisions))
+	for _, r := range revisions {
+		res = append(res, &dto.MessageRevision{
+			Version:   r.GetVersion(),
+			Action:    api.MessageRevisionAction(r.GetAction()),
+			Body:      r.GetBody(),
+			ChangedBy: r.GetChangedBy(),
+			ChangedAt: r.GetChangedAt(),
+		})
+	}
+
 	return res
 }
 
