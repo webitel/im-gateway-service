@@ -62,6 +62,7 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			Metadata:        md,
 			CreatedAt:       m.CreatedAt,
 			EditedAt:        m.UpdatedAt,
+			Seq:             m.Seq,
 			Documents:       toProtoDocuments(m.Documents),
 			Images:          toProtoImages(m.Images),
 			Contact:         m.Contact,

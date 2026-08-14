@@ -70,6 +70,7 @@ type HistoryMessage struct {
 	Metadata  map[string]any    `json:"metadata,omitempty"`
 	CreatedAt int64             `json:"created_at"`
 	UpdatedAt int64             `json:"updated_at"`
+	Seq       int64             `json:"seq,omitempty"`
 	Documents []HistoryDocument `json:"documents,omitempty"`
 	Images    []HistoryImage    `json:"images,omitempty"`
 

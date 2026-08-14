@@ -76,14 +76,16 @@ type MessageClient interface {
 	// users (operators/supervisors). It is never delivered to the client contact
 	// and never forwarded to an external messenger.
 	SendInternalNote(ctx context.Context, in *SendInternalNoteRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
-	// Sets or clears the caller's emoji reaction on a single message.
+	// Sets, replaces or clears the caller's emoji reaction on a single message.
 	//
-	// A member may hold at most one reaction per message: a new emoji replaces
-	// the previous one, sending the same emoji again clears it (toggle), and an
-	// empty emoji clears it explicitly. The call is idempotent (send_id) and
-	// serves both webitel participants and inbound reactions relayed from an
-	// external messenger. Whether a reaction is forwarded to the far side
-	// depends on the messenger's capabilities.
+	// A member holds at most one reaction per message. The call is declarative:
+	// a different emoji replaces the previous one, an empty emoji clears it, and
+	// the same emoji is a no-op (to toggle off, the client sends an empty emoji).
+	// It is therefore idempotent by construction — an at-least-once redelivery
+	// converges to the same state, so send_id is a pure echo, not a dedup key.
+	// Serves both webitel participants and inbound reactions relayed from an
+	// external messenger; whether a reaction is forwarded to the far side depends
+	// on the messenger's capabilities.
 	SetReaction(ctx context.Context, in *SetReactionRequest, opts ...grpc.CallOption) (*SetReactionResponse, error)
 	// Sends an ephemeral typing indicator to the other participants of a thread.
 	//
@@ -297,14 +299,16 @@ type MessageServer interface {
 	// users (operators/supervisors). It is never delivered to the client contact
 	// and never forwarded to an external messenger.
 	SendInternalNote(context.Context, *SendInternalNoteRequest) (*SendMessageResponse, error)
-	// Sets or clears the caller's emoji reaction on a single message.
+	// Sets, replaces or clears the caller's emoji reaction on a single message.
 	//
-	// A member may hold at most one reaction per message: a new emoji replaces
-	// the previous one, sending the same emoji again clears it (toggle), and an
-	// empty emoji clears it explicitly. The call is idempotent (send_id) and
-	// serves both webitel participants and inbound reactions relayed from an
-	// external messenger. Whether a reaction is forwarded to the far side
-	// depends on the messenger's capabilities.
+	// A member holds at most one reaction per message. The call is declarative:
+	// a different emoji replaces the previous one, an empty emoji clears it, and
+	// the same emoji is a no-op (to toggle off, the client sends an empty emoji).
+	// It is therefore idempotent by construction — an at-least-once redelivery
+	// converges to the same state, so send_id is a pure echo, not a dedup key.
+	// Serves both webitel participants and inbound reactions relayed from an
+	// external messenger; whether a reaction is forwarded to the far side depends
+	// on the messenger's capabilities.
 	SetReaction(context.Context, *SetReactionRequest) (*SetReactionResponse, error)
 	// Sends an ephemeral typing indicator to the other participants of a thread.
 	//

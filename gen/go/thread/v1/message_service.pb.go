@@ -3289,7 +3289,8 @@ type SetReactionRequest struct {
 	DomainId int64 `protobuf:"varint,4,opt,name=domain_id,json=domainId,proto3" json:"domain_id,omitempty"`
 	// Optional target thread; resolved from the message when omitted.
 	ThreadId *string `protobuf:"bytes,5,opt,name=thread_id,json=threadId,proto3,oneof" json:"thread_id,omitempty"`
-	// Optional client-generated id for deduplication.
+	// Optional opaque client echo token, returned verbatim on the reaction event
+	// so an optimistic UI can reconcile. Not used for deduplication or ordering.
 	SendId string `protobuf:"bytes,20,opt,name=send_id,json=sendId,proto3" json:"send_id,omitempty"`
 	// Optional external message id for reactions relayed from a messenger.
 	ExternalId string `protobuf:"bytes,21,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`

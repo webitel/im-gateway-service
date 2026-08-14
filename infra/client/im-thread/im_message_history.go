@@ -260,6 +260,7 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			Metadata:        m.Metadata.AsMap(),
 			CreatedAt:       m.CreatedAt,
 			UpdatedAt:       m.UpdatedAt,
+			Seq:             m.GetSeq(),
 			Documents:       mapDocuments(m.Documents),
 			Images:          mapImages(m.Images),
 			Location:        MapLocation(m.Location),
