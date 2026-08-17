@@ -91,6 +91,9 @@ type HistoryMessage struct {
 	DeliveryStatus api.MessageDeliveryStatus     `json:"delivery_status,omitempty"`
 	Statuses       []*api.MessageRecipientStatus `json:"statuses,omitempty"`
 
+	// Reactions are the emoji aggregates currently on the message.
+	Reactions []*api.MessageReaction `json:"reactions,omitempty"`
+
 	// Deleted marks a message removed by its author; its content fields arrive
 	// empty from im-thread-service. The removed text stays reachable through
 	// GetMessageRevisions.

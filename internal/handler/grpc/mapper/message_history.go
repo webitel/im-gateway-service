@@ -74,6 +74,7 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			ForwardOrigin:   m.ForwardOrigin,
 			DeliveryStatus:  m.DeliveryStatus,
 			Statuses:        m.Statuses,
+			Reactions:       m.Reactions,
 			Deleted:         m.Deleted,
 			DeletedAt:       m.DeletedAt,
 			DeletedBy:       m.DeletedBy,

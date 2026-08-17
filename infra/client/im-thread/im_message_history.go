@@ -272,6 +272,7 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			ForwardOrigin:   MapForwardOrigin(m.ForwardOrigin),
 			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
 			Statuses:        MapRecipientStatuses(m.Statuses),
+			Reactions:       MapReactions(m.GetReactions()),
 			Deleted:         m.GetDeleted(),
 			DeletedAt:       m.GetDeletedAt(),
 			DeletedBy:       m.GetDeletedBy(),
@@ -355,6 +356,31 @@ func MapRecipientStatuses(statuses []*threadv1.MessageRecipientStatus) []*api.Me
 			FailedAt:    st.GetFailedAt(),
 			Via:         st.GetVia(),
 			Error:       st.GetError(),
+		})
+	}
+
+	return res
+}
+
+// MapReactions converts the thread-service emoji reaction aggregates to the
+// gateway shape, flattening ReactionContent to a plain emoji string.
+func MapReactions(reactions []*threadv1.MessageReaction) []*api.MessageReaction {
+	if len(reactions) == 0 {
+		return nil
+	}
+
+	res := make([]*api.MessageReaction, 0, len(reactions))
+	for _, r := range reactions {
+		if r == nil {
+			continue
+		}
+
+		res = append(res, &api.MessageReaction{
+			Emoji:         r.GetReaction().GetEmoji(),
+			Count:         r.GetCount(),
+			ReactedByMe:   r.GetReactedByMe(),
+			ReactorIds:    r.GetReactorIds(),
+			LastReactedAt: r.GetLastReactedAt(),
 		})
 	}
 
