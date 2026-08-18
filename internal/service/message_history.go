@@ -21,6 +21,7 @@ import (
 type (
 	MessageHistorySearcher interface {
 		Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
+		SearchMessages(ctx context.Context, query *dto.SearchMessagesRequest) (*dto.SearchMessageHistoryResponse, error)
 		SearchLeftThreads(ctx context.Context, query *dto.SearchLeftThreadsMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, error)
 		GetRevisions(ctx context.Context, query *dto.GetMessageRevisionsRequest) ([]*dto.MessageRevision, error)
 	}
@@ -91,6 +92,56 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, extraContactIDs...)
+	if err != nil {
+		log.Error("failed to fetch participants info", slog.Any("err", err))
+		return nil, err
+	}
+
+	s.enrichResponse(response, fromInternal, identityMap)
+
+	return response, nil
+}
+
+// SearchMessages performs a full-text search over message bodies. The caller
+// is taken from the authenticated identity, so im-thread-service can restrict
+// the result to the dialogs that identity is entitled to read.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query carrying the term and optional filters
+//
+// Returns:
+//   - response: matched messages, each carrying the thread it belongs to
+//   - error: any error encountered during the search operation
+func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMessagesRequest) (*dto.SearchMessageHistoryResponse, error) {
+	log := s.logger.With(
+		slog.String("op", "messageHistory.SearchMessages"),
+		slog.String("thread", query.ThreadID),
+	)
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	query.DomainID = int32(identity.GetDomainID())
+	query.CallerID = identity.GetContactID()
+
+	response, fromInternal, err := s.historyClient.SearchMessages(ctx, query)
+	if err != nil {
+		log.Error("failed to search messages", slog.Any("err", err))
+		return nil, err
+	}
+
+	quotedSenders := make([]string, 0)
+	for _, m := range response.Messages {
+		if m.ReplyTo != nil {
+			quotedSenders = append(quotedSenders, m.ReplyTo.SenderID)
+		}
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err

@@ -54,6 +54,25 @@ func (s *MessageHistoryService) SearchThreadMessagesHistory(ctx context.Context,
 	return mappedResp, nil
 }
 
+// SearchMessages performs a full-text search over message bodies, either
+// within a single thread or across every thread the caller belongs to.
+//
+// Args:
+//   - ctx: context of the request
+//   - req: search request
+//
+// Returns:
+//   - response: matched messages, each carrying the thread it belongs to
+//   - error: error if occurred
+func (s *MessageHistoryService) SearchMessages(ctx context.Context, req *pb.SearchMessagesRequest) (*pb.SearchMessageHistoryResponse, error) {
+	resp, err := s.messageHistorySearcher.SearchMessages(ctx, mapper.MapSearchMessagesRequestToDTO(req))
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.MapToSearchHistoryProto(resp), nil
+}
+
 // GetMessageRevisions returns the edit and deletion history of a single
 // message, oldest first.
 //
