@@ -20,6 +20,18 @@ type SearchMessageHistoryRequest struct {
 	CallerID    string
 }
 
+type SearchMessagesRequest struct {
+	Fields    []string              `json:"fields,omitempty"`
+	Term      string                `json:"q"`
+	ThreadID  string                `json:"thread_id,omitempty"`
+	SenderIDs []string              `json:"sender_ids,omitempty"`
+	Types     []int32               `json:"types,omitempty"`
+	DomainID  int32                 `json:"domain_id"`
+	Cursor    *HistoryMessageCursor `json:"cursor,omitempty"`
+	Size      uint32                `json:"size"`
+	CallerID  string
+}
+
 type HistoryDocument struct {
 	ID        string `json:"id"`
 	MessageID string `json:"message_id"`

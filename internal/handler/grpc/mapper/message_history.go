@@ -27,6 +27,27 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 	}
 }
 
+// MapSearchMessagesRequestToDTO maps a SearchMessagesRequest to a SearchMessagesRequest DTO.
+func MapSearchMessagesRequestToDTO(req *pb.SearchMessagesRequest) *dto.SearchMessagesRequest {
+	var cursor *dto.HistoryMessageCursor
+	if req.Cursor != nil {
+		cursor = &dto.HistoryMessageCursor{
+			ID:     req.Cursor.Id,
+			Before: req.Cursor.Before,
+		}
+	}
+
+	return &dto.SearchMessagesRequest{
+		Fields:    req.GetFields(),
+		Term:      req.GetQ(),
+		ThreadID:  req.GetThreadId(),
+		SenderIDs: req.GetSenderIds(),
+		Types:     req.GetTypes(),
+		Cursor:    cursor,
+		Size:      req.GetSize(),
+	}
+}
+
 // MapToSearchHistoryProto maps a SearchMessageHistoryResponseDTO to a SearchMessageHistoryResponse.
 func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMessageHistoryResponse {
 	if res == nil {

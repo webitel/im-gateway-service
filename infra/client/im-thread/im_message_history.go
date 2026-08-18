@@ -109,6 +109,62 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	return respDto, response.GetFrom(), nil
 }
 
+// SearchMessages performs a full-text search over message bodies, either
+// within a single thread or across every thread the caller belongs to.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query carrying the term, filters and the caller identity
+//
+// Returns:
+//   - *dto.SearchMessageHistoryResponse: matched messages
+//   - []*threadv1.ThreadMember: internal participants used for sender enrichment
+//   - error: any error encountered during the search operation
+func (c *MessageHistoryClient) SearchMessages(ctx context.Context, query *dto.SearchMessagesRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
+	log := c.logger.With(
+		slog.Int("domain_id", int(query.DomainID)),
+		slog.Uint64("size", uint64(query.Size)),
+		slog.String("thread_id", query.ThreadID),
+		slog.Any("cursor", query.Cursor),
+	)
+
+	var cursor *threadv1.HistoryMessageCursorRequest
+	if query.Cursor != nil {
+		cursor = &threadv1.HistoryMessageCursorRequest{
+			Id:     query.Cursor.ID,
+			Before: query.Cursor.Before,
+		}
+	}
+
+	req := &threadv1.SearchMessagesRequest{
+		Fields:    query.Fields,
+		Q:         query.Term,
+		ThreadId:  query.ThreadID,
+		SenderIds: query.SenderIDs,
+		Types:     query.Types,
+		DomainId:  query.DomainID,
+		CallerId:  query.CallerID,
+		Cursor:    cursor,
+		Size:      query.Size,
+	}
+
+	var (
+		response *threadv1.SearchMessageHistoryResponse
+		err      error
+	)
+
+	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
+		response, err = mhc.SearchMessages(ctx, req)
+		return err
+	})
+	if err != nil {
+		log.Error("failed to search messages", slog.Any("error", err))
+		return nil, nil, err
+	}
+
+	return ToSearchHistoryResponseDTO(response), response.GetFrom(), nil
+}
+
 // SearchLeftThreads retrieves message history covering the user's closed
 // membership periods within a thread.
 //
