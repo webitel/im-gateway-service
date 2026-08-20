@@ -106,6 +106,8 @@ func toThreadForwardOrigin(in *api.ForwardOriginInput) *threadv1.ForwardOriginIn
 	return &threadv1.ForwardOriginInput{
 		Kind:           threadv1.ForwardOriginKind(in.GetKind()),
 		SenderName:     in.GetSenderName(),
+		SenderIss:      in.GetSenderIss(),
+		SenderSub:      in.GetSenderSub(),
 		OriginalSentAt: in.GetOriginalSentAt(),
 	}
 }

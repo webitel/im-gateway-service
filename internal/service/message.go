@@ -404,6 +404,7 @@ func (m *MessageService) EditMessage(ctx context.Context, in *api.EditMessageReq
 	return &api.EditMessageResponse{
 		Id:       resp.GetId(),
 		EditedAt: resp.GetEditedAt(),
+		Version:  resp.GetVersion(),
 	}, nil
 }
 
