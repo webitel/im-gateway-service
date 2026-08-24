@@ -429,9 +429,17 @@ func (m *MessageService) DeleteMessages(ctx context.Context, in *api.DeleteMessa
 		return nil, err
 	}
 
+	skipped := make([]*api.SkippedMessage, 0, len(resp.GetSkipped()))
+	for _, skip := range resp.GetSkipped() {
+		skipped = append(skipped, &api.SkippedMessage{
+			Id:     skip.GetId(),
+			Reason: api.SkippedMessage_Reason(skip.GetReason()),
+		})
+	}
+
 	return &api.DeleteMessagesResponse{
 		DeletedIds: resp.GetDeletedIds(),
-		SkippedIds: resp.GetSkippedIds(),
+		Skipped:    skipped,
 		DeletedAt:  resp.GetDeletedAt(),
 	}, nil
 }
