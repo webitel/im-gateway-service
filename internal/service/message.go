@@ -417,7 +417,8 @@ func (m *MessageService) DeleteMessages(ctx context.Context, in *api.DeleteMessa
 	}
 
 	resp, err := m.threader.DeleteMessages(ctx, &threadv1.DeleteMessagesRequest{
-		Ids: in.GetIds(),
+		Ids:      in.GetIds(),
+		DomainId: int32(identity.GetDomainID()),
 		DeletedBy: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
