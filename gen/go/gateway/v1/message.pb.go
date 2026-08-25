@@ -253,25 +253,15 @@ func (InputFieldState) EnumDescriptor() ([]byte, []int) {
 	return file_api_gateway_v1_message_proto_rawDescGZIP(), []int{3}
 }
 
-// Reason tells the caller why one requested message survived. New members
-// may be added, so treat an unrecognized value as REASON_UNSPECIFIED.
 type SkippedMessage_Reason int32
 
 const (
-	SkippedMessage_REASON_UNSPECIFIED SkippedMessage_Reason = 0
-	// No such message, or it lives in a chat the caller never joined: the two
-	// are deliberately indistinguishable, so a probe cannot confirm that a
-	// message it may not see exists.
-	SkippedMessage_REASON_NOT_FOUND SkippedMessage_Reason = 1
-	// Authored by somebody else.
-	SkippedMessage_REASON_NOT_AUTHOR SkippedMessage_Reason = 2
-	// An earlier call already deleted it. Retrying a delete is safe and lands
-	// here rather than on an error.
+	SkippedMessage_REASON_UNSPECIFIED     SkippedMessage_Reason = 0
+	SkippedMessage_REASON_NOT_FOUND       SkippedMessage_Reason = 1
+	SkippedMessage_REASON_NOT_AUTHOR      SkippedMessage_Reason = 2
 	SkippedMessage_REASON_ALREADY_DELETED SkippedMessage_Reason = 3
-	// The caller's chat is closed.
-	SkippedMessage_REASON_CHAT_CLOSED SkippedMessage_Reason = 4
-	// can_delete_messages is revoked for the caller in that chat.
-	SkippedMessage_REASON_NOT_ALLOWED SkippedMessage_Reason = 5
+	SkippedMessage_REASON_CHAT_CLOSED     SkippedMessage_Reason = 4
+	SkippedMessage_REASON_NOT_ALLOWED     SkippedMessage_Reason = 5
 )
 
 // Enum value maps for SkippedMessage_Reason.
@@ -2974,7 +2964,6 @@ type SkippedMessage struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Requested message id.
 	Id     string                `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Reason SkippedMessage_Reason `protobuf:"varint,3,opt,name=reason,proto3,enum=webitel.im.api.gateway.v1.SkippedMessage_Reason" json:"reason,omitempty"`
 }
@@ -3034,9 +3023,8 @@ type DeleteMessagesResponse struct {
 	DeletedIds []string `protobuf:"bytes,1,rep,name=deleted_ids,json=deletedIds,proto3" json:"deleted_ids,omitempty"`
 	// Unix time in milliseconds when the messages were deleted. Zero when this
 	// call deleted nothing.
-	DeletedAt int64 `protobuf:"varint,3,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
-	// Requested messages left untouched, one entry per skipped id.
-	Skipped []*SkippedMessage `protobuf:"bytes,4,rep,name=skipped,proto3" json:"skipped,omitempty"`
+	DeletedAt int64             `protobuf:"varint,3,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
+	Skipped   []*SkippedMessage `protobuf:"bytes,4,rep,name=skipped,proto3" json:"skipped,omitempty"`
 }
 
 func (x *DeleteMessagesResponse) Reset() {

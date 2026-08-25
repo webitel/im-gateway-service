@@ -27,6 +27,7 @@ var Module = fx.Module(
 	fx.Provide(imcontact.NewViaClient),
 	fx.Provide(
 		improviders.NewFacebookClient,
+		improviders.NewInstagramClient,
 		improviders.NewGateClient,
 		improviders.NewWhatsAppClient,
 		improviders.NewViberClient,
@@ -101,6 +102,9 @@ var Module = fx.Module(
 	}),
 
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.FacebookClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.InstagramClient) {
 		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.GateClient) {

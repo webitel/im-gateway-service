@@ -37,6 +37,7 @@ var Module = fx.Module("grpc",
 	),
 	fx.Provide(
 		NewFacebookServiceHandler,
+		NewInstagramServiceHandler,
 		NewGateServiceHandler,
 		NewWhatsAppServiceHandler,
 		NewViberServiceHandler,
@@ -45,6 +46,7 @@ var Module = fx.Module("grpc",
 	),
 	fx.Invoke(
 		RegisterFacebookServiceHandler,
+		RegisterInstagramServiceHandler,
 		RegisterGateServiceHandler,
 		RegisterWhatsAppServiceHandler,
 		RegisterViberServiceHandler,
@@ -93,6 +95,10 @@ func RegisterViaServer(server *grpcsrv.Server, service *ViaServer) {
 
 func RegisterFacebookServiceHandler(server *grpcsrv.Server, h *FacebookServiceHandler) {
 	providerv1.RegisterFacebookServiceServer(server.Server, h)
+}
+
+func RegisterInstagramServiceHandler(server *grpcsrv.Server, h *InstagramServiceHandler) {
+	providerv1.RegisterInstagramServiceServer(server.Server, h)
 }
 
 func RegisterGateServiceHandler(server *grpcsrv.Server, h *GateServiceHandler) {
