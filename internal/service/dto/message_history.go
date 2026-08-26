@@ -109,9 +109,9 @@ type HistoryMessage struct {
 	// Deleted marks a message removed by its author; its content fields arrive
 	// empty from im-thread-service. The removed text stays reachable through
 	// GetMessageRevisions.
-	Deleted   bool   `json:"deleted,omitempty"`
-	DeletedAt int64  `json:"deleted_at,omitempty"`
-	DeletedBy string `json:"deleted_by,omitempty"`
+	Deleted   bool           `json:"deleted,omitempty"`
+	DeletedAt int64          `json:"deleted_at,omitempty"`
+	DeletedBy *MessageSender `json:"deleted_by,omitempty"`
 
 	RevisionCount int32 `json:"revision_count,omitempty"`
 }
@@ -120,7 +120,7 @@ type MessageRevision struct {
 	Version   int32                     `json:"version"`
 	Action    api.MessageRevisionAction `json:"action"`
 	Body      string                    `json:"body"`
-	ChangedBy string                    `json:"changed_by"`
+	ChangedBy *MessageSender            `json:"changed_by,omitempty"`
 	ChangedAt int64                     `json:"changed_at"`
 }
 
@@ -159,14 +159,15 @@ type SearchLeftThreadsMessageHistoryRequest struct {
 }
 
 type MessageSender struct {
-	Sub      string `json:"subject"`
-	Iss      string `json:"issuer"`
-	Type     string `json:"type"`
-	Name     string `json:"user_name"`
-	IsBot    bool   `json:"is_bot"`
-	MemberID string `json:"member_id"`
-	Role     int    `json:"role"`
-	Username string `json:"username"`
+	ContactID string `json:"-"`
+	Sub       string `json:"subject"`
+	Iss       string `json:"issuer"`
+	Type      string `json:"type"`
+	Name      string `json:"user_name"`
+	IsBot     bool   `json:"is_bot"`
+	MemberID  string `json:"member_id"`
+	Role      int    `json:"role"`
+	Username  string `json:"username"`
 }
 
 func NewMessageSender(sub, iss, senderType, name, username string, isBot bool) *MessageSender {
