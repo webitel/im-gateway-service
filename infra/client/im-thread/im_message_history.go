@@ -331,7 +331,7 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			Reactions:       MapReactions(m.GetReactions()),
 			Deleted:         m.GetDeleted(),
 			DeletedAt:       m.GetDeletedAt(),
-			DeletedBy:       m.GetDeletedBy(),
+			DeletedBy:       mapThreadMember(m.GetDeletedBy()),
 			RevisionCount:   m.GetRevisionCount(),
 		}
 	}
@@ -351,12 +351,24 @@ func MapRevisions(revisions []*threadv1.MessageRevision) []*dto.MessageRevision 
 			Version:   r.GetVersion(),
 			Action:    api.MessageRevisionAction(r.GetAction()),
 			Body:      r.GetBody(),
-			ChangedBy: r.GetChangedBy(),
+			ChangedBy: mapThreadMember(r.GetChangedBy()),
 			ChangedAt: r.GetChangedAt(),
 		})
 	}
 
 	return res
+}
+
+func mapThreadMember(member *threadv1.ThreadMember) *dto.MessageSender {
+	if member == nil {
+		return nil
+	}
+
+	return &dto.MessageSender{
+		ContactID: member.GetContactId(),
+		MemberID:  member.GetId(),
+		Role:      int(member.GetRole()),
+	}
 }
 
 func MapReplyTo(replyTo *threadv1.ReplyToMessage) *dto.HistoryReplyTo {

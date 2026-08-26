@@ -98,7 +98,7 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			Reactions:       m.Reactions,
 			Deleted:         m.Deleted,
 			DeletedAt:       m.DeletedAt,
-			DeletedBy:       m.DeletedBy,
+			DeletedBy:       toProtoMessageSender(m.DeletedBy),
 			RevisionCount:   m.RevisionCount,
 		}
 	}
@@ -119,7 +119,7 @@ func MapToGetMessageRevisionsProto(revisions []*dto.MessageRevision) *pb.GetMess
 			Version:   r.Version,
 			Action:    r.Action,
 			Body:      r.Body,
-			ChangedBy: r.ChangedBy,
+			ChangedBy: toProtoMessageSender(r.ChangedBy),
 			ChangedAt: r.ChangedAt,
 		})
 	}

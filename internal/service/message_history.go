@@ -89,6 +89,10 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 		if m.ReplyTo != nil {
 			extraContactIDs = append(extraContactIDs, m.ReplyTo.SenderID)
 		}
+
+		if m.DeletedBy != nil {
+			extraContactIDs = append(extraContactIDs, m.DeletedBy.ContactID)
+		}
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, extraContactIDs...)
@@ -139,6 +143,10 @@ func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMe
 		if m.ReplyTo != nil {
 			quotedSenders = append(quotedSenders, m.ReplyTo.SenderID)
 		}
+
+		if m.DeletedBy != nil {
+			quotedSenders = append(quotedSenders, m.DeletedBy.ContactID)
+		}
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
@@ -187,6 +195,10 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 		if m.ReplyTo != nil {
 			quotedSenders = append(quotedSenders, m.ReplyTo.SenderID)
 		}
+
+		if m.DeletedBy != nil {
+			quotedSenders = append(quotedSenders, m.DeletedBy.ContactID)
+		}
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
@@ -232,6 +244,23 @@ func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessage
 		return nil, err
 	}
 
+	changers := make([]string, 0, len(revisions))
+	for _, r := range revisions {
+		if r.ChangedBy != nil {
+			changers = append(changers, r.ChangedBy.ContactID)
+		}
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, nil, changers...)
+	if err != nil {
+		log.Error("failed to fetch changers info", slog.Any("err", err))
+		return nil, err
+	}
+
+	for _, r := range revisions {
+		enrichContact(r.ChangedBy, identityMap)
+	}
+
 	return revisions, nil
 }
 
@@ -240,7 +269,7 @@ func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessage
 // If there are no IDs provided, it returns an empty map and no error.
 // If there is an error while fetching the participants, it returns an error.
 func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32, internal []*threadv1.ThreadMember, internalContactIDs ...string) (map[string]*dto.MessageSender, error) {
-	if len(internal) == 0 {
+	if len(internal) == 0 && len(internalContactIDs) == 0 {
 		return nil, nil
 	}
 
@@ -265,18 +294,37 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 	for _, p := range external.GetContacts() {
 		if mem, ok := uniqunesMap[p.GetId()]; ok || slices.Contains(internalContactIDs, p.GetId()) {
 			res[p.Id] = &dto.MessageSender{
-				Sub:      p.GetSubject(),
-				Iss:      p.GetIssId(),
-				Type:     p.GetType(),
-				Name:     cmp.Or(p.GetName(), p.GetUsername()),
-				IsBot:    p.GetIsBot(),
-				MemberID: mem.GetId(),
-				Role:     int(mem.GetRole()),
-				Username: p.GetUsername(),
+				ContactID: p.GetId(),
+				Sub:       p.GetSubject(),
+				Iss:       p.GetIssId(),
+				Type:      p.GetType(),
+				Name:      cmp.Or(p.GetName(), p.GetUsername()),
+				IsBot:     p.GetIsBot(),
+				MemberID:  mem.GetId(),
+				Role:      int(mem.GetRole()),
+				Username:  p.GetUsername(),
 			}
 		}
 	}
 	return res, nil
+}
+
+func enrichContact(member *dto.MessageSender, imap map[string]*dto.MessageSender) {
+	if member == nil {
+		return
+	}
+
+	contact, ok := imap[member.ContactID]
+	if !ok || contact == nil {
+		return
+	}
+
+	member.Sub = contact.Sub
+	member.Iss = contact.Iss
+	member.Type = contact.Type
+	member.Name = contact.Name
+	member.Username = contact.Username
+	member.IsBot = contact.IsBot
 }
 
 // enrichResponse enriches the search message history response by replacing the receiver and sender IDs
@@ -284,6 +332,7 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, _ []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
 	for _, m := range resp.Messages {
 		m.Sender = imap[m.SenderID]
+		enrichContact(m.DeletedBy, imap)
 
 		if m.ReplyTo != nil {
 			m.ReplyTo.Sender = imap[m.ReplyTo.SenderID]
