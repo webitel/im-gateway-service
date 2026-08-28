@@ -70,6 +70,9 @@ type HistoryReplyTo struct {
 	AttachmentName *string `json:"attachment_name,omitempty"`
 	AttachmentMime *string `json:"attachment_mime,omitempty"`
 
+	AttachmentAddress *string `json:"attachment_address,omitempty"`
+	IsDeleted         bool    `json:"is_deleted,omitempty"`
+
 	Sender *MessageSender `json:"sender,omitempty"`
 }
 
