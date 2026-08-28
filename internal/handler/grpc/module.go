@@ -14,6 +14,7 @@ var Module = fx.Module("grpc",
 		NewMessageHistoryService,
 		NewThreadService,
 		NewThreadPermissionServer,
+		NewThreadTagServer,
 		NewContactSettingsServer,
 	),
 	fx.Invoke(
@@ -21,6 +22,7 @@ var Module = fx.Module("grpc",
 		RegisterHistoryMessageService,
 		RegisterThreadService,
 		RegisterThreadPermissionService,
+		RegisterThreadTagService,
 		RegisterContactSettingsServer,
 	),
 	fx.Provide(
@@ -83,6 +85,10 @@ func RegisterThreadService(server *grpcsrv.Server, service *ThreadService) {
 
 func RegisterThreadPermissionService(server *grpcsrv.Server, service *ThreadPermissionServer) {
 	impb.RegisterThreadPermissionServer(server, service)
+}
+
+func RegisterThreadTagService(server *grpcsrv.Server, service *ThreadTagServer) {
+	impb.RegisterThreadTagManagementServer(server, service)
 }
 
 func RegisterContactSettingsServer(server *grpcsrv.Server, service *ContactSettingsServer) {
