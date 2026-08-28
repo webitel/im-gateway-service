@@ -385,6 +385,9 @@ func MapReplyTo(replyTo *threadv1.ReplyToMessage) *dto.HistoryReplyTo {
 		AttachmentKind: replyTo.AttachmentKind,
 		AttachmentName: replyTo.AttachmentName,
 		AttachmentMime: replyTo.AttachmentMime,
+
+		AttachmentAddress: replyTo.AttachmentAddress,
+		IsDeleted:         replyTo.GetIsDeleted(),
 	}
 }
 

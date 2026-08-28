@@ -142,6 +142,9 @@ func toProtoReplyTo(replyTo *dto.HistoryReplyTo) *pb.ReplyToMessage {
 		AttachmentKind: replyTo.AttachmentKind,
 		AttachmentName: replyTo.AttachmentName,
 		AttachmentMime: replyTo.AttachmentMime,
+
+		AttachmentAddress: replyTo.AttachmentAddress,
+		IsDeleted:         replyTo.IsDeleted,
 	}
 }
 
