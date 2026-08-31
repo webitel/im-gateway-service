@@ -63,7 +63,7 @@ type ApiInteractiveCallbackWrapper struct {
 type HistoryReplyTo struct {
 	ID             string  `json:"id"`
 	SenderID       string  `json:"sender_id"`
-	Type           int32   `json:"type"`
+	Type           string  `json:"type"`
 	Body           string  `json:"body"`
 	CreatedAt      int64   `json:"created_at"`
 	AttachmentKind *string `json:"attachment_kind,omitempty"`
