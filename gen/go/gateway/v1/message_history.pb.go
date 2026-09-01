@@ -677,7 +677,10 @@ type ReplyToMessage struct {
 	AttachmentName    *string `protobuf:"bytes,8,opt,name=attachment_name,json=attachmentName,proto3,oneof" json:"attachment_name,omitempty"`
 	AttachmentMime    *string `protobuf:"bytes,9,opt,name=attachment_mime,json=attachmentMime,proto3,oneof" json:"attachment_mime,omitempty"`
 	AttachmentAddress *string `protobuf:"bytes,11,opt,name=attachment_address,json=attachmentAddress,proto3,oneof" json:"attachment_address,omitempty"`
-	IsDeleted         bool    `protobuf:"varint,10,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
+	// True when the quoted message has been deleted; body and attachment are
+	// then blanked, so the quote renders as a tombstone. A caller whose thread
+	// role is ADMIN or above keeps the real text instead.
+	IsDeleted bool `protobuf:"varint,10,opt,name=is_deleted,json=isDeleted,proto3" json:"is_deleted,omitempty"`
 }
 
 func (x *ReplyToMessage) Reset() {
