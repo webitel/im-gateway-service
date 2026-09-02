@@ -47,6 +47,7 @@ type Identity struct {
 	Name      string
 	ChatName  string
 	Via       string
+	AppID     string
 }
 
 func (i *Identity) GetContactID() string {
@@ -67,6 +68,10 @@ func (i *Identity) GetName() string {
 
 func (i *Identity) GetChatName() string {
 	return i.ChatName
+}
+
+func (i *Identity) GetApplicationID() string {
+	return i.AppID
 }
 
 func (i *Identity) GetVia() string {
@@ -263,6 +268,7 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (context.Context,
 		Issuer:    auth.Contact.Iss,
 		Name:      cmp.Or(contact.Name, contact.GivenName, contact.Username, "Unknown"),
 		ChatName:  contact.ChatName,
+		AppID:     auth.AppId,
 	}
 
 	return ctx, identity, nil

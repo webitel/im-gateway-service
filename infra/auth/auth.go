@@ -42,6 +42,7 @@ type Identifier interface {
 	GetIssuer() string
 	GetName() string
 	GetChatName() string
+	GetApplicationID() string
 	GetVia() string
 	GetViaPtr() *string
 }
