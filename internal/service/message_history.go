@@ -28,6 +28,7 @@ type (
 		logger        *slog.Logger
 		historyClient *imthread.MessageHistoryClient
 		contactClient *imcontact.Client
+		appConfig     AppConfigProvider
 	}
 )
 
@@ -37,14 +38,16 @@ type (
 //   - logger: logger for the service
 //   - historyClient: client for the Message History service
 //   - contactClient: client for the Contact service
+//   - appConfig: application configuration provider for system message policies
 //
 // Returns:
 //   - A new instance of MessageHistorySearcher
-func NewMessageHistory(logger *slog.Logger, historyClient *imthread.MessageHistoryClient, contactClient *imcontact.Client) *messageHistory {
+func NewMessageHistory(logger *slog.Logger, historyClient *imthread.MessageHistoryClient, contactClient *imcontact.Client, appConfig AppConfigProvider) *messageHistory {
 	return &messageHistory{
 		logger:        logger,
 		historyClient: historyClient,
 		contactClient: contactClient,
+		appConfig:     appConfig,
 	}
 }
 
@@ -71,6 +74,7 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 
 	searchQuery.DomainID = int32(identity.GetDomainID())
 	searchQuery.CallerID = identity.GetContactID()
+	searchQuery.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
 	if err != nil {
@@ -86,6 +90,57 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, reactedBy...)
+	if err != nil {
+		log.Error("failed to fetch participants info", slog.Any("err", err))
+		return nil, err
+	}
+
+	s.enrichResponse(response, fromInternal, identityMap)
+
+	return response, nil
+}
+
+// SearchMessages performs a full-text search over message bodies. The caller
+// is taken from the authenticated identity, so im-thread-service can restrict
+// the result to the dialogs that identity is entitled to read.
+//
+// Args:
+//   - ctx: context of the request
+//   - query: search query carrying the term and optional filters
+//
+// Returns:
+//   - response: matched messages, each carrying the thread it belongs to
+//   - error: any error encountered during the search operation
+func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMessagesRequest) (*dto.SearchMessageHistoryResponse, error) {
+	log := s.logger.With(
+		slog.String("op", "messageHistory.SearchMessages"),
+		slog.String("thread", query.ThreadID),
+	)
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		log.ErrorContext(ctx, "identity not found")
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	query.DomainID = int32(identity.GetDomainID())
+	query.CallerID = identity.GetContactID()
+	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
+
+	response, fromInternal, err := s.historyClient.SearchMessages(ctx, query)
+	if err != nil {
+		log.Error("failed to search messages", slog.Any("err", err))
+		return nil, err
+	}
+
+	reactedBy := make([]string, 0)
+	for _, m := range response.Messages {
+		if m.ReactedMetadata != nil {
+			reactedBy = append(reactedBy, m.ReactedMetadata.ContactID)
+		}
+	}
+
+	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, reactedBy...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err
@@ -119,6 +174,7 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 	}
 
 	query.DomainID = int32(identity.GetDomainID())
+	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
 
 	response, fromInternal, err := s.historyClient.SearchLeftThreads(ctx, query)
 	if err != nil {
