@@ -178,3 +178,7 @@ pids
 data/.idea
 drafts/
 graphify-out/
+docs/
+
+# AI
+CLAUDE.md

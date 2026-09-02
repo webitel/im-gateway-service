@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/webitel/im-gateway-service/config"
+	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
 )
 
@@ -63,5 +64,14 @@ var Module = fx.Module(
 			fx.As(new(ContactSettingsManager)),
 		),
 		fx.Annotate(newVia, fx.As(new(Via))),
+
+		fx.Annotate(
+			NewAppConfigService,
+			fx.As(new(AppConfigProvider)),
+		),
+		fx.Annotate(
+			func(c *imauth.AdminClient) AdminAppSearcher { return c },
+			fx.As(new(AdminAppSearcher)),
+		),
 	),
 )
