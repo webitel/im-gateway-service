@@ -145,9 +145,27 @@ func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (context.Conte
 	switch authType {
 	case string(interfaces.XWebitelTypeSchema):
 		id, err := da.resolveSchemaIdentity(ctx, md)
-		return ctx, id, err
+		if err != nil {
+			return ctx, nil, err
+		}
+
+		// Mark the request as coming from a trusted schema orchestrator
+		// (flow_manager / call_center) over mTLS so downstream handlers may use
+		// the system path when acting on threads the caller is not a member of
+		// (e.g. queue assignment after a transfer removed the previous member).
+		ctx = interfaces.WithAuthType(ctx, interfaces.XWebitelTypeSchema)
+
+		return ctx, id, nil
 	case string(interfaces.XWebitelTypeEngine):
-		return da.resolveUserIdentity(ctx)
+		ctx, id, err := da.resolveUserIdentity(ctx)
+		if err != nil {
+			return ctx, nil, err
+		}
+
+		// Same system-path marking as the schema branch, for engine callers.
+		ctx = interfaces.WithAuthType(ctx, interfaces.XWebitelTypeEngine)
+
+		return ctx, id, nil
 	case string(interfaces.XWebitelTypeProvider):
 		id, err := da.resolveProviderIdentity(ctx, md)
 		return ctx, id, err

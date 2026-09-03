@@ -148,13 +148,22 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	if err != nil {
 		return nil, err
 	}
-	initiatorContactId := identity.GetContactID()
 	addMemberRequest := &threadv1.AddMemberRequest{
 		ThreadId:           req.GetThreadId(),
 		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.Role),
-		InitiatorContactId: &initiatorContactId,
 		DomainId:           int32(identity.GetDomainID()),
+	}
+
+	// Trusted service orchestrators (schema — flow_manager/call_center — or
+	// engine) manage queue assignment and may add operators to threads they are
+	// not a member of (e.g. after a transfer that removed the previous member).
+	// Omit the initiator so im-thread takes the system path and skips
+	// membership/permission checks. Regular user calls always carry the
+	// initiator so those checks are enforced.
+	if !auth.IsSystemCall(ctx) {
+		initiatorContactId := identity.GetContactID()
+		addMemberRequest.InitiatorContactId = &initiatorContactId
 	}
 
 	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
@@ -218,11 +227,18 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
-	initiatorContactId := identity.GetContactID()
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
-		TargetMemberId:     req.GetMemberId(),
-		InitiatorContactId: &initiatorContactId,
+		TargetMemberId: req.GetMemberId(),
 	}
+
+	// See AddMember: a trusted service orchestrator (schema/engine) may remove
+	// members from threads it is not part of, so it uses the system path
+	// without an initiator. Regular user calls always carry the initiator.
+	if !auth.IsSystemCall(ctx) {
+		initiatorContactId := identity.GetContactID()
+		removeMemberRequest.InitiatorContactId = &initiatorContactId
+	}
+
 	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
 }
 
