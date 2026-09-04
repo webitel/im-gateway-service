@@ -149,6 +149,21 @@ func (c *Client) Read(ctx context.Context, in *threadv1.ReadMessageRequest, opts
 	return resp, err
 }
 
+// EditMessage implements [thread.MessageClient].
+func (c *Client) EditMessage(ctx context.Context, in *threadv1.EditMessageRequest, opts ...grpc.CallOption) (*threadv1.EditMessageResponse, error) {
+	var resp *threadv1.EditMessageResponse
+
+	err := c.rpc.Execute(ctx, func(api threadv1.MessageClient) error {
+		c.logger.Debug("THREAD.EDIT_MESSAGE", slog.Any("req", in))
+
+		var err error
+		resp, err = api.EditMessage(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
 // Close gracefully shuts down the underlying gRPC connection pool.
 func (c *Client) Close() error {
 	if c.rpc != nil {

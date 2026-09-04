@@ -22,6 +22,6 @@ plugins:
 
 inputs:
   - git_repo: https://github.com/webitel/protos.git
-    branch: main
+    branch: v26.06
     subdir: im
     depth: 1
