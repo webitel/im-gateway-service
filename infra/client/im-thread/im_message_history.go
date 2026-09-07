@@ -377,7 +377,7 @@ func MapReplyTo(replyTo *threadv1.ReplyToMessage) *dto.HistoryReplyTo {
 	}
 
 	return &dto.HistoryReplyTo{
-		ID:             replyTo.GetId(),
+		MessageID:      replyTo.GetMessageId(),
 		SenderID:       replyTo.GetSenderId(),
 		Type:           replyTo.GetType(),
 		Body:           replyTo.GetBody(),

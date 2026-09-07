@@ -32,6 +32,7 @@ var Module = fx.Module(
 		improviders.NewGateClient,
 		improviders.NewWhatsAppClient,
 		improviders.NewViberClient,
+		improviders.NewCustomClient,
 		improviders.NewMetaAppClient,
 		improviders.NewMetaOAuthClient,
 	),

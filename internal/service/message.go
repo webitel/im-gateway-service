@@ -84,6 +84,9 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
 		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
+
+		ExternalId:        in.GetExternalId(),
+		ReplyToExternalId: in.GetReplyToExternalId(),
 	})
 	if err != nil {
 		return nil, err
@@ -196,6 +199,9 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
 		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
+
+		ExternalId:        in.GetExternalId(),
+		ReplyToExternalId: in.GetReplyToExternalId(),
 	})
 	if err != nil {
 		return nil, err
@@ -245,6 +251,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
 		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
+		Variables:         in.Variables,
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
@@ -285,6 +292,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
 		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
+		Variables:         in.Variables,
 	})
 	if err != nil {
 		return nil, err

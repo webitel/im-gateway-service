@@ -133,7 +133,7 @@ func toProtoReplyTo(replyTo *dto.HistoryReplyTo) *pb.ReplyToMessage {
 	}
 
 	return &pb.ReplyToMessage{
-		Id:             replyTo.ID,
+		MessageId:      replyTo.MessageID,
 		Sender:         toProtoMessageSender(replyTo.Sender),
 		SenderId:       replyTo.SenderID,
 		Type:           replyTo.Type,
