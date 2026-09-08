@@ -7,6 +7,7 @@ import (
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
+	"github.com/webitel/im-gateway-service/internal/domain/model"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 )
 
@@ -110,4 +111,20 @@ func toThreadForwardOrigin(in *api.ForwardOriginInput) *threadv1.ForwardOriginIn
 		SenderSub:      in.GetSenderSub(),
 		OriginalSentAt: in.GetOriginalSentAt(),
 	}
+}
+
+func toThreadEntities(entities []model.Entity) []*threadv1.Entity {
+	if len(entities) == 0 {
+		return nil
+	}
+	out := make([]*threadv1.Entity, 0, len(entities))
+	for _, e := range entities {
+		out = append(out, &threadv1.Entity{
+			Type:   string(e.Type),
+			Offset: e.Offset,
+			Length: e.Length,
+			Value:  e.Value,
+		})
+	}
+	return out
 }

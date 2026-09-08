@@ -12,6 +12,7 @@ import (
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
+	"github.com/webitel/im-gateway-service/internal/domain/model"
 )
 
 var (
@@ -39,6 +40,40 @@ var (
 		},
 	}
 )
+
+func equalThreadEntities(got, want []*threadv1.Entity) bool {
+	if (got == nil) != (want == nil) {
+		return false
+	}
+
+	if len(got) != len(want) {
+		return false
+	}
+
+	for i := range got {
+		if got[i].GetType() != want[i].GetType() {
+			return false
+		}
+
+		if got[i].GetOffset() != want[i].GetOffset() {
+			return false
+		}
+
+		if got[i].GetLength() != want[i].GetLength() {
+			return false
+		}
+
+		if (got[i].Value == nil) != (want[i].Value == nil) {
+			return false
+		}
+
+		if got[i].Value != nil && *got[i].Value != *want[i].Value {
+			return false
+		}
+	}
+
+	return true
+}
 
 func Test_convertToThread(t *testing.T) {
 	tests := []struct {
@@ -104,6 +139,117 @@ func Test_convertToThread(t *testing.T) {
 			got := convertToThread(tt.thr, tt.contactData)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("convertToThread() = got %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_toThreadEntities(t *testing.T) {
+	url1 := "https://example.com"
+	url2 := "https://example.com/page"
+
+	tests := []struct {
+		name     string
+		entities []model.Entity
+		want     []*threadv1.Entity
+	}{
+		{
+			name:     "empty entities slice returns nil",
+			entities: []model.Entity{},
+			want:     nil,
+		},
+		{
+			name:     "nil entities slice returns nil",
+			entities: nil,
+			want:     nil,
+		},
+		{
+			name: "single BOLD entity",
+			entities: []model.Entity{
+				{
+					Type:   model.EntityTypeBold,
+					Offset: 0,
+					Length: 4,
+					Value:  nil,
+				},
+			},
+			want: []*threadv1.Entity{
+				{
+					Type:   string(model.EntityTypeBold),
+					Offset: 0,
+					Length: 4,
+					Value:  nil,
+				},
+			},
+		},
+		{
+			name: "multiple entities with LINK having a value",
+			entities: []model.Entity{
+				{
+					Type:   model.EntityTypeBold,
+					Offset: 0,
+					Length: 5,
+					Value:  nil,
+				},
+				{
+					Type:   model.EntityTypeLink,
+					Offset: 6,
+					Length: 4,
+					Value:  &url1,
+				},
+				{
+					Type:   model.EntityTypeItalic,
+					Offset: 11,
+					Length: 6,
+					Value:  nil,
+				},
+			},
+			want: []*threadv1.Entity{
+				{
+					Type:   string(model.EntityTypeBold),
+					Offset: 0,
+					Length: 5,
+					Value:  nil,
+				},
+				{
+					Type:   string(model.EntityTypeLink),
+					Offset: 6,
+					Length: 4,
+					Value:  &url1,
+				},
+				{
+					Type:   string(model.EntityTypeItalic),
+					Offset: 11,
+					Length: 6,
+					Value:  nil,
+				},
+			},
+		},
+		{
+			name: "all entity types",
+			entities: []model.Entity{
+				{Type: model.EntityTypeBold, Offset: 0, Length: 1, Value: nil},
+				{Type: model.EntityTypeItalic, Offset: 1, Length: 1, Value: nil},
+				{Type: model.EntityTypeStrikethrough, Offset: 2, Length: 1, Value: nil},
+				{Type: model.EntityTypeCode, Offset: 3, Length: 1, Value: nil},
+				{Type: model.EntityTypePre, Offset: 4, Length: 1, Value: nil},
+				{Type: model.EntityTypeLink, Offset: 5, Length: 1, Value: &url2},
+			},
+			want: []*threadv1.Entity{
+				{Type: string(model.EntityTypeBold), Offset: 0, Length: 1, Value: nil},
+				{Type: string(model.EntityTypeItalic), Offset: 1, Length: 1, Value: nil},
+				{Type: string(model.EntityTypeStrikethrough), Offset: 2, Length: 1, Value: nil},
+				{Type: string(model.EntityTypeCode), Offset: 3, Length: 1, Value: nil},
+				{Type: string(model.EntityTypePre), Offset: 4, Length: 1, Value: nil},
+				{Type: string(model.EntityTypeLink), Offset: 5, Length: 1, Value: &url2},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := toThreadEntities(tt.entities)
+			if !equalThreadEntities(got, tt.want) {
+				t.Errorf("toThreadEntities() = got %v, want %v", got, tt.want)
 			}
 		})
 	}
