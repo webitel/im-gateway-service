@@ -24,11 +24,6 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 		return nil, err
 	}
 
-	var internalNote *string
-	if in.InternalNote != nil {
-		internalNote = in.InternalNote
-	}
-
 	resp, err := m.threader.ForwardMessages(ctx, &threadv1.ForwardMessagesRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
@@ -37,12 +32,11 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 				Via:  identity.GetViaPtr(),
 			},
 		},
-		To:           to,
-		MessageIds:   in.GetMessageIds(),
-		DomainId:     int32(identity.GetDomainID()),
-		SendId:       in.GetSendId(),
-		SendAs:       sendAs.GetContactIDPtr(),
-		InternalNote: internalNote,
+		To:         to,
+		MessageIds: in.GetMessageIds(),
+		DomainId:   int32(identity.GetDomainID()),
+		SendId:     in.GetSendId(),
+		SendAs:     sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
 		m.logger.Error("ForwardMessages", "err", err,
@@ -54,9 +48,9 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 	}
 
 	return &api.ForwardMessagesResponse{
-		ThreadId:   resp.GetThreadId(),
-		Ids:        resp.GetIds(),
-		SkippedIds: resp.GetSkippedIds(),
+		ThreadId: resp.GetThreadId(),
+		Ids:      resp.GetIds(),
+		Skipped:  toAPISkipped(resp.GetSkipped()),
 	}, nil
 }
 
