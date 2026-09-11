@@ -155,16 +155,15 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 		DomainId:           int32(identity.GetDomainID()),
 	}
 
-	// Trusted service orchestrators (schema — flow_manager/call_center — or
-	// engine) manage queue assignment and may add operators to threads they are
-	// not a member of (e.g. after a transfer that removed the previous member).
-	// Omit the initiator so im-thread takes the system path and skips
-	// membership/permission checks. Regular user calls always carry the
-	// initiator so those checks are enforced.
-	if !auth.IsSystemCall(ctx) {
-		initiatorContactId := identity.GetContactID()
-		addMemberRequest.InitiatorContactId = &initiatorContactId
-	}
+	// Always record who acted as the message sender. Trusted service
+	// orchestrators (schema — flow_manager/call_center — or engine) also set
+	// system_call so im-thread skips membership/permission checks while still
+	// attributing the system message to the schema/engine contact. Regular user
+	// calls leave system_call false so those checks are enforced.
+	initiatorContactId := identity.GetContactID()
+	addMemberRequest.InitiatorContactId = &initiatorContactId
+	systemCall := auth.IsSystemCall(ctx)
+	addMemberRequest.SystemCall = &systemCall
 
 	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
 	if err != nil {
@@ -231,13 +230,13 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 		TargetMemberId: req.GetMemberId(),
 	}
 
-	// See AddMember: a trusted service orchestrator (schema/engine) may remove
-	// members from threads it is not part of, so it uses the system path
-	// without an initiator. Regular user calls always carry the initiator.
-	if !auth.IsSystemCall(ctx) {
-		initiatorContactId := identity.GetContactID()
-		removeMemberRequest.InitiatorContactId = &initiatorContactId
-	}
+	// See AddMember: always record the actor as sender; system_call gates the
+	// permission checks separately so a trusted orchestrator (schema/engine) can
+	// remove members from threads it is not part of while still being attributed.
+	initiatorContactId := identity.GetContactID()
+	removeMemberRequest.InitiatorContactId = &initiatorContactId
+	systemCall := auth.IsSystemCall(ctx)
+	removeMemberRequest.SystemCall = &systemCall
 
 	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
 }
