@@ -21,6 +21,7 @@ import (
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
+	"github.com/webitel/im-gateway-service/internal/service/markdown"
 )
 
 const (
@@ -222,6 +223,20 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	// Parse the body before resolving send metadata (a gRPC round-trip to
+	// im-contact-service): a malformed body is rejected for free, without
+	// paying for backend calls that would be discarded anyway.
+	plainText, entities, err := markdown.Parse(in.Body)
+	if err != nil {
+		if errors.Is(err, markdown.ErrEntityBoundsCorrupted) {
+			m.logger.Error("SendText: markdown parser produced invalid entity bounds", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+			return nil, errors.Internal("internal markdown parser error", errors.WithCause(err), errors.WithID("service.message.send_text.parse_body"))
+		}
+
+		m.logger.Warn("SendText: message body rejected by markdown parser", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+		return nil, errors.InvalidArgument("invalid message formatting", errors.WithCause(err), errors.WithID("service.message.send_text.parse_body"))
+	}
+
 	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
 	if err != nil {
 		return nil, err
@@ -237,7 +252,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 			},
 		},
 		To:                to,
-		Body:              in.Body,
+		Body:              plainText,
 		DomainId:          identity.GetDomainID(),
 		SendId:            in.SendID,
 		SendAs:            sendAs.GetContactIDPtr(),
@@ -245,6 +260,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
 		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
+		Entities:          toThreadEntities(entities),
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
@@ -259,6 +275,20 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
+	}
+
+	// Parse the body before resolving send metadata (a gRPC round-trip to
+	// im-contact-service): a malformed body is rejected for free, without
+	// paying for backend calls that would be discarded anyway.
+	plainText, entities, err := markdown.Parse(in.Document.Body)
+	if err != nil {
+		if errors.Is(err, markdown.ErrEntityBoundsCorrupted) {
+			m.logger.Error("SendDocument: markdown parser produced invalid entity bounds", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+			return nil, errors.Internal("internal markdown parser error", errors.WithCause(err), errors.WithID("service.message.send_document.parse_body"))
+		}
+
+		m.logger.Warn("SendDocument: message body rejected by markdown parser", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+		return nil, errors.InvalidArgument("invalid message formatting", errors.WithCause(err), errors.WithID("service.message.send_document.parse_body"))
 	}
 
 	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
@@ -278,13 +308,14 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		To:                to,
 		DomainId:          identity.GetDomainID(),
 		SendId:            in.SendID,
-		Body:              in.Document.Body,
+		Body:              plainText,
 		Documents:         m.mapDocuments(in.Document.Documents),
 		SendAs:            sendAs.GetContactIDPtr(),
 		ReplyToMessageId:  in.ReplyToMessageID,
 		ExternalId:        in.ExternalID,
 		ReplyToExternalId: in.ReplyToExternalID,
 		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
+		Entities:          toThreadEntities(entities),
 	})
 	if err != nil {
 		return nil, err
