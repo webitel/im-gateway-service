@@ -20,6 +20,9 @@ type (
 		ReplyToExternalID string  `json:"reply_to_external_id,omitempty"`
 
 		ForwardOrigin *api.ForwardOriginInput `json:"forward_origin,omitempty"`
+
+		// Variables are seeded onto the thread when this message creates it.
+		Variables map[string]string `json:"variables,omitempty"`
 	}
 
 	SendTextResponse struct {
