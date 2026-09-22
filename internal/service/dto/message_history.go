@@ -7,29 +7,40 @@ type HistoryMessageCursor struct {
 	Before bool
 }
 
+// SystemMessageAllowList mirrors im-thread-service's SystemMessageAllowList
+// wire message: nil means "no restriction" (field omitted on the wire, the
+// default when the caller's session has no Application); non-nil (even with
+// an empty Types slice) means "restricted" — an empty slice blocks every
+// system message, a non-empty slice allows only those subtypes.
+type SystemMessageAllowList struct {
+	Types []string
+}
+
 type SearchMessageHistoryRequest struct {
-	Fields      []string              `json:"fields,omitempty"`
-	IDs         []string              `json:"ids,omitempty"`
-	ThreadIDs   []string              `json:"thread_ids,omitempty"`
-	SenderIDs   []string              `json:"sender_ids,omitempty"`
-	ReceiverIDs []string              `json:"receiver_ids,omitempty"`
-	Types       []int32               `json:"types,omitempty"`
-	DomainID    int32                 `json:"domain_id"`
-	Cursor      *HistoryMessageCursor `json:"cursor,omitempty"`
-	Size        uint32                `json:"size"`
-	CallerID    string
+	Fields                 []string              `json:"fields,omitempty"`
+	IDs                    []string              `json:"ids,omitempty"`
+	ThreadIDs              []string              `json:"thread_ids,omitempty"`
+	SenderIDs              []string              `json:"sender_ids,omitempty"`
+	ReceiverIDs            []string              `json:"receiver_ids,omitempty"`
+	Types                  []int32               `json:"types,omitempty"`
+	DomainID               int32                 `json:"domain_id"`
+	Cursor                 *HistoryMessageCursor `json:"cursor,omitempty"`
+	Size                   uint32                `json:"size"`
+	CallerID               string
+	SystemMessageAllowList *SystemMessageAllowList
 }
 
 type SearchMessagesRequest struct {
-	Fields    []string              `json:"fields,omitempty"`
-	Term      string                `json:"q"`
-	ThreadID  string                `json:"thread_id,omitempty"`
-	SenderIDs []string              `json:"sender_ids,omitempty"`
-	Types     []int32               `json:"types,omitempty"`
-	DomainID  int32                 `json:"domain_id"`
-	Cursor    *HistoryMessageCursor `json:"cursor,omitempty"`
-	Size      uint32                `json:"size"`
-	CallerID  string
+	Fields                 []string              `json:"fields,omitempty"`
+	Term                   string                `json:"q"`
+	ThreadID               string                `json:"thread_id,omitempty"`
+	SenderIDs              []string              `json:"sender_ids,omitempty"`
+	Types                  []int32               `json:"types,omitempty"`
+	DomainID               int32                 `json:"domain_id"`
+	Cursor                 *HistoryMessageCursor `json:"cursor,omitempty"`
+	Size                   uint32                `json:"size"`
+	CallerID               string
+	SystemMessageAllowList *SystemMessageAllowList
 }
 
 type HistoryDocument struct {
@@ -150,15 +161,16 @@ type SearchMessageHistoryResponse struct {
 }
 
 type SearchLeftThreadsMessageHistoryRequest struct {
-	Fields     []string              `json:"fields,omitempty"`
-	ThreadID   string                `json:"thread_id"`
-	SenderIDs  []string              `json:"sender_ids,omitempty"`
-	Types      []int32               `json:"types,omitempty"`
-	PeriodFrom int64                 `json:"period_from,omitempty"`
-	PeriodTo   int64                 `json:"period_to,omitempty"`
-	DomainID   int32                 `json:"domain_id"`
-	Cursor     *HistoryMessageCursor `json:"cursor,omitempty"`
-	Size       uint32                `json:"size"`
+	Fields                 []string              `json:"fields,omitempty"`
+	ThreadID               string                `json:"thread_id"`
+	SenderIDs              []string              `json:"sender_ids,omitempty"`
+	Types                  []int32               `json:"types,omitempty"`
+	PeriodFrom             int64                 `json:"period_from,omitempty"`
+	PeriodTo               int64                 `json:"period_to,omitempty"`
+	DomainID               int32                 `json:"domain_id"`
+	Cursor                 *HistoryMessageCursor `json:"cursor,omitempty"`
+	Size                   uint32                `json:"size"`
+	SystemMessageAllowList *SystemMessageAllowList
 }
 
 type MessageSender struct {

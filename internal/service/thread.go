@@ -148,14 +148,22 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	if err != nil {
 		return nil, err
 	}
-	initiatorContactId := identity.GetContactID()
 	addMemberRequest := &threadv1.AddMemberRequest{
 		ThreadId:           req.GetThreadId(),
 		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.Role),
-		InitiatorContactId: &initiatorContactId,
 		DomainId:           int32(identity.GetDomainID()),
 	}
+
+	// Always record who acted as the message sender. Trusted service
+	// orchestrators (schema — flow_manager/call_center — or engine) also set
+	// system_call so im-thread skips membership/permission checks while still
+	// attributing the system message to the schema/engine contact. Regular user
+	// calls leave system_call false so those checks are enforced.
+	initiatorContactId := identity.GetContactID()
+	addMemberRequest.InitiatorContactId = &initiatorContactId
+	systemCall := auth.IsSystemCall(ctx)
+	addMemberRequest.SystemCall = &systemCall
 
 	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
 	if err != nil {
@@ -218,11 +226,18 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	if !ok {
 		return auth.IdentityNotFoundErr
 	}
-	initiatorContactId := identity.GetContactID()
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
-		TargetMemberId:     req.GetMemberId(),
-		InitiatorContactId: &initiatorContactId,
+		TargetMemberId: req.GetMemberId(),
 	}
+
+	// See AddMember: always record the actor as sender; system_call gates the
+	// permission checks separately so a trusted orchestrator (schema/engine) can
+	// remove members from threads it is not part of while still being attributed.
+	initiatorContactId := identity.GetContactID()
+	removeMemberRequest.InitiatorContactId = &initiatorContactId
+	systemCall := auth.IsSystemCall(ctx)
+	removeMemberRequest.SystemCall = &systemCall
+
 	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
 }
 

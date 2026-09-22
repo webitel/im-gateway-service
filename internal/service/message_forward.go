@@ -7,6 +7,7 @@ import (
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
+	"github.com/webitel/im-gateway-service/internal/domain/model"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 )
 
@@ -24,11 +25,6 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 		return nil, err
 	}
 
-	var internalNote *string
-	if in.InternalNote != nil {
-		internalNote = in.InternalNote
-	}
-
 	resp, err := m.threader.ForwardMessages(ctx, &threadv1.ForwardMessagesRequest{
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
@@ -37,12 +33,11 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 				Via:  identity.GetViaPtr(),
 			},
 		},
-		To:           to,
-		MessageIds:   in.GetMessageIds(),
-		DomainId:     int32(identity.GetDomainID()),
-		SendId:       in.GetSendId(),
-		SendAs:       sendAs.GetContactIDPtr(),
-		InternalNote: internalNote,
+		To:         to,
+		MessageIds: in.GetMessageIds(),
+		DomainId:   int32(identity.GetDomainID()),
+		SendId:     in.GetSendId(),
+		SendAs:     sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
 		m.logger.Error("ForwardMessages", "err", err,
@@ -54,9 +49,9 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 	}
 
 	return &api.ForwardMessagesResponse{
-		ThreadId:   resp.GetThreadId(),
-		Ids:        resp.GetIds(),
-		SkippedIds: resp.GetSkippedIds(),
+		ThreadId: resp.GetThreadId(),
+		Ids:      resp.GetIds(),
+		Skipped:  toAPISkipped(resp.GetSkipped()),
 	}, nil
 }
 
@@ -110,4 +105,20 @@ func toThreadForwardOrigin(in *api.ForwardOriginInput) *threadv1.ForwardOriginIn
 		SenderSub:      in.GetSenderSub(),
 		OriginalSentAt: in.GetOriginalSentAt(),
 	}
+}
+
+func toThreadEntities(entities []model.Entity) []*threadv1.Entity {
+	if len(entities) == 0 {
+		return nil
+	}
+	out := make([]*threadv1.Entity, 0, len(entities))
+	for _, e := range entities {
+		out = append(out, &threadv1.Entity{
+			Type:   string(e.Type),
+			Offset: e.Offset,
+			Length: e.Length,
+			Value:  e.Value,
+		})
+	}
+	return out
 }

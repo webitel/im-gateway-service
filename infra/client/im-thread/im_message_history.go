@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
@@ -12,9 +17,6 @@ import (
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type (
@@ -45,6 +47,7 @@ func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryP
 	c, err := webitel.New(logger, discovery, ServiceName, tls, factory)
 	if err != nil {
 		log.Error("initialization failed", slog.Any("error", err))
+
 		return nil, fmt.Errorf("[im-message-history-client] initialization failed: %w", err)
 	}
 
@@ -77,23 +80,26 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 	}
 
 	req := &threadv1.SearchMessageHistoryRequest{
-		Fields:    searchQuery.Fields,
-		Ids:       searchQuery.IDs,
-		ThreadId:  searchQuery.ThreadIDs[0],
-		SenderIds: searchQuery.SenderIDs,
-		Types:     searchQuery.Types,
-		DomainId:  searchQuery.DomainID,
-		Cursor:    cursor,
-		Size:      searchQuery.Size,
-		CallerId:  searchQuery.CallerID,
+		Fields:                 searchQuery.Fields,
+		Ids:                    searchQuery.IDs,
+		ThreadId:               searchQuery.ThreadIDs[0],
+		SenderIds:              searchQuery.SenderIDs,
+		Types:                  searchQuery.Types,
+		DomainId:               searchQuery.DomainID,
+		Cursor:                 cursor,
+		Size:                   searchQuery.Size,
+		CallerId:               searchQuery.CallerID,
+		SystemMessageAllowList: toSystemMessageAllowList(searchQuery.SystemMessageAllowList),
 	}
 
 	var (
 		response *threadv1.SearchMessageHistoryResponse
 		err      error
 	)
+
 	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
 		response, err = mhc.SearchThreadMessagesHistory(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -101,6 +107,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 			slog.Any("error", err),
 			slog.Any("request", searchQuery),
 		)
+
 		return nil, nil, err
 	}
 
@@ -137,15 +144,16 @@ func (c *MessageHistoryClient) SearchMessages(ctx context.Context, query *dto.Se
 	}
 
 	req := &threadv1.SearchMessagesRequest{
-		Fields:    query.Fields,
-		Q:         query.Term,
-		ThreadId:  query.ThreadID,
-		SenderIds: query.SenderIDs,
-		Types:     query.Types,
-		DomainId:  query.DomainID,
-		CallerId:  query.CallerID,
-		Cursor:    cursor,
-		Size:      query.Size,
+		Fields:                 query.Fields,
+		Q:                      query.Term,
+		ThreadId:               query.ThreadID,
+		SenderIds:              query.SenderIDs,
+		Types:                  query.Types,
+		DomainId:               query.DomainID,
+		CallerId:               query.CallerID,
+		Cursor:                 cursor,
+		Size:                   query.Size,
+		SystemMessageAllowList: toSystemMessageAllowList(query.SystemMessageAllowList),
 	}
 
 	var (
@@ -155,10 +163,12 @@ func (c *MessageHistoryClient) SearchMessages(ctx context.Context, query *dto.Se
 
 	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
 		response, err = mhc.SearchMessages(ctx, req)
+
 		return err
 	})
 	if err != nil {
 		log.Error("failed to search messages", slog.Any("error", err))
+
 		return nil, nil, err
 	}
 
@@ -193,23 +203,26 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 	}
 
 	req := &threadv1.SearchLeftThreadsMessageHistoryRequest{
-		Fields:     query.Fields,
-		ThreadId:   query.ThreadID,
-		DomainId:   query.DomainID,
-		SenderIds:  query.SenderIDs,
-		Types:      query.Types,
-		PeriodFrom: query.PeriodFrom,
-		PeriodTo:   query.PeriodTo,
-		Cursor:     cursor,
-		Size:       query.Size,
+		Fields:                 query.Fields,
+		ThreadId:               query.ThreadID,
+		DomainId:               query.DomainID,
+		SenderIds:              query.SenderIDs,
+		Types:                  query.Types,
+		PeriodFrom:             query.PeriodFrom,
+		PeriodTo:               query.PeriodTo,
+		Cursor:                 cursor,
+		Size:                   query.Size,
+		SystemMessageAllowList: toSystemMessageAllowList(query.SystemMessageAllowList),
 	}
 
 	var (
 		response *threadv1.SearchMessageHistoryResponse
 		err      error
 	)
+
 	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
 		response, err = mhc.SearchLeftThreadsMessageHistory(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -217,6 +230,7 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 			slog.Any("error", err),
 			slog.Any("request", query),
 		)
+
 		return nil, nil, err
 	}
 
@@ -251,10 +265,12 @@ func (c *MessageHistoryClient) GetRevisions(ctx context.Context, query *dto.GetM
 
 	err = c.rpc.Execute(ctx, func(mhc threadv1.MessageHistoryClient) error {
 		response, err = mhc.GetMessageRevisions(ctx, req)
+
 		return err
 	})
 	if err != nil {
 		log.Error("failed to fetch message revisions", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -287,9 +303,9 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 	}
 
 	return &dto.SearchMessageHistoryResponse{
-		Messages:   mapMessages(resp.Items),
-		NextCursor: mapCursor(resp.NextCursor),
-		PrevCursor: mapCursor(resp.PrevCursor),
+		Messages:   mapMessages(resp.GetItems()),
+		NextCursor: mapCursor(resp.GetNextCursor()),
+		PrevCursor: mapCursor(resp.GetPrevCursor()),
 	}
 }
 
@@ -308,26 +324,26 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 	res := make([]*dto.HistoryMessage, len(pbMsgs))
 	for i, m := range pbMsgs {
 		res[i] = &dto.HistoryMessage{
-			ID:              m.Id,
-			ThreadID:        m.ThreadId,
-			SenderID:        m.SenderId,
-			Type:            m.Type,
-			Body:            m.Body,
-			Metadata:        m.Metadata.AsMap(),
-			CreatedAt:       m.CreatedAt,
-			UpdatedAt:       m.UpdatedAt,
+			ID:              m.GetId(),
+			ThreadID:        m.GetThreadId(),
+			SenderID:        m.GetSenderId(),
+			Type:            m.GetType(),
+			Body:            m.GetBody(),
+			Metadata:        m.GetMetadata().AsMap(),
+			CreatedAt:       m.GetCreatedAt(),
+			UpdatedAt:       m.GetUpdatedAt(),
 			Seq:             m.GetSeq(),
-			Documents:       mapDocuments(m.Documents),
-			Images:          mapImages(m.Images),
-			Location:        MapLocation(m.Location),
-			Contact:         MapContact(m.Contact),
-			Interactive:     MapInteractive(m.Interactive),
-			System:          MapSystem(m.System),
-			ReactedMetadata: MapInteractiveCallback(m.ReactedMetadata),
-			ReplyTo:         MapReplyTo(m.ReplyTo),
-			ForwardOrigin:   MapForwardOrigin(m.ForwardOrigin),
+			Documents:       mapDocuments(m.GetDocuments()),
+			Images:          mapImages(m.GetImages()),
+			Location:        MapLocation(m.GetLocation()),
+			Contact:         MapContact(m.GetContact()),
+			Interactive:     MapInteractive(m.GetInteractive()),
+			System:          MapSystem(m.GetSystem()),
+			ReactedMetadata: MapInteractiveCallback(m.GetReactedMetadata()),
+			ReplyTo:         MapReplyTo(m.GetReplyTo()),
+			ForwardOrigin:   MapForwardOrigin(m.GetForwardOrigin()),
 			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
-			Statuses:        MapRecipientStatuses(m.Statuses),
+			Statuses:        MapRecipientStatuses(m.GetStatuses()),
 			Reactions:       MapReactions(m.GetReactions()),
 			Deleted:         m.GetDeleted(),
 			DeletedAt:       m.GetDeletedAt(),
@@ -335,6 +351,7 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			RevisionCount:   m.GetRevisionCount(),
 		}
 	}
+
 	return res
 }
 
@@ -533,16 +550,17 @@ func mapDocuments(pbDocs []*threadv1.Document) []dto.HistoryDocument {
 	res := make([]dto.HistoryDocument, len(pbDocs))
 	for i, d := range pbDocs {
 		res[i] = dto.HistoryDocument{
-			ID:        d.Id,
-			MessageID: d.MessageId,
-			FileID:    d.FileId,
-			Name:      d.Name,
-			Mime:      d.Mime,
-			Size:      d.Size,
-			CreatedAt: d.CreatedAt,
-			URL:       d.Url,
+			ID:        d.GetId(),
+			MessageID: d.GetMessageId(),
+			FileID:    d.GetFileId(),
+			Name:      d.GetName(),
+			Mime:      d.GetMime(),
+			Size:      d.GetSize(),
+			CreatedAt: d.GetCreatedAt(),
+			URL:       d.GetUrl(),
 		}
 	}
+
 	return res
 }
 
@@ -557,16 +575,17 @@ func mapImages(pbImgs []*threadv1.Image) []dto.HistoryImage {
 	res := make([]dto.HistoryImage, len(pbImgs))
 	for i, img := range pbImgs {
 		res[i] = dto.HistoryImage{
-			ID:        img.Id,
-			MessageID: img.MessageId,
-			FileID:    img.FileId,
-			Mime:      img.Mime,
-			Width:     img.Width,
-			Height:    img.Height,
-			CreatedAt: img.CreatedAt,
-			URL:       img.Url,
+			ID:        img.GetId(),
+			MessageID: img.GetMessageId(),
+			FileID:    img.GetFileId(),
+			Mime:      img.GetMime(),
+			Width:     img.GetWidth(),
+			Height:    img.GetHeight(),
+			CreatedAt: img.GetCreatedAt(),
+			URL:       img.GetUrl(),
 		}
 	}
+
 	return res
 }
 
@@ -583,6 +602,14 @@ func mapCursor(c *threadv1.HistoryMessageCursorResponse) *dto.HistoryMessageCurs
 	}
 
 	return &dto.HistoryMessageCursor{
-		ID: c.Id,
+		ID: c.GetId(),
 	}
+}
+
+func toSystemMessageAllowList(a *dto.SystemMessageAllowList) *threadv1.SystemMessageAllowList {
+	if a == nil {
+		return nil
+	}
+
+	return &threadv1.SystemMessageAllowList{Types: a.Types}
 }
