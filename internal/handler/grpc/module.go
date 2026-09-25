@@ -12,6 +12,7 @@ var Module = fx.Module("grpc",
 	fx.Provide(
 		NewMessageService,
 		NewMessageHistoryService,
+		NewUpdatesService,
 		NewThreadService,
 		NewThreadPermissionServer,
 		NewThreadTagServer,
@@ -20,6 +21,7 @@ var Module = fx.Module("grpc",
 	fx.Invoke(
 		RegisterMessageService,
 		RegisterHistoryMessageService,
+		RegisterUpdatesService,
 		RegisterThreadService,
 		RegisterThreadPermissionService,
 		RegisterThreadTagService,
@@ -70,6 +72,10 @@ func RegisterMessageService(
 
 func RegisterHistoryMessageService(server *grpcsrv.Server, service *MessageHistoryService) {
 	impb.RegisterMessageHistoryServer(server, service)
+}
+
+func RegisterUpdatesService(server *grpcsrv.Server, service *UpdatesService) {
+	impb.RegisterUpdatesServer(server, service)
 }
 
 func RegisterContactService(server *grpcsrv.Server, service *ContactService) {
