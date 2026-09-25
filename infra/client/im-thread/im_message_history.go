@@ -303,9 +303,10 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 	}
 
 	return &dto.SearchMessageHistoryResponse{
-		Messages:   mapMessages(resp.GetItems()),
-		NextCursor: mapCursor(resp.GetNextCursor()),
-		PrevCursor: mapCursor(resp.GetPrevCursor()),
+		Messages:      mapMessages(resp.GetItems()),
+		NextCursor:    mapCursor(resp.GetNextCursor()),
+		PrevCursor:    mapCursor(resp.GetPrevCursor()),
+		LastUpdateSeq: resp.GetLastUpdateSeq(),
 	}
 }
 
@@ -342,8 +343,6 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			ReactedMetadata: MapInteractiveCallback(m.GetReactedMetadata()),
 			ReplyTo:         MapReplyTo(m.GetReplyTo()),
 			ForwardOrigin:   MapForwardOrigin(m.GetForwardOrigin()),
-			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
-			Statuses:        MapRecipientStatuses(m.GetStatuses()),
 			Reactions:       MapReactions(m.GetReactions()),
 			Deleted:         m.GetDeleted(),
 			DeletedAt:       m.GetDeletedAt(),
@@ -420,34 +419,6 @@ func MapForwardOrigin(origin *threadv1.ForwardOrigin) *api.ForwardOrigin {
 		OriginalSentAt:  origin.GetOriginalSentAt(),
 		SourceMessageId: origin.GetSourceMessageId(),
 	}
-}
-
-// MapRecipientStatuses maps per-recipient delivery statuses from the thread
-// service response into the gateway API representation. Enum values match
-// numerically, so a direct cast is safe.
-func MapRecipientStatuses(statuses []*threadv1.MessageRecipientStatus) []*api.MessageRecipientStatus {
-	if len(statuses) == 0 {
-		return nil
-	}
-
-	res := make([]*api.MessageRecipientStatus, 0, len(statuses))
-	for _, st := range statuses {
-		if st == nil {
-			continue
-		}
-
-		res = append(res, &api.MessageRecipientStatus{
-			MemberId:    st.GetMemberId(),
-			Status:      api.MessageDeliveryStatus(st.GetStatus()),
-			DeliveredAt: st.GetDeliveredAt(),
-			ReadAt:      st.GetReadAt(),
-			FailedAt:    st.GetFailedAt(),
-			Via:         st.GetVia(),
-			Error:       st.GetError(),
-		})
-	}
-
-	return res
 }
 
 // MapReactions converts the thread-service emoji reaction aggregates to the
