@@ -27,16 +27,13 @@ func NewThreadService(logger *slog.Logger, threadManager service.ThreadManager) 
 func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchRequest) (*impb.SearchThreadResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.Search"))
 
-	resultThreads, next, err := s.threadManager.Search(ctx, req)
+	resp, err := s.threadManager.Search(ctx, req)
 	if err != nil {
 		log.Error("failed to fetch threads from provider", slog.Any("err", err))
 		return nil, err
 	}
 
-	return &impb.SearchThreadResponse{
-		Items: resultThreads,
-		Next:  next,
-	}, nil
+	return resp, nil
 }
 
 func (s *ThreadService) Create(ctx context.Context, req *impb.ThreadManagementCreateRequest) (*impb.ThreadManagementCreateResponse, error) {

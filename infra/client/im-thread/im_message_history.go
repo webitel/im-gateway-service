@@ -306,7 +306,7 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 		Messages:      mapMessages(resp.GetItems()),
 		NextCursor:    mapCursor(resp.GetNextCursor()),
 		PrevCursor:    mapCursor(resp.GetPrevCursor()),
-		LastUpdateSeq: resp.GetLastUpdateSeq(),
+		UpdatesCursor: resp.GetUpdatesCursor(),
 	}
 }
 

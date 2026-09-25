@@ -101,7 +101,6 @@ func toThreadUpdatesDTO(t *threadv1.ThreadUpdates) *dto.ThreadUpdates {
 
 	out := &dto.ThreadUpdates{
 		ThreadID:          t.GetThreadId(),
-		Cursor:            t.GetCursor(),
 		Left:              t.GetLeft(),
 		UnreadCount:       t.GetUnreadCount(),
 		RawDialog:         t.GetDialog(),

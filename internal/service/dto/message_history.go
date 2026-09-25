@@ -160,7 +160,6 @@ type GetUpdatesResponse struct {
 // ThreadUpdates is one changed thread; messages are in their current state, UpdatedAt holds edited_at.
 type ThreadUpdates struct {
 	ThreadID          string
-	Cursor            string
 	Left              bool
 	UnreadCount       int64
 	Dialog            *api.Thread
@@ -206,8 +205,8 @@ type SearchMessageHistoryResponse struct {
 	NextCursor     *HistoryMessageCursor `json:"next_cursor,omitempty"`
 	PrevCursor     *HistoryMessageCursor
 	MessageSenders []*MessageSender `json:"message_senders"`
-	// LastUpdateSeq is the thread's update_seq read before this page (GetUpdates per-thread cursor).
-	LastUpdateSeq int64 `json:"last_update_seq,omitempty"`
+	// UpdatesCursor is the GetUpdates cursor read before this page.
+	UpdatesCursor string `json:"updates_cursor,omitempty"`
 }
 
 type SearchLeftThreadsMessageHistoryRequest struct {
