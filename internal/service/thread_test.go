@@ -264,8 +264,7 @@ func Test_thread_Search(t *testing.T) {
 		contactClient *imcontact.Client
 		// Named input parameters for target function.
 		searchQuery *gtwthread.ThreadSearchRequest
-		want        []*gtwthread.Thread
-		want2       bool
+		want        *gtwthread.SearchThreadResponse
 		wantErr     bool
 	}{
 		// TODO: Add test cases.
@@ -273,7 +272,8 @@ func Test_thread_Search(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			th := NewThread(tt.logger, tt.threadClient, tt.contactClient)
-			got, got2, gotErr := th.Search(context.Background(), tt.searchQuery)
+
+			got, gotErr := th.Search(context.Background(), tt.searchQuery)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("Search() failed: %v", gotErr)
@@ -286,9 +286,6 @@ func Test_thread_Search(t *testing.T) {
 			// TODO: update the condition below to compare got with tt.want.
 			if true {
 				t.Errorf("Search() = %v, want %v", got, tt.want)
-			}
-			if true {
-				t.Errorf("Search() = %v, want %v", got2, tt.want2)
 			}
 		})
 	}

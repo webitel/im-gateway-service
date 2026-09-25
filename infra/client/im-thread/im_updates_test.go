@@ -11,7 +11,7 @@ func TestToUpdatesResponseDTO(t *testing.T) {
 	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{
 		Cursor: "900",
 		Threads: []*threadv1.ThreadUpdates{{
-			ThreadId: "t1", Cursor: "13", UnreadCount: 2,
+			ThreadId: "t1", UnreadCount: 2,
 			Dialog:            &threadv1.Thread{Id: "t1"},
 			TopMessage:        &threadv1.UpdatedMessage{Id: "top", SenderId: "c1"},
 			Messages:          []*threadv1.UpdatedMessage{{Id: "m1", Seq: 2, SenderId: "c1", Body: "current", EditedAt: 1700}},
@@ -29,7 +29,7 @@ func TestToUpdatesResponseDTO(t *testing.T) {
 	}
 
 	th := out.Threads[0]
-	if th.ThreadID != "t1" || th.Cursor != "13" || th.UnreadCount != 2 || th.RawDialog.GetId() != "t1" || len(th.From) != 1 {
+	if th.ThreadID != "t1" || th.UnreadCount != 2 || th.RawDialog.GetId() != "t1" || len(th.From) != 1 {
 		t.Errorf("thread = %+v", th)
 	}
 

@@ -58,7 +58,7 @@ func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMe
 		Items:         toProtoMessages(res.Messages),
 		NextCursor:    toProtoCursor(res.NextCursor),
 		PrevCursor:    toProtoCursor(res.PrevCursor),
-		LastUpdateSeq: res.LastUpdateSeq,
+		UpdatesCursor: res.UpdatesCursor,
 	}
 }
 
@@ -161,7 +161,6 @@ func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
 
 	out := &pb.ThreadUpdates{
 		ThreadId:          t.ThreadID,
-		Cursor:            t.Cursor,
 		Left:              t.Left,
 		UnreadCount:       t.UnreadCount,
 		Dialog:            t.Dialog,

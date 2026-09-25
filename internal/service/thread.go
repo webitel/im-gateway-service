@@ -24,7 +24,7 @@ const (
 )
 
 type ThreadManager interface {
-	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error)
+	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) (*gtwthread.SearchThreadResponse, error)
 	SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error)
 	Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
@@ -313,13 +313,14 @@ func participantsToInternal(participants []*gtwthread.PeerIdentity) []*threadv1.
 	return internal
 }
 
-func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) ([]*gtwthread.Thread, bool, error) {
+func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) (*gtwthread.SearchThreadResponse, error) {
 	log := t.logger.With(slog.String("op", "thread.Search"))
 
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		log.ErrorContext(ctx, "identity not found")
-		return nil, false, auth.IdentityNotFoundErr
+
+		return nil, auth.IdentityNotFoundErr
 	}
 
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
@@ -338,7 +339,8 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
-		return nil, false, err
+
+		return nil, err
 	}
 
 	uniqueContactIds := t.collectUniqueContactsFromThread(internalThreads.GetItems())
@@ -350,7 +352,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 			slog.Any("ids", uniqueContactIds),
 		)
 
-		return nil, false, err
+		return nil, err
 	}
 
 	res := []*gtwthread.Thread{}
@@ -359,7 +361,11 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		res = append(res, converted)
 	}
 
-	return res, internalThreads.Next, nil
+	return &gtwthread.SearchThreadResponse{
+		Items:         res,
+		Next:          internalThreads.GetNext(),
+		UpdatesCursor: internalThreads.GetUpdatesCursor(),
+	}, nil
 }
 
 func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error) {
@@ -435,7 +441,10 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		return nil, err
 	}
 
-	return convertToThread(internalThread, contacts), nil
+	thr := convertToThread(internalThread, contacts)
+	thr.UpdatesCursor = internalThread.GetUpdatesCursor()
+
+	return thr, nil
 }
 
 func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error) {
@@ -644,9 +653,6 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 
 		// Per-member read horizons; client derives inbox/outbox watermarks from this.
 		ReadStates: convertThreadMemberReadStates(thr.GetReadStates()),
-
-		// Journal head: the per-thread seq a freshly loaded client has applied.
-		LastUpdateSeq: thr.GetLastUpdateSeq(),
 	}
 }
 

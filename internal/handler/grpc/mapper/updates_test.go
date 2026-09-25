@@ -16,7 +16,6 @@ func TestMapToGetUpdatesProto(t *testing.T) {
 		Cursor: "900",
 		Threads: []*dto.ThreadUpdates{{
 			ThreadID:          "t1",
-			Cursor:            "5",
 			Dialog:            &pb.Thread{Id: "t1", Subject: "new"},
 			TopMessage:        &dto.HistoryMessage{ID: "top", Sender: sender},
 			Messages:          []*dto.HistoryMessage{{ID: "msg", Seq: 2, Body: "hi", Sender: sender, UpdatedAt: 1700}},
@@ -31,7 +30,7 @@ func TestMapToGetUpdatesProto(t *testing.T) {
 	}
 
 	th := got.GetThreads()[0]
-	if th.GetCursor() != "5" || th.GetDialog().GetSubject() != "new" || th.GetTopMessage().GetId() != "top" || len(th.GetDeletedMessageIds()) != 1 {
+	if th.GetDialog().GetSubject() != "new" || th.GetTopMessage().GetId() != "top" || len(th.GetDeletedMessageIds()) != 1 {
 		t.Fatalf("thread = %+v", th)
 	}
 
@@ -54,5 +53,14 @@ func TestMapToGetUpdatesProto(t *testing.T) {
 
 	if th.GetMemberChanges()[0].GetAction() != pb.ThreadMemberChangeAction_THREAD_MEMBER_CHANGE_ACTION_JOINED {
 		t.Errorf("action = %v", th.GetMemberChanges()[0].GetAction())
+	}
+}
+
+// History carries the same GetUpdates cursor the client resumes from.
+func TestMapToSearchHistoryProto_UpdatesCursor(t *testing.T) {
+	got := mapper.MapToSearchHistoryProto(&dto.SearchMessageHistoryResponse{UpdatesCursor: "92547098"})
+
+	if got.GetUpdatesCursor() != "92547098" {
+		t.Errorf("updates_cursor = %q, want 92547098", got.GetUpdatesCursor())
 	}
 }
