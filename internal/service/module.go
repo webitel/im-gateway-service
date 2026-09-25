@@ -43,6 +43,11 @@ var Module = fx.Module(
 		),
 
 		fx.Annotate(
+			NewUpdates,
+			fx.As(new(UpdatesFetcher)),
+		),
+
+		fx.Annotate(
 			NewBotService,
 			fx.As(new(Botter)),
 		),

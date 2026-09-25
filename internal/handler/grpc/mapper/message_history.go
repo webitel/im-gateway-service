@@ -55,9 +55,10 @@ func MapToSearchHistoryProto(res *dto.SearchMessageHistoryResponse) *pb.SearchMe
 	}
 
 	return &pb.SearchMessageHistoryResponse{
-		Items:      toProtoMessages(res.Messages),
-		NextCursor: toProtoCursor(res.NextCursor),
-		PrevCursor: toProtoCursor(res.PrevCursor),
+		Items:         toProtoMessages(res.Messages),
+		NextCursor:    toProtoCursor(res.NextCursor),
+		PrevCursor:    toProtoCursor(res.PrevCursor),
+		LastUpdateSeq: res.LastUpdateSeq,
 	}
 }
 
@@ -93,8 +94,6 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			ReactedMetadata: toProtoReactedMetadta(m.ReactedMetadata),
 			ReplyTo:         toProtoReplyTo(m.ReplyTo),
 			ForwardOrigin:   m.ForwardOrigin,
-			DeliveryStatus:  m.DeliveryStatus,
-			Statuses:        m.Statuses,
 			Reactions:       m.Reactions,
 			Deleted:         m.Deleted,
 			DeletedAt:       m.DeletedAt,
@@ -125,6 +124,86 @@ func MapToGetMessageRevisionsProto(revisions []*dto.MessageRevision) *pb.GetMess
 	}
 
 	return &pb.GetMessageRevisionsResponse{Items: items}
+}
+
+func MapToGetUpdatesProto(res *dto.GetUpdatesResponse) *pb.GetUpdatesResponse {
+	if res == nil {
+		return nil
+	}
+
+	threads := make([]*pb.ThreadUpdates, 0, len(res.Threads))
+	for _, t := range res.Threads {
+		threads = append(threads, toProtoThreadUpdates(t))
+	}
+
+	return &pb.GetUpdatesResponse{Cursor: res.Cursor, Resync: res.Resync, Threads: threads}
+}
+
+func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
+	changes := make([]*pb.ThreadMemberChange, 0, len(t.MemberChanges))
+	for _, mc := range t.MemberChanges {
+		changes = append(changes, &pb.ThreadMemberChange{
+			Member: toProtoMessageSender(mc.Member),
+			Action: pb.ThreadMemberChangeAction(mc.Action),
+			By:     toProtoMessageSender(mc.By),
+		})
+	}
+
+	readStates := make([]*pb.MemberReadState, 0, len(t.ReadStates))
+	for _, rs := range t.ReadStates {
+		readStates = append(readStates, &pb.MemberReadState{
+			MemberId:         rs.MemberID,
+			DeliveredUpToSeq: rs.DeliveredUpToSeq,
+			ReadUpToSeq:      rs.ReadUpToSeq,
+			Member:           toProtoMessageSender(rs.Member),
+		})
+	}
+
+	out := &pb.ThreadUpdates{
+		ThreadId:          t.ThreadID,
+		Cursor:            t.Cursor,
+		Left:              t.Left,
+		UnreadCount:       t.UnreadCount,
+		Dialog:            t.Dialog,
+		Messages:          toProtoUpdatedMessages(t.Messages),
+		DeletedMessageIds: t.DeletedMessageIDs,
+		MemberChanges:     changes,
+		ReadStates:        readStates,
+	}
+
+	if t.TopMessage != nil {
+		out.TopMessage = toProtoUpdatedMessages([]*dto.HistoryMessage{t.TopMessage})[0]
+	}
+
+	return out
+}
+
+// toProtoUpdatedMessages reuses history's message mapping and keeps only what a UI renders.
+func toProtoUpdatedMessages(messages []*dto.HistoryMessage) []*pb.UpdatedMessage {
+	out := make([]*pb.UpdatedMessage, 0, len(messages))
+	for _, h := range toProtoMessages(messages) {
+		out = append(out, &pb.UpdatedMessage{
+			Id:            h.GetId(),
+			Seq:           h.GetSeq(),
+			Sender:        h.GetSender(),
+			Type:          h.GetType(),
+			Body:          h.GetBody(),
+			Metadata:      h.GetMetadata(),
+			CreatedAt:     h.GetCreatedAt(),
+			EditedAt:      h.GetEditedAt(),
+			ReplyTo:       h.GetReplyTo(),
+			ForwardOrigin: h.GetForwardOrigin(),
+			Documents:     h.GetDocuments(),
+			Images:        h.GetImages(),
+			Location:      h.GetLocation(),
+			Contact:       h.GetContact(),
+			Interactive:   h.GetInteractive(),
+			System:        h.GetSystem(),
+			Reactions:     h.GetReactions(),
+		})
+	}
+
+	return out
 }
 
 func toProtoReplyTo(replyTo *dto.HistoryReplyTo) *pb.ReplyToMessage {

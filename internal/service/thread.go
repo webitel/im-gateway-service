@@ -640,7 +640,31 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		LastMsg:     convertToMessage(thr.GetLastMsg(), lastMessageSender),
 		Members:     members,
 		Variables:   threadVars,
+		UnreadCount: thr.GetUnreadCount(),
+
+		// Per-member read horizons; client derives inbox/outbox watermarks from this.
+		ReadStates: convertThreadMemberReadStates(thr.GetReadStates()),
+
+		// Journal head: the per-thread seq a freshly loaded client has applied.
+		LastUpdateSeq: thr.GetLastUpdateSeq(),
 	}
+}
+
+func convertThreadMemberReadStates(states []*threadv1.MemberReadState) []*gtwthread.MemberReadState {
+	if len(states) == 0 {
+		return nil
+	}
+
+	out := make([]*gtwthread.MemberReadState, 0, len(states))
+	for _, st := range states {
+		out = append(out, &gtwthread.MemberReadState{
+			MemberId:         st.GetMemberId(),
+			DeliveredUpToSeq: st.GetDeliveredUpToSeq(),
+			ReadUpToSeq:      st.GetReadUpToSeq(),
+		})
+	}
+
+	return out
 }
 
 func convertToMember(m *threadv1.ThreadMember, contact *contact.Contact) *gtwthread.ThreadMember {

@@ -17,6 +17,7 @@ var Module = fx.Module(
 	// [CONSTRUCTOR] Provides the resilient contact client
 	fx.Provide(imthread.New,
 		imthread.NewMessageHistoryClient,
+		imthread.NewUpdatesClient,
 		imthread.NewThreadClient,
 		imthread.NewThreadPermissionClient,
 		imthread.NewThreadTagClient,
@@ -51,6 +52,14 @@ var Module = fx.Module(
 		func(lc fx.Lifecycle, client *imthread.MessageHistoryClient) {
 			lc.Append(fx.Hook{
 				OnStop: func(ctx context.Context) error {
+					return client.Close()
+				},
+			})
+		},
+
+		func(lc fx.Lifecycle, client *imthread.UpdatesClient) {
+			lc.Append(fx.Hook{
+				OnStop: func(_ context.Context) error {
 					return client.Close()
 				},
 			})
@@ -133,6 +142,9 @@ var Module = fx.Module(
 		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.ViberClient) {
+		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, client *improviders.ViberBmClient) {
 		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.MetaAppClient) {
