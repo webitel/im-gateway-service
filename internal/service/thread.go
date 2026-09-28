@@ -30,6 +30,8 @@ type ThreadManager interface {
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
 	Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error)
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
+	HandBackToBot(ctx context.Context, req *gtwthread.HandBackToBotRequest) error
+	TakeOverFromBot(ctx context.Context, req *gtwthread.TakeOverFromBotRequest) error
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
 	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
 	LocateVariables(ctx context.Context, req *gtwthread.LocateVariablesRequest) (*gtwthread.ThreadVariables, error)
@@ -239,6 +241,40 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	removeMemberRequest.SystemCall = &systemCall
 
 	return t.threadClient.RemoveMember(ctx, removeMemberRequest)
+}
+
+func (t *thread) HandBackToBot(ctx context.Context, req *gtwthread.HandBackToBotRequest) error {
+	if req.GetThreadId() == "" {
+		return errors.InvalidArgument("thread id is required", errors.WithID("service.thread.hand_back_to_bot"))
+	}
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return auth.IdentityNotFoundErr
+	}
+
+	return t.threadClient.HandBackToBot(ctx, &threadv1.HandBackToBotRequest{
+		ThreadId:           req.GetThreadId(),
+		InitiatorContactId: identity.GetContactID(),
+		DomainId:           int32(identity.GetDomainID()),
+	})
+}
+
+func (t *thread) TakeOverFromBot(ctx context.Context, req *gtwthread.TakeOverFromBotRequest) error {
+	if req.GetThreadId() == "" {
+		return errors.InvalidArgument("thread id is required", errors.WithID("service.thread.take_over_from_bot"))
+	}
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return auth.IdentityNotFoundErr
+	}
+
+	return t.threadClient.TakeOverFromBot(ctx, &threadv1.TakeOverFromBotRequest{
+		ThreadId:           req.GetThreadId(),
+		InitiatorContactId: identity.GetContactID(),
+		DomainId:           int32(identity.GetDomainID()),
+	})
 }
 
 func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
