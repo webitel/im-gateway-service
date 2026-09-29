@@ -217,6 +217,7 @@ type SearchLeftThreadsMessageHistoryRequest struct {
 	PeriodFrom             int64                 `json:"period_from,omitempty"`
 	PeriodTo               int64                 `json:"period_to,omitempty"`
 	DomainID               int32                 `json:"domain_id"`
+	CallerID               string                `json:"-"`
 	Cursor                 *HistoryMessageCursor `json:"cursor,omitempty"`
 	Size                   uint32                `json:"size"`
 	SystemMessageAllowList *SystemMessageAllowList

@@ -206,6 +206,7 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 		Fields:                 query.Fields,
 		ThreadId:               query.ThreadID,
 		DomainId:               query.DomainID,
+		CallerId:               query.CallerID,
 		SenderIds:              query.SenderIDs,
 		Types:                  query.Types,
 		PeriodFrom:             query.PeriodFrom,

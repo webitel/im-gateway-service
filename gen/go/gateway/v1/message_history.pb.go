@@ -1633,7 +1633,7 @@ type SearchMessageHistoryResponse struct {
 	NextCursor *HistoryMessageCursorResponse `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
 	// Cursor that represents position to get newest messages (used with 'before' param).
 	PrevCursor *HistoryMessageCursorResponse `protobuf:"bytes,3,opt,name=prev_cursor,json=prevCursor,proto3" json:"prev_cursor,omitempty"`
-	// GetUpdates cursor read before this page: every later change comes from GetUpdates(updates_cursor).
+	// The caller's GetUpdates cursor as of this read: every later change comes from GetUpdates(updates_cursor).
 	UpdatesCursor string `protobuf:"bytes,5,opt,name=updates_cursor,json=updatesCursor,proto3" json:"updates_cursor,omitempty"`
 }
 
