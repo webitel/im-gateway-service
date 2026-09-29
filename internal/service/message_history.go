@@ -173,6 +173,7 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 	}
 
 	query.DomainID = int32(identity.GetDomainID())
+	query.CallerID = identity.GetContactID()
 	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
 
 	response, fromInternal, err := s.historyClient.SearchLeftThreads(ctx, query)

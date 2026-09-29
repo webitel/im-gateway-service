@@ -283,7 +283,7 @@ type Thread struct {
 	// Per-member read horizons (snapshot, matches GetUpdates model).
 	// Client derives inbox/outbox watermarks: own_last_read = inbox; MIN over others = outbox.
 	ReadStates []*MemberReadState `protobuf:"bytes,15,rep,name=read_states,json=readStates,proto3" json:"read_states,omitempty"`
-	// GetUpdates cursor read before this thread (set by Get; Search carries it on the response).
+	// The caller's GetUpdates cursor as of this read (set by Get; Search carries it on the response).
 	UpdatesCursor string `protobuf:"bytes,17,opt,name=updates_cursor,json=updatesCursor,proto3" json:"updates_cursor,omitempty"`
 }
 
@@ -612,7 +612,7 @@ type SearchThreadResponse struct {
 	Items []*Thread `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
 	// Indicates whether there is a next page available.
 	Next bool `protobuf:"varint,2,opt,name=next,proto3" json:"next,omitempty"`
-	// GetUpdates cursor read before this page: every later change comes from GetUpdates(updates_cursor).
+	// The caller's GetUpdates cursor as of this read: every later change comes from GetUpdates(updates_cursor).
 	UpdatesCursor string `protobuf:"bytes,3,opt,name=updates_cursor,json=updatesCursor,proto3" json:"updates_cursor,omitempty"`
 }
 

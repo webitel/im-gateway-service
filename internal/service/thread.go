@@ -428,6 +428,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		Id:       req.GetId(),
 		DomainId: int32(identity.GetDomainID()),
 		Fields:   req.GetFields(),
+		CallerId: identity.GetContactID(),
 	})
 	if err != nil {
 		log.Error("failed to fetch internal thread", slog.Any("error", err))
