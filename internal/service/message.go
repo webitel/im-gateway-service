@@ -412,6 +412,7 @@ func (m *MessageService) Read(ctx context.Context, in *dto.ReadMessageRequest) e
 		ThreadId: in.ThreadID,
 		UserId:   identity.GetContactID(),
 		DomainId: int32(identity.GetDomainID()),
+		UpToSeq:  in.UpToSeq,
 	})
 	if err != nil {
 		return err
