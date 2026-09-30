@@ -169,6 +169,7 @@ type ThreadUpdates struct {
 	DeletedMessageIDs []string
 	MemberChanges     []*ThreadMemberChange
 	ReadStates        []*MemberReadState
+	Failures          []*MessageFailure
 	// From are the thread members as im-thread returns them.
 	From []*threadv1.ThreadMember
 }
@@ -244,4 +245,13 @@ func NewMessageSender(sub, iss, senderType, name, username string, isBot bool) *
 		IsBot:    isBot,
 		Username: username,
 	}
+}
+
+// MessageFailure is a message that could not reach a member, with the provider's reason.
+type MessageFailure struct {
+	MessageID    string
+	MemberID     string
+	Member       *MessageSender
+	ErrorCode    string
+	ErrorMessage string
 }
