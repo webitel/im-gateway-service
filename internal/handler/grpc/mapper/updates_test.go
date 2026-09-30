@@ -64,3 +64,18 @@ func TestMapToSearchHistoryProto_UpdatesCursor(t *testing.T) {
 		t.Errorf("updates_cursor = %q, want 92547098", got.GetUpdatesCursor())
 	}
 }
+
+func TestMapToGetUpdatesProto_Failures(t *testing.T) {
+	member := &dto.MessageSender{ContactID: "c1", Name: "Agent", MemberID: "m1", Role: 1}
+
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{{
+		ThreadID: "t1",
+		Failures: []*dto.MessageFailure{{MessageID: "msg", Member: member, ErrorCode: "recipient_blocked", ErrorMessage: "Recipient is unavailable"}},
+	}}})
+
+	f := got.GetThreads()[0].GetFailures()[0]
+	if f.GetMessageId() != "msg" || f.GetMember().GetId() != "m1" || f.GetMember().GetContact().GetName() != "Agent" ||
+		f.GetError().GetCode() != "recipient_blocked" || f.GetError().GetMessage() != "Recipient is unavailable" {
+		t.Fatalf("failure = %+v", f)
+	}
+}

@@ -168,6 +168,7 @@ func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
 		DeletedMessageIds: t.DeletedMessageIDs,
 		MemberChanges:     changes,
 		ReadStates:        readStates,
+		Failures:          toProtoFailures(t.Failures),
 	}
 
 	if t.TopMessage != nil {
@@ -326,4 +327,21 @@ func toProtoMessageSender(ms *dto.MessageSender) *pb.ThreadMember {
 		Id:   ms.MemberID,
 		Role: pb.ThreadRole(ms.Role),
 	}
+}
+
+func toProtoFailures(failures []*dto.MessageFailure) []*pb.MessageFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	out := make([]*pb.MessageFailure, 0, len(failures))
+	for _, f := range failures {
+		out = append(out, &pb.MessageFailure{
+			MessageId: f.MessageID,
+			Member:    toProtoMessageSender(f.Member),
+			Error:     &pb.MessageFailureError{Code: f.ErrorCode, Message: f.ErrorMessage},
+		})
+	}
+
+	return out
 }
