@@ -47,8 +47,16 @@ func ProvideServer(
 		)
 	}
 
-	loggingMiddleware := middleware.LoggingMiddleware(logger)
-	finalHandler := loggingMiddleware(wrapped)
+	logged := middleware.LoggingMiddleware(logger)(wrapped)
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isProbe(r.URL.Path) {
+			handler.ServeHTTP(w, r)
+
+			return
+		}
+
+		logged.ServeHTTP(w, r)
+	})
 
 	srv := &http.Server{
 		Addr:      cfg.Service.HTTP.Addr,
@@ -79,4 +87,13 @@ func ProvideServer(
 	})
 
 	return nil
+}
+
+func isProbe(path string) bool {
+	switch path {
+	case "/livez", "/readyz", "/healthz":
+		return true
+	default:
+		return false
+	}
 }

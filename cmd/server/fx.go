@@ -1,8 +1,10 @@
 package server
 
 import (
-	"github.com/webitel/webitel-go-kit/infra/profiler"
 	"go.uber.org/fx"
+
+	healthfx "github.com/webitel/webitel-go-kit/infra/health/fx"
+	"github.com/webitel/webitel-go-kit/infra/profiler"
 
 	"github.com/webitel/webitel-go-kit/infra/discovery"
 
@@ -26,6 +28,7 @@ func NewApp(cfg *config.Config) *fx.App {
 			ProvideSD,
 			ProvideProfile,
 		),
+		healthfx.Module(healthfx.Config{}),
 		fx.Invoke(func(discovery discovery.DiscoveryProvider) error { return nil }),
 		webiteldi.Module,
 		defaultauth.Module,
@@ -37,5 +40,8 @@ func NewApp(cfg *config.Config) *fx.App {
 		httphandler.Module,
 		httpsrv.Module,
 		profiler.Module,
+
+		fx.Invoke(registerHealth),
+		healthfx.Shutdown(),
 	)
 }
