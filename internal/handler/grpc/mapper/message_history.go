@@ -13,6 +13,7 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 		cursor = &dto.HistoryMessageCursor{
 			ID:     req.Cursor.Id,
 			Before: req.Cursor.Before,
+			Around: req.GetCursor().GetAround(),
 		}
 	}
 
@@ -34,6 +35,7 @@ func MapSearchMessagesRequestToDTO(req *pb.SearchMessagesRequest) *dto.SearchMes
 		cursor = &dto.HistoryMessageCursor{
 			ID:     req.Cursor.Id,
 			Before: req.Cursor.Before,
+			Around: req.GetCursor().GetAround(),
 		}
 	}
 
@@ -294,6 +296,7 @@ func MapSearchLeftThreadsMessageHistoryRequestToDTO(req *pb.SearchLeftThreadsMes
 		cursor = &dto.HistoryMessageCursor{
 			ID:     req.Cursor.Id,
 			Before: req.Cursor.Before,
+			Around: req.GetCursor().GetAround(),
 		}
 	}
 

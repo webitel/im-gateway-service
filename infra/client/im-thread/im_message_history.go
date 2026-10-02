@@ -76,6 +76,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:     searchQuery.Cursor.ID,
 			Before: searchQuery.Cursor.Before,
+			Around: searchQuery.Cursor.Around,
 		}
 	}
 
@@ -140,6 +141,7 @@ func (c *MessageHistoryClient) SearchMessages(ctx context.Context, query *dto.Se
 		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:     query.Cursor.ID,
 			Before: query.Cursor.Before,
+			Around: query.Cursor.Around,
 		}
 	}
 
@@ -199,6 +201,7 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:     query.Cursor.ID,
 			Before: query.Cursor.Before,
+			Around: query.Cursor.Around,
 		}
 	}
 
