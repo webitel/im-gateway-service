@@ -8,6 +8,7 @@ import (
 type HistoryMessageCursor struct {
 	ID     string `json:"id"`
 	Before bool
+	Around bool
 }
 
 // SystemMessageAllowList mirrors im-thread-service's SystemMessageAllowList
