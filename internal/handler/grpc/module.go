@@ -39,6 +39,7 @@ var Module = fx.Module("grpc",
 		NewFacebookServiceHandler,
 		NewGateServiceHandler,
 		NewWhatsAppServiceHandler,
+		NewViberBmServiceHandler,
 		NewMetaAppServiceHandler,
 		NewMetaOAuthServiceHandler,
 	),
@@ -46,6 +47,7 @@ var Module = fx.Module("grpc",
 		RegisterFacebookServiceHandler,
 		RegisterGateServiceHandler,
 		RegisterWhatsAppServiceHandler,
+		RegisterViberBmServiceHandler,
 		RegisterMetaAppServiceHandler,
 		RegisterMetaOAuthServiceHandler,
 	),
@@ -99,6 +101,10 @@ func RegisterGateServiceHandler(server *grpcsrv.Server, h *GateServiceHandler) {
 
 func RegisterWhatsAppServiceHandler(server *grpcsrv.Server, h *WhatsAppServiceHandler) {
 	providerv1.RegisterWhatsAppServiceServer(server.Server, h)
+}
+
+func RegisterViberBmServiceHandler(server *grpcsrv.Server, h *ViberBmServiceHandler) {
+	providerv1.RegisterViberBmServiceServer(server.Server, h)
 }
 
 func RegisterMetaAppServiceHandler(server *grpcsrv.Server, h *MetaAppServiceHandler) {
