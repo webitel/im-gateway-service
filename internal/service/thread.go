@@ -230,6 +230,7 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	}
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
 		TargetMemberId: req.GetMemberId(),
+		Reason:         req.Reason,
 	}
 
 	// See AddMember: always record the actor as sender; system_call gates the
