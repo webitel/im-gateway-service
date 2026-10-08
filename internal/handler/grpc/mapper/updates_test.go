@@ -79,3 +79,19 @@ func TestMapToGetUpdatesProto_Failures(t *testing.T) {
 		t.Fatalf("failure = %+v", f)
 	}
 }
+
+// A history message names the members it failed to reach, in the same shape as GetUpdates failures.
+func TestMapToSearchHistoryProto_Failures(t *testing.T) {
+	member := &dto.MessageSender{ContactID: "c1", Name: "Ivan", MemberID: "m1", Role: 1}
+
+	got := mapper.MapToSearchHistoryProto(&dto.SearchMessageHistoryResponse{Messages: []*dto.HistoryMessage{{
+		ID:       "msg",
+		Failures: []*dto.MessageFailure{{MemberID: "c1", Member: member, ErrorCode: "403", ErrorMessage: "bot was blocked by the user"}},
+	}}})
+
+	f := got.GetItems()[0].GetFailures()[0]
+	if f.GetMember().GetId() != "m1" || f.GetMember().GetContact().GetName() != "Ivan" ||
+		f.GetError().GetCode() != "403" || f.GetError().GetMessage() != "bot was blocked by the user" {
+		t.Fatalf("failure = %+v", f)
+	}
+}

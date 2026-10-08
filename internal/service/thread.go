@@ -623,6 +623,10 @@ func (t *thread) collectUniqueContactsFromThread(threads []*threadv1.Thread) []s
 			if senderID != "" {
 				uniqueMap[senderID] = struct{}{}
 			}
+
+			for _, f := range thr.LastMsg.GetFailures() {
+				uniqueMap[f.GetMemberId()] = struct{}{}
+			}
 		}
 
 		if thr.Variables != nil {
@@ -644,6 +648,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		members               = make([]*gtwthread.ThreadMember, 0, len(thr.GetMembers()))
 		findLastMessageSender = thr.LastMsg != nil
 		lastMessageSender     *gtwthread.ThreadMember
+		membersByContact      = make(map[string]*gtwthread.ThreadMember, len(thr.GetMembers()))
 	)
 	for _, toConvert := range thr.GetMembers() {
 		correspondingContact, ok := contactData[toConvert.GetContactId()]
@@ -654,6 +659,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		}
 		member := convertToMember(toConvert, correspondingContact)
 		members = append(members, member)
+		membersByContact[toConvert.GetContactId()] = member
 
 		if findLastMessageSender && toConvert.GetContactId() == thr.LastMsg.GetSenderId() {
 			findLastMessageSender = false
@@ -677,6 +683,11 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		}
 	}
 
+	lastMsg := convertToMessage(thr.GetLastMsg(), lastMessageSender)
+	if lastMsg != nil {
+		lastMsg.Failures = convertDeliveryFailures(thr.GetLastMsg().GetFailures(), membersByContact, contactData)
+	}
+
 	return &gtwthread.Thread{
 		Id:          thr.GetId(),
 		Subject:     thr.GetSubject(),
@@ -684,7 +695,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		CreatedAt:   thr.GetCreatedAt(),
 		UpdatedAt:   thr.GetUpdatedAt(),
 		Description: thr.GetDescription(),
-		LastMsg:     convertToMessage(thr.GetLastMsg(), lastMessageSender),
+		LastMsg:     lastMsg,
 		Members:     members,
 		Variables:   threadVars,
 		UnreadCount: thr.GetUnreadCount(),
@@ -751,6 +762,33 @@ func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMemb
 		System:      imthread.MapSystem(req.GetSystem()),
 		Sender:      sender,
 	}
+}
+
+// convertDeliveryFailures resolves each failed recipient to a thread member; one who has
+// since left the thread keeps just the contact.
+func convertDeliveryFailures(
+	failures []*threadv1.DeliveryFailure,
+	members map[string]*gtwthread.ThreadMember,
+	contactData map[string]*contact.Contact,
+) []*gtwthread.DeliveryFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	out := make([]*gtwthread.DeliveryFailure, 0, len(failures))
+	for _, f := range failures {
+		member, ok := members[f.GetMemberId()]
+		if !ok {
+			member = &gtwthread.ThreadMember{Contact: convertToContact(contactData[f.GetMemberId()])}
+		}
+
+		out = append(out, &gtwthread.DeliveryFailure{
+			Member: member,
+			Error:  &gtwthread.DeliveryError{Code: f.GetError().GetCode(), Message: f.GetError().GetMessage()},
+		})
+	}
+
+	return out
 }
 
 func convertDocuments(reqDocs []*threadv1.Document) []*gtwthread.Document {

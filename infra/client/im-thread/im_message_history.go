@@ -352,7 +352,25 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			DeletedAt:       m.GetDeletedAt(),
 			DeletedBy:       mapThreadMember(m.GetDeletedBy()),
 			RevisionCount:   m.GetRevisionCount(),
+			Failures:        mapDeliveryFailures(m.GetFailures()),
 		}
+	}
+
+	return res
+}
+
+func mapDeliveryFailures(failures []*threadv1.DeliveryFailure) []*dto.MessageFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	res := make([]*dto.MessageFailure, 0, len(failures))
+	for _, f := range failures {
+		res = append(res, &dto.MessageFailure{
+			MemberID:     f.GetMemberId(),
+			ErrorCode:    f.GetError().GetCode(),
+			ErrorMessage: f.GetError().GetMessage(),
+		})
 	}
 
 	return res
