@@ -104,10 +104,6 @@ func (s *updates) enrich(ctx context.Context, domainID int32, threads []*dto.Thr
 			rs.Member = imap[rs.MemberID]
 		}
 
-		for _, f := range t.Failures {
-			f.Member = imap[f.MemberID]
-		}
-
 		if t.RawDialog != nil {
 			t.Dialog = convertToThread(t.RawDialog, byID)
 		}
@@ -144,10 +140,6 @@ func updatesContactIDs(threads []*dto.ThreadUpdates) []string {
 
 		for _, rs := range t.ReadStates {
 			add(rs.MemberID)
-		}
-
-		for _, f := range t.Failures {
-			add(f.MemberID)
 		}
 
 		if t.RawDialog != nil {

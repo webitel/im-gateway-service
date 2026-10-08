@@ -128,7 +128,7 @@ type HistoryMessage struct {
 
 	RevisionCount int32 `json:"revision_count,omitempty"`
 
-	// Failures are the members the message could not be delivered to; MessageID is not set.
+	// Failures are the members the message could not be delivered to.
 	Failures []*MessageFailure `json:"failures,omitempty"`
 }
 
@@ -173,7 +173,6 @@ type ThreadUpdates struct {
 	DeletedMessageIDs []string
 	MemberChanges     []*ThreadMemberChange
 	ReadStates        []*MemberReadState
-	Failures          []*MessageFailure
 	// From are the thread members as im-thread returns them.
 	From []*threadv1.ThreadMember
 }
@@ -251,9 +250,8 @@ func NewMessageSender(sub, iss, senderType, name, username string, isBot bool) *
 	}
 }
 
-// MessageFailure is a message that could not reach a member, with the provider's reason.
+// MessageFailure is a member a message could not reach, with the provider's reason.
 type MessageFailure struct {
-	MessageID    string
 	MemberID     string
 	Member       *MessageSender
 	ErrorCode    string
