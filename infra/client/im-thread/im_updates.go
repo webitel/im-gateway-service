@@ -108,7 +108,6 @@ func toThreadUpdatesDTO(t *threadv1.ThreadUpdates) *dto.ThreadUpdates {
 		DeletedMessageIDs: t.GetDeletedMessageIds(),
 		MemberChanges:     changes,
 		ReadStates:        mapMemberReadStates(t.GetReadStates()),
-		Failures:          mapFailures(t.GetFailures()),
 		From:              t.GetMembers(),
 	}
 
@@ -139,6 +138,7 @@ func historyFromUpdated(u *threadv1.UpdatedMessage) *threadv1.HistoryMessage {
 		Interactive:   u.GetInteractive(),
 		System:        u.GetSystem(),
 		Reactions:     u.GetReactions(),
+		Failures:      u.GetFailures(),
 	}
 }
 
@@ -169,22 +169,4 @@ func mapMemberChangeAction(a threadv1.ThreadMemberChangeAction) api.ThreadMember
 	}
 
 	return api.ThreadMemberChangeAction_THREAD_MEMBER_CHANGE_ACTION_UNSPECIFIED
-}
-
-func mapFailures(failures []*threadv1.MessageFailure) []*dto.MessageFailure {
-	if len(failures) == 0 {
-		return nil
-	}
-
-	res := make([]*dto.MessageFailure, 0, len(failures))
-	for _, f := range failures {
-		res = append(res, &dto.MessageFailure{
-			MessageID:    f.GetMessageId(),
-			MemberID:     f.GetMemberId(),
-			ErrorCode:    f.GetError().GetCode(),
-			ErrorMessage: f.GetError().GetMessage(),
-		})
-	}
-
-	return res
 }
