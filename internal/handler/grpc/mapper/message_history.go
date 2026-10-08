@@ -101,10 +101,28 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			DeletedAt:       m.DeletedAt,
 			DeletedBy:       toProtoMessageSender(m.DeletedBy),
 			RevisionCount:   m.RevisionCount,
+			Failures:        toProtoDeliveryFailures(m.Failures),
 		}
 	}
 
 	return protoMsgs
+}
+
+// toProtoDeliveryFailures maps a history message's failures; the message itself is implied.
+func toProtoDeliveryFailures(failures []*dto.MessageFailure) []*pb.DeliveryFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	out := make([]*pb.DeliveryFailure, 0, len(failures))
+	for _, f := range failures {
+		out = append(out, &pb.DeliveryFailure{
+			Member: toProtoMessageSender(f.Member),
+			Error:  &pb.DeliveryError{Code: f.ErrorCode, Message: f.ErrorMessage},
+		})
+	}
+
+	return out
 }
 
 func MapGetMessageRevisionsRequestToDTO(req *pb.GetMessageRevisionsRequest) *dto.GetMessageRevisionsRequest {

@@ -127,6 +127,9 @@ type HistoryMessage struct {
 	DeletedBy *MessageSender `json:"deleted_by,omitempty"`
 
 	RevisionCount int32 `json:"revision_count,omitempty"`
+
+	// Failures are the members the message could not be delivered to; MessageID is not set.
+	Failures []*MessageFailure `json:"failures,omitempty"`
 }
 
 type MessageRevision struct {
