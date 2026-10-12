@@ -10,6 +10,7 @@ import (
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/model"
@@ -355,6 +356,48 @@ func Test_thread_collectUniqueContactsFromThread(t *testing.T) {
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("collectUniqueContactsFromThread() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+type readCallerIdentity struct {
+	contactID string
+}
+
+func (i readCallerIdentity) GetContactID() string     { return i.contactID }
+func (i readCallerIdentity) GetDomainID() int64       { return 1 }
+func (i readCallerIdentity) GetIssuer() string        { return "" }
+func (i readCallerIdentity) GetName() string          { return "" }
+func (i readCallerIdentity) GetChatName() string      { return "" }
+func (i readCallerIdentity) GetApplicationID() string { return "" }
+func (i readCallerIdentity) GetVia() string           { return "" }
+func (i readCallerIdentity) GetViaPtr() *string       { return nil }
+
+func Test_readCallerID(t *testing.T) {
+	identity := readCallerIdentity{contactID: "contact-1"}
+
+	tests := []struct {
+		name     string
+		authType auth.XWebitelType
+		hasType  bool
+		want     string
+	}{
+		{name: "regular user gets own contact id", want: "contact-1"},
+		{name: "schema system call gets empty caller", authType: auth.XWebitelTypeSchema, hasType: true, want: ""},
+		{name: "engine system call gets empty caller", authType: auth.XWebitelTypeEngine, hasType: true, want: ""},
+		{name: "provider call keeps caller id", authType: auth.XWebitelTypeProvider, hasType: true, want: "contact-1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.hasType {
+				ctx = auth.WithAuthType(ctx, tt.authType)
+			}
+
+			if got := readCallerID(ctx, identity); got != tt.want {
+				t.Errorf("readCallerID() = %q, want %q", got, tt.want)
 			}
 		})
 	}

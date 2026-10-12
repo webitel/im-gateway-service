@@ -278,6 +278,15 @@ func (t *thread) TakeOverFromBot(ctx context.Context, req *gtwthread.TakeOverFro
 	})
 }
 
+// readCallerID returns the contact id im-thread uses for read-access checks;
+// empty for trusted inter-service (schema/engine) calls, which im-thread treats as unrestricted.
+func readCallerID(ctx context.Context, identity auth.Identifier) string {
+	if auth.IsSystemCall(ctx) {
+		return ""
+	}
+	return identity.GetContactID()
+}
+
 func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
 	target, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Subjects: []string{sub},
@@ -465,7 +474,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		Id:       req.GetId(),
 		DomainId: int32(identity.GetDomainID()),
 		Fields:   req.GetFields(),
-		CallerId: identity.GetContactID(),
+		CallerId: readCallerID(ctx, identity),
 	})
 	if err != nil {
 		log.Error("failed to fetch internal thread", slog.Any("error", err))
@@ -528,6 +537,8 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 		Page:      req.GetPage(),
 		Fields:    req.GetFields(),
 		ThreadIds: req.GetThreadIds(),
+		CallerId:  readCallerID(ctx, identity),
+		DomainId:  int32(identity.GetDomainID()),
 	})
 
 	if err != nil {
@@ -562,6 +573,8 @@ func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVaria
 
 	response, err := t.threadClient.LocateVariables(ctx, &threadv1.LocateVariablesRequest{
 		ThreadId: req.GetThreadId(),
+		CallerId: readCallerID(ctx, identity),
+		DomainId: int32(identity.GetDomainID()),
 	})
 
 	if err != nil {
