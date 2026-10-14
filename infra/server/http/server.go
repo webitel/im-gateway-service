@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
@@ -18,21 +19,28 @@ import (
 )
 
 var Module = fx.Module("http_server",
-	fx.Invoke(ProvideServer),
+	fx.Provide(ProvideServer),
+	fx.Invoke(func(*Server) {}),
 )
+
+type Server struct {
+	*http.Server
+
+	listener net.Listener
+}
 
 func ProvideServer(
 	cfg *config.Config,
 	logger *slog.Logger,
 	handler http.Handler,
 	lc fx.Lifecycle,
-) error {
+) (*Server, error) {
 	var tlsCfg *tls.Config
 	if cfg.Service.HTTP.VerifyCerts {
 		var err error
 		tlsCfg, err = apptls.Load(cfg.Service.HTTP.TLS, tls.NoClientCert)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -58,21 +66,31 @@ func ProvideServer(
 		logged.ServeHTTP(w, r)
 	})
 
-	srv := &http.Server{
+	s := &Server{Server: &http.Server{
 		Addr:      cfg.Service.HTTP.Addr,
 		Handler:   finalHandler,
 		TLSConfig: tlsCfg,
-	}
+	}}
+	srv := s.Server
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			var lcfg net.ListenConfig
+
+			l, err := lcfg.Listen(ctx, "tcp", srv.Addr)
+			if err != nil {
+				return fmt.Errorf("listen http %s: %w", srv.Addr, err)
+			}
+
+			s.listener = l
+
 			go func() {
 				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTP.Addr))
 				var err error
 				if tlsCfg != nil {
-					err = srv.ListenAndServeTLS("", "")
+					err = srv.ServeTLS(l, "", "")
 				} else {
-					err = srv.ListenAndServe()
+					err = srv.Serve(l)
 				}
 				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					logger.Error("http server error", "err", err)
@@ -86,7 +104,11 @@ func ProvideServer(
 		},
 	})
 
-	return nil
+	return s, nil
+}
+
+func (s *Server) Listener() net.Listener {
+	return s.listener
 }
 
 func isProbe(path string) bool {

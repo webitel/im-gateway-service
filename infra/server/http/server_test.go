@@ -60,7 +60,7 @@ func TestProvideServer_ProbesSkipRequestLog(t *testing.T) {
 
 			lc := fxtest.NewLifecycle(t)
 
-			if err := ProvideServer(cfg, slog.New(slog.NewTextHandler(&out, nil)), handler, lc); err != nil {
+			if _, err := ProvideServer(cfg, slog.New(slog.NewTextHandler(&out, nil)), handler, lc); err != nil {
 				t.Fatalf("ProvideServer() error = %v", err)
 			}
 
