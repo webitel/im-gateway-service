@@ -35,7 +35,7 @@ func TestUpdatesEnrich(t *testing.T) {
 		From:          []*threadv1.ThreadMember{{Id: "m-alice", ContactId: "alice", Role: threadv1.ThreadRole_ROLE_OWNER}},
 		Messages:      []*dto.HistoryMessage{{ID: "1", SenderID: "alice", ReplyTo: &dto.HistoryReplyTo{SenderID: "bob"}}},
 		MemberChanges: []*dto.ThreadMemberChange{{ContactID: "bob", ByID: "alice"}},
-		ReadStates:    []*dto.MemberReadState{{MemberID: "bob"}},
+		ReadStates:    []*dto.MemberReadState{{MemberID: "bob"}, {MemberID: "alice"}},
 	}
 	fresh := &dto.ThreadUpdates{
 		From:       []*threadv1.ThreadMember{{Id: "m-alice-2", ContactId: "alice", Role: threadv1.ThreadRole_ROLE_MEMBER}},
@@ -61,6 +61,11 @@ func TestUpdatesEnrich(t *testing.T) {
 	if owned.Messages[0].ReplyTo.Sender.Name != "bob" || owned.MemberChanges[0].Member.ContactID != "bob" ||
 		owned.MemberChanges[0].By.ContactID != "alice" || owned.ReadStates[0].Member.ContactID != "bob" {
 		t.Errorf("references not resolved: %+v %+v", owned.MemberChanges[0], owned.ReadStates[0])
+	}
+
+	// A member's read state carries the membership id; a contact with no membership keeps its id.
+	if owned.ReadStates[1].MemberID != "m-alice" || owned.ReadStates[0].MemberID != "bob" {
+		t.Errorf("read state member ids = %q, %q; want m-alice, bob", owned.ReadStates[1].MemberID, owned.ReadStates[0].MemberID)
 	}
 
 	if fresh.TopMessage.Sender.MemberID != "m-alice-2" || fresh.TopMessage.Sender.Role != int(threadv1.ThreadRole_ROLE_MEMBER) {
