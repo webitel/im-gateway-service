@@ -100,8 +100,13 @@ func (s *updates) enrich(ctx context.Context, domainID int32, threads []*dto.Thr
 			mc.By = imap[mc.ByID]
 		}
 
+		// The thread service keys read states by contact; expose the membership id, as
+		// Thread.members[].id and dialog.read_states do.
 		for _, rs := range t.ReadStates {
 			rs.Member = imap[rs.MemberID]
+			if rs.Member != nil && rs.Member.MemberID != "" {
+				rs.MemberID = rs.Member.MemberID
+			}
 		}
 
 		if t.RawDialog != nil {
