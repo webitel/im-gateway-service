@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"mime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -357,6 +358,9 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 				DomainId: identity.GetDomainID(),
 				Name:     sess.name,
 				MimeType: mimeType,
+				// Providers that need a preview (e.g. Viber BM video) read the
+				// storage-generated thumbnail and duration instead of probing.
+				GenerateThumbnail: hasPreview(mimeType),
 			},
 		},
 	}); err != nil {
@@ -402,6 +406,10 @@ type streamReader struct {
 	buf      []byte
 	pos      int
 	cancelFn context.CancelFunc
+}
+
+func hasPreview(mimeType string) bool {
+	return strings.HasPrefix(mimeType, "image/") || strings.HasPrefix(mimeType, "video/")
 }
 
 func (r *streamReader) Read(p []byte) (int, error) {

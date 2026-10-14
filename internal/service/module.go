@@ -65,6 +65,10 @@ var Module = fx.Module(
 			fx.As(new(ThreadTagger)),
 		),
 		fx.Annotate(
+			NewThreadPreviewService,
+			fx.As(new(ThreadPreviewer)),
+		),
+		fx.Annotate(
 			NewContactSettingsService,
 			fx.As(new(ContactSettingsManager)),
 		),

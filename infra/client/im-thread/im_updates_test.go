@@ -49,3 +49,18 @@ func TestToUpdatesResponseDTO(t *testing.T) {
 		t.Errorf("read state = %+v", rs)
 	}
 }
+
+// A failed message keeps its failures through the history mapping updates reuse.
+func TestToUpdatesResponseDTO_MessageFailures(t *testing.T) {
+	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{Threads: []*threadv1.ThreadUpdates{{
+		ThreadId: "t1",
+		Messages: []*threadv1.UpdatedMessage{{Id: "m1", Failures: []*threadv1.DeliveryFailure{
+			{MemberId: "c2", Error: &threadv1.DeliveryError{Code: "403", Message: "blocked"}},
+		}}},
+	}}})
+
+	got := out.Threads[0].Messages[0].Failures
+	if len(got) != 1 || got[0].MemberID != "c2" || got[0].ErrorCode != "403" || got[0].ErrorMessage != "blocked" {
+		t.Fatalf("failures = %+v", got)
+	}
+}

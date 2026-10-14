@@ -21,6 +21,7 @@ var Module = fx.Module(
 		imthread.NewThreadClient,
 		imthread.NewThreadPermissionClient,
 		imthread.NewThreadTagClient,
+		imthread.NewThreadPreviewClient,
 	),
 	fx.Provide(imauth.New, imauth.NewAdmin),
 	fx.Provide(imcontact.NewContactClient),
@@ -114,6 +115,14 @@ var Module = fx.Module(
 	}),
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadTagClient) {
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return client.Close()
+			},
+		})
+	}),
+
+	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadPreviewClient) {
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				return client.Close()

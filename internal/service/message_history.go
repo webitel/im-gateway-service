@@ -137,6 +137,10 @@ func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMe
 		if m.DeletedBy != nil {
 			quotedSenders = append(quotedSenders, m.DeletedBy.ContactID)
 		}
+
+		for _, f := range m.Failures {
+			quotedSenders = append(quotedSenders, f.MemberID)
+		}
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
@@ -190,6 +194,10 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 
 		if m.DeletedBy != nil {
 			quotedSenders = append(quotedSenders, m.DeletedBy.ContactID)
+		}
+
+		for _, f := range m.Failures {
+			quotedSenders = append(quotedSenders, f.MemberID)
 		}
 	}
 
@@ -271,6 +279,10 @@ func historyExtraContactIDs(messages []*dto.HistoryMessage) []string {
 
 		if m.DeletedBy != nil {
 			ids = append(ids, m.DeletedBy.ContactID)
+		}
+
+		for _, f := range m.Failures {
+			ids = append(ids, f.MemberID)
 		}
 	}
 
@@ -360,6 +372,10 @@ func enrichMessages(messages []*dto.HistoryMessage, imap map[string]*dto.Message
 	for _, m := range messages {
 		m.Sender = imap[m.SenderID]
 		enrichContact(m.DeletedBy, imap)
+
+		for _, f := range m.Failures {
+			f.Member = imap[f.MemberID]
+		}
 
 		if m.ReplyTo != nil {
 			m.ReplyTo.Sender = imap[m.ReplyTo.SenderID]

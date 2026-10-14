@@ -138,6 +138,7 @@ func historyFromUpdated(u *threadv1.UpdatedMessage) *threadv1.HistoryMessage {
 		Interactive:   u.GetInteractive(),
 		System:        u.GetSystem(),
 		Reactions:     u.GetReactions(),
+		Failures:      u.GetFailures(),
 	}
 }
 

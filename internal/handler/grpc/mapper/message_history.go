@@ -13,6 +13,7 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 		cursor = &dto.HistoryMessageCursor{
 			ID:     req.Cursor.Id,
 			Before: req.Cursor.Before,
+			Around: req.GetCursor().GetAround(),
 		}
 	}
 
@@ -34,6 +35,7 @@ func MapSearchMessagesRequestToDTO(req *pb.SearchMessagesRequest) *dto.SearchMes
 		cursor = &dto.HistoryMessageCursor{
 			ID:     req.Cursor.Id,
 			Before: req.Cursor.Before,
+			Around: req.GetCursor().GetAround(),
 		}
 	}
 
@@ -99,10 +101,28 @@ func toProtoMessages(messages []*dto.HistoryMessage) []*pb.HistoryMessage {
 			DeletedAt:       m.DeletedAt,
 			DeletedBy:       toProtoMessageSender(m.DeletedBy),
 			RevisionCount:   m.RevisionCount,
+			Failures:        toProtoDeliveryFailures(m.Failures),
 		}
 	}
 
 	return protoMsgs
+}
+
+// toProtoDeliveryFailures maps a history message's failures; the message itself is implied.
+func toProtoDeliveryFailures(failures []*dto.MessageFailure) []*pb.DeliveryFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	out := make([]*pb.DeliveryFailure, 0, len(failures))
+	for _, f := range failures {
+		out = append(out, &pb.DeliveryFailure{
+			Member: toProtoMessageSender(f.Member),
+			Error:  &pb.DeliveryError{Code: f.ErrorCode, Message: f.ErrorMessage},
+		})
+	}
+
+	return out
 }
 
 func MapGetMessageRevisionsRequestToDTO(req *pb.GetMessageRevisionsRequest) *dto.GetMessageRevisionsRequest {
@@ -199,6 +219,7 @@ func toProtoUpdatedMessages(messages []*dto.HistoryMessage) []*pb.UpdatedMessage
 			Interactive:   h.GetInteractive(),
 			System:        h.GetSystem(),
 			Reactions:     h.GetReactions(),
+			Failures:      h.GetFailures(),
 		})
 	}
 
@@ -293,6 +314,7 @@ func MapSearchLeftThreadsMessageHistoryRequestToDTO(req *pb.SearchLeftThreadsMes
 		cursor = &dto.HistoryMessageCursor{
 			ID:     req.Cursor.Id,
 			Before: req.Cursor.Before,
+			Around: req.GetCursor().GetAround(),
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 type HistoryMessageCursor struct {
 	ID     string `json:"id"`
 	Before bool
+	Around bool
 }
 
 // SystemMessageAllowList mirrors im-thread-service's SystemMessageAllowList
@@ -126,6 +127,9 @@ type HistoryMessage struct {
 	DeletedBy *MessageSender `json:"deleted_by,omitempty"`
 
 	RevisionCount int32 `json:"revision_count,omitempty"`
+
+	// Failures are the members the message could not be delivered to.
+	Failures []*MessageFailure `json:"failures,omitempty"`
 }
 
 type MessageRevision struct {
@@ -244,4 +248,12 @@ func NewMessageSender(sub, iss, senderType, name, username string, isBot bool) *
 		IsBot:    isBot,
 		Username: username,
 	}
+}
+
+// MessageFailure is a member a message could not reach, with the provider's reason.
+type MessageFailure struct {
+	MemberID     string
+	Member       *MessageSender
+	ErrorCode    string
+	ErrorMessage string
 }

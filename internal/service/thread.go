@@ -106,7 +106,7 @@ func (t *thread) Create(ctx context.Context, req *gtwthread.ThreadManagementCrea
 		return nil, err
 	}
 
-	//TODO: fetch in other routine when thread creation is in progress
+	// TODO: fetch in other routine when thread creation is in progress
 	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalResponse.GetThread()})
 	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(session.GetDomainID()))
 	if err != nil {
@@ -199,6 +199,20 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 		return nil, err
 	}
 	initiatorContactId := identity.GetContactID()
+
+	if auth.IsSystemCall(ctx) {
+		if req.GetInitiator() == nil {
+			return nil, errors.New("initiator is required for service-initiated transfer")
+		}
+
+		from, err := t.fetchContact(ctx, req.GetInitiator().GetSub(), req.GetInitiator().GetIss(), int32(identity.GetDomainID()))
+		if err != nil {
+			return nil, err
+		}
+
+		initiatorContactId = from.GetId()
+	}
+
 	transferRequest := &threadv1.TransferRequest{
 		ThreadId:           req.GetThreadId(),
 		NewMemberContactId: target.GetId(),
@@ -230,6 +244,7 @@ func (t *thread) RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRe
 	}
 	removeMemberRequest := &threadv1.RemoveMemberRequest{
 		TargetMemberId: req.GetMemberId(),
+		Reason:         req.Reason,
 	}
 
 	// See AddMember: always record the actor as sender; system_call gates the
@@ -277,6 +292,15 @@ func (t *thread) TakeOverFromBot(ctx context.Context, req *gtwthread.TakeOverFro
 	})
 }
 
+// readCallerID returns the contact id im-thread uses for read-access checks;
+// empty for trusted inter-service (schema/engine) calls, which im-thread treats as unrestricted.
+func readCallerID(ctx context.Context, identity auth.Identifier) string {
+	if auth.IsSystemCall(ctx) {
+		return ""
+	}
+	return identity.GetContactID()
+}
+
 func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
 	target, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
 		Subjects: []string{sub},
@@ -298,7 +322,6 @@ func (t *thread) fetchContacts(ctx context.Context, ids []string, domainID int32
 		Ids:      ids,
 		DomainId: domainID,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +395,6 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		Page:         searchQuery.Page,
 		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
 	})
-
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
 
@@ -464,7 +486,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		Id:       req.GetId(),
 		DomainId: int32(identity.GetDomainID()),
 		Fields:   req.GetFields(),
-		CallerId: identity.GetContactID(),
+		CallerId: readCallerID(ctx, identity),
 	})
 	if err != nil {
 		log.Error("failed to fetch internal thread", slog.Any("error", err))
@@ -498,7 +520,6 @@ func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRe
 		ThreadId:  req.ThreadId,
 		Variables: convertToThreadProto(req.GetVariables()),
 	})
-
 	if err != nil {
 		log.Error("internal service set variables", "err", err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
 		return nil, err
@@ -514,7 +535,7 @@ func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRe
 }
 
 func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error) {
-	var log = t.logger.With("operation", "service.thread.search_variables")
+	log := t.logger.With("operation", "service.thread.search_variables")
 
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
@@ -527,8 +548,9 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 		Page:      req.GetPage(),
 		Fields:    req.GetFields(),
 		ThreadIds: req.GetThreadIds(),
+		CallerId:  readCallerID(ctx, identity),
+		DomainId:  int32(identity.GetDomainID()),
 	})
-
 	if err != nil {
 		log.Error("search variables", "err", err)
 		return nil, err
@@ -551,7 +573,7 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 }
 
 func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVariablesRequest) (*gtwthread.ThreadVariables, error) {
-	var log = t.logger.With("operation", "service.thread.locate_variables")
+	log := t.logger.With("operation", "service.thread.locate_variables")
 
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
@@ -561,8 +583,9 @@ func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVaria
 
 	response, err := t.threadClient.LocateVariables(ctx, &threadv1.LocateVariablesRequest{
 		ThreadId: req.GetThreadId(),
+		CallerId: readCallerID(ctx, identity),
+		DomainId: int32(identity.GetDomainID()),
 	})
-
 	if err != nil {
 		log.Error("locate variables", "err", err)
 		return nil, err
@@ -578,7 +601,7 @@ func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVaria
 }
 
 func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariablesRequest) (*gtwthread.ThreadVariables, error) {
-	var log = t.logger.With("operation", "service.thread.flush_variables")
+	log := t.logger.With("operation", "service.thread.flush_variables")
 
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
@@ -591,7 +614,6 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 		ThreadId: req.GetThreadId(),
 		Keys:     req.GetKeys(),
 	})
-
 	if err != nil {
 		log.Error("flush variables", "err", err)
 		return nil, err
@@ -622,6 +644,10 @@ func (t *thread) collectUniqueContactsFromThread(threads []*threadv1.Thread) []s
 			if senderID != "" {
 				uniqueMap[senderID] = struct{}{}
 			}
+
+			for _, f := range thr.LastMsg.GetFailures() {
+				uniqueMap[f.GetMemberId()] = struct{}{}
+			}
 		}
 
 		if thr.Variables != nil {
@@ -643,6 +669,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		members               = make([]*gtwthread.ThreadMember, 0, len(thr.GetMembers()))
 		findLastMessageSender = thr.LastMsg != nil
 		lastMessageSender     *gtwthread.ThreadMember
+		membersByContact      = make(map[string]*gtwthread.ThreadMember, len(thr.GetMembers()))
 	)
 	for _, toConvert := range thr.GetMembers() {
 		correspondingContact, ok := contactData[toConvert.GetContactId()]
@@ -653,6 +680,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		}
 		member := convertToMember(toConvert, correspondingContact)
 		members = append(members, member)
+		membersByContact[toConvert.GetContactId()] = member
 
 		if findLastMessageSender && toConvert.GetContactId() == thr.LastMsg.GetSenderId() {
 			findLastMessageSender = false
@@ -676,6 +704,11 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		}
 	}
 
+	lastMsg := convertToMessage(thr.GetLastMsg(), lastMessageSender)
+	if lastMsg != nil {
+		lastMsg.Failures = convertDeliveryFailures(thr.GetLastMsg().GetFailures(), membersByContact, contactData)
+	}
+
 	return &gtwthread.Thread{
 		Id:          thr.GetId(),
 		Subject:     thr.GetSubject(),
@@ -683,7 +716,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		CreatedAt:   thr.GetCreatedAt(),
 		UpdatedAt:   thr.GetUpdatedAt(),
 		Description: thr.GetDescription(),
-		LastMsg:     convertToMessage(thr.GetLastMsg(), lastMessageSender),
+		LastMsg:     lastMsg,
 		Members:     members,
 		Variables:   threadVars,
 		UnreadCount: thr.GetUnreadCount(),
@@ -727,7 +760,6 @@ func convertToMember(m *threadv1.ThreadMember, contact *contact.Contact) *gtwthr
 		}
 	}
 	return converted
-
 }
 
 func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMember) *gtwthread.HistoryMessage {
@@ -750,6 +782,33 @@ func convertToMessage(req *threadv1.HistoryMessage, sender *gtwthread.ThreadMemb
 		System:      imthread.MapSystem(req.GetSystem()),
 		Sender:      sender,
 	}
+}
+
+// convertDeliveryFailures resolves each failed recipient to a thread member; one who has
+// since left the thread keeps just the contact.
+func convertDeliveryFailures(
+	failures []*threadv1.DeliveryFailure,
+	members map[string]*gtwthread.ThreadMember,
+	contactData map[string]*contact.Contact,
+) []*gtwthread.DeliveryFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	out := make([]*gtwthread.DeliveryFailure, 0, len(failures))
+	for _, f := range failures {
+		member, ok := members[f.GetMemberId()]
+		if !ok {
+			member = &gtwthread.ThreadMember{Contact: convertToContact(contactData[f.GetMemberId()])}
+		}
+
+		out = append(out, &gtwthread.DeliveryFailure{
+			Member: member,
+			Error:  &gtwthread.DeliveryError{Code: f.GetError().GetCode(), Message: f.GetError().GetMessage()},
+		})
+	}
+
+	return out
 }
 
 func convertDocuments(reqDocs []*threadv1.Document) []*gtwthread.Document {
@@ -813,9 +872,9 @@ func convertToContact(c *contact.Contact) *gtwthread.Contact {
 }
 
 func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv1.ThreadVariables, domainID int32) (*gtwthread.ThreadVariables, error) {
-	var log = t.logger.With("operation", "service.thread.convert_to_thread_variables")
+	log := t.logger.With("operation", "service.thread.convert_to_thread_variables")
 
-	var uniqueSettersSet = make(map[string]struct{})
+	uniqueSettersSet := make(map[string]struct{})
 	for _, v := range response.Variables {
 		uniqueSettersSet[v.SetBy] = struct{}{}
 	}
@@ -827,13 +886,12 @@ func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv
 		DomainId: domainID,
 		Ids:      uniqueSettersIDs,
 	})
-
 	if err != nil {
 		log.ErrorContext(ctx, "search variables setters contacts", "err", err)
 		return nil, err
 	}
 
-	var externalSettersMap = make(map[string]*gtwthread.Contact, len(contacts.GetContacts()))
+	externalSettersMap := make(map[string]*gtwthread.Contact, len(contacts.GetContacts()))
 	for _, c := range contacts.GetContacts() {
 		externalSettersMap[c.Id] = &gtwthread.Contact{
 			Iss:   c.GetIssId(),

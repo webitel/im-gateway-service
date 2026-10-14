@@ -64,3 +64,37 @@ func TestMapToSearchHistoryProto_UpdatesCursor(t *testing.T) {
 		t.Errorf("updates_cursor = %q, want 92547098", got.GetUpdatesCursor())
 	}
 }
+
+func TestMapToGetUpdatesProto_Failures(t *testing.T) {
+	member := &dto.MessageSender{ContactID: "c1", Name: "Agent", MemberID: "m1", Role: 1}
+
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{{
+		ThreadID: "t1",
+		Messages: []*dto.HistoryMessage{{
+			ID:       "msg",
+			Failures: []*dto.MessageFailure{{MemberID: "c1", Member: member, ErrorCode: "recipient_blocked", ErrorMessage: "Recipient is unavailable"}},
+		}},
+	}}})
+
+	f := got.GetThreads()[0].GetMessages()[0].GetFailures()[0]
+	if f.GetMember().GetId() != "m1" || f.GetMember().GetContact().GetName() != "Agent" ||
+		f.GetError().GetCode() != "recipient_blocked" || f.GetError().GetMessage() != "Recipient is unavailable" {
+		t.Fatalf("failure = %+v", f)
+	}
+}
+
+// A history message names the members it failed to reach, in the same shape as GetUpdates failures.
+func TestMapToSearchHistoryProto_Failures(t *testing.T) {
+	member := &dto.MessageSender{ContactID: "c1", Name: "Ivan", MemberID: "m1", Role: 1}
+
+	got := mapper.MapToSearchHistoryProto(&dto.SearchMessageHistoryResponse{Messages: []*dto.HistoryMessage{{
+		ID:       "msg",
+		Failures: []*dto.MessageFailure{{MemberID: "c1", Member: member, ErrorCode: "403", ErrorMessage: "bot was blocked by the user"}},
+	}}})
+
+	f := got.GetItems()[0].GetFailures()[0]
+	if f.GetMember().GetId() != "m1" || f.GetMember().GetContact().GetName() != "Ivan" ||
+		f.GetError().GetCode() != "403" || f.GetError().GetMessage() != "bot was blocked by the user" {
+		t.Fatalf("failure = %+v", f)
+	}
+}
