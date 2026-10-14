@@ -76,6 +76,7 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:     searchQuery.Cursor.ID,
 			Before: searchQuery.Cursor.Before,
+			Around: searchQuery.Cursor.Around,
 		}
 	}
 
@@ -140,6 +141,7 @@ func (c *MessageHistoryClient) SearchMessages(ctx context.Context, query *dto.Se
 		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:     query.Cursor.ID,
 			Before: query.Cursor.Before,
+			Around: query.Cursor.Around,
 		}
 	}
 
@@ -199,6 +201,7 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 		cursor = &threadv1.HistoryMessageCursorRequest{
 			Id:     query.Cursor.ID,
 			Before: query.Cursor.Before,
+			Around: query.Cursor.Around,
 		}
 	}
 
@@ -206,6 +209,7 @@ func (c *MessageHistoryClient) SearchLeftThreads(ctx context.Context, query *dto
 		Fields:                 query.Fields,
 		ThreadId:               query.ThreadID,
 		DomainId:               query.DomainID,
+		CallerId:               query.CallerID,
 		SenderIds:              query.SenderIDs,
 		Types:                  query.Types,
 		PeriodFrom:             query.PeriodFrom,
@@ -303,9 +307,10 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 	}
 
 	return &dto.SearchMessageHistoryResponse{
-		Messages:   mapMessages(resp.GetItems()),
-		NextCursor: mapCursor(resp.GetNextCursor()),
-		PrevCursor: mapCursor(resp.GetPrevCursor()),
+		Messages:      mapMessages(resp.GetItems()),
+		NextCursor:    mapCursor(resp.GetNextCursor()),
+		PrevCursor:    mapCursor(resp.GetPrevCursor()),
+		UpdatesCursor: resp.GetUpdatesCursor(),
 	}
 }
 
@@ -342,14 +347,30 @@ func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 			ReactedMetadata: MapInteractiveCallback(m.GetReactedMetadata()),
 			ReplyTo:         MapReplyTo(m.GetReplyTo()),
 			ForwardOrigin:   MapForwardOrigin(m.GetForwardOrigin()),
-			DeliveryStatus:  api.MessageDeliveryStatus(m.GetDeliveryStatus()),
-			Statuses:        MapRecipientStatuses(m.GetStatuses()),
 			Reactions:       MapReactions(m.GetReactions()),
 			Deleted:         m.GetDeleted(),
 			DeletedAt:       m.GetDeletedAt(),
 			DeletedBy:       mapThreadMember(m.GetDeletedBy()),
 			RevisionCount:   m.GetRevisionCount(),
+			Failures:        mapDeliveryFailures(m.GetFailures()),
 		}
+	}
+
+	return res
+}
+
+func mapDeliveryFailures(failures []*threadv1.DeliveryFailure) []*dto.MessageFailure {
+	if len(failures) == 0 {
+		return nil
+	}
+
+	res := make([]*dto.MessageFailure, 0, len(failures))
+	for _, f := range failures {
+		res = append(res, &dto.MessageFailure{
+			MemberID:     f.GetMemberId(),
+			ErrorCode:    f.GetError().GetCode(),
+			ErrorMessage: f.GetError().GetMessage(),
+		})
 	}
 
 	return res
@@ -420,34 +441,6 @@ func MapForwardOrigin(origin *threadv1.ForwardOrigin) *api.ForwardOrigin {
 		OriginalSentAt:  origin.GetOriginalSentAt(),
 		SourceMessageId: origin.GetSourceMessageId(),
 	}
-}
-
-// MapRecipientStatuses maps per-recipient delivery statuses from the thread
-// service response into the gateway API representation. Enum values match
-// numerically, so a direct cast is safe.
-func MapRecipientStatuses(statuses []*threadv1.MessageRecipientStatus) []*api.MessageRecipientStatus {
-	if len(statuses) == 0 {
-		return nil
-	}
-
-	res := make([]*api.MessageRecipientStatus, 0, len(statuses))
-	for _, st := range statuses {
-		if st == nil {
-			continue
-		}
-
-		res = append(res, &api.MessageRecipientStatus{
-			MemberId:    st.GetMemberId(),
-			Status:      api.MessageDeliveryStatus(st.GetStatus()),
-			DeliveredAt: st.GetDeliveredAt(),
-			ReadAt:      st.GetReadAt(),
-			FailedAt:    st.GetFailedAt(),
-			Via:         st.GetVia(),
-			Error:       st.GetError(),
-		})
-	}
-
-	return res
 }
 
 // MapReactions converts the thread-service emoji reaction aggregates to the

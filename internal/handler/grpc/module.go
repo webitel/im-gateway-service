@@ -12,17 +12,21 @@ var Module = fx.Module("grpc",
 	fx.Provide(
 		NewMessageService,
 		NewMessageHistoryService,
+		NewUpdatesService,
 		NewThreadService,
 		NewThreadPermissionServer,
 		NewThreadTagServer,
+		NewThreadPreviewServer,
 		NewContactSettingsServer,
 	),
 	fx.Invoke(
 		RegisterMessageService,
 		RegisterHistoryMessageService,
+		RegisterUpdatesService,
 		RegisterThreadService,
 		RegisterThreadPermissionService,
 		RegisterThreadTagService,
+		RegisterThreadPreviewService,
 		RegisterContactSettingsServer,
 	),
 	fx.Provide(
@@ -43,6 +47,8 @@ var Module = fx.Module("grpc",
 		NewGateServiceHandler,
 		NewWhatsAppServiceHandler,
 		NewViberServiceHandler,
+		NewViberBmServiceHandler,
+		NewCustomServiceHandler,
 		NewMetaAppServiceHandler,
 		NewMetaOAuthServiceHandler,
 	),
@@ -52,6 +58,8 @@ var Module = fx.Module("grpc",
 		RegisterGateServiceHandler,
 		RegisterWhatsAppServiceHandler,
 		RegisterViberServiceHandler,
+		RegisterViberBmServiceHandler,
+		RegisterCustomServiceHandler,
 		RegisterMetaAppServiceHandler,
 		RegisterMetaOAuthServiceHandler,
 	),
@@ -66,6 +74,10 @@ func RegisterMessageService(
 
 func RegisterHistoryMessageService(server *grpcsrv.Server, service *MessageHistoryService) {
 	impb.RegisterMessageHistoryServer(server, service)
+}
+
+func RegisterUpdatesService(server *grpcsrv.Server, service *UpdatesService) {
+	impb.RegisterUpdatesServer(server, service)
 }
 
 func RegisterContactService(server *grpcsrv.Server, service *ContactService) {
@@ -89,6 +101,10 @@ func RegisterThreadPermissionService(server *grpcsrv.Server, service *ThreadPerm
 
 func RegisterThreadTagService(server *grpcsrv.Server, service *ThreadTagServer) {
 	impb.RegisterThreadTagManagementServer(server, service)
+}
+
+func RegisterThreadPreviewService(server *grpcsrv.Server, service *ThreadPreviewServer) {
+	impb.RegisterThreadPreviewServiceServer(server, service)
 }
 
 func RegisterContactSettingsServer(server *grpcsrv.Server, service *ContactSettingsServer) {
@@ -117,6 +133,14 @@ func RegisterWhatsAppServiceHandler(server *grpcsrv.Server, h *WhatsAppServiceHa
 
 func RegisterViberServiceHandler(server *grpcsrv.Server, h *ViberServiceHandler) {
 	providerv1.RegisterViberServiceServer(server.Server, h)
+}
+
+func RegisterViberBmServiceHandler(server *grpcsrv.Server, h *ViberBmServiceHandler) {
+	providerv1.RegisterViberBmServiceServer(server.Server, h)
+}
+
+func RegisterCustomServiceHandler(server *grpcsrv.Server, h *CustomServiceHandler) {
+	providerv1.RegisterCustomServiceServer(server.Server, h)
 }
 
 func RegisterMetaAppServiceHandler(server *grpcsrv.Server, h *MetaAppServiceHandler) {

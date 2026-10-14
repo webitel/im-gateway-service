@@ -132,6 +132,20 @@ func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMem
 	return nil
 }
 
+func (c *ThreadClient) HandBackToBot(ctx context.Context, req *threadv1.HandBackToBotRequest) error {
+	return c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		_, err := tmc.HandBackToBot(ctx, req)
+		return err
+	})
+}
+
+func (c *ThreadClient) TakeOverFromBot(ctx context.Context, req *threadv1.TakeOverFromBotRequest) error {
+	return c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		_, err := tmc.TakeOverFromBot(ctx, req)
+		return err
+	})
+}
+
 func (c *ThreadClient) Transfer(ctx context.Context, req *threadv1.TransferRequest) (*threadv1.TransferResponse, error) {
 	var (
 		err  error

@@ -84,22 +84,7 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 		return nil, err
 	}
 
-	extraContactIDs := make([]string, 0)
-	for _, m := range response.Messages {
-		if m.ReactedMetadata != nil {
-			extraContactIDs = append(extraContactIDs, m.ReactedMetadata.ContactID)
-		}
-
-		if m.ReplyTo != nil {
-			extraContactIDs = append(extraContactIDs, m.ReplyTo.SenderID)
-		}
-
-		if m.DeletedBy != nil {
-			extraContactIDs = append(extraContactIDs, m.DeletedBy.ContactID)
-		}
-	}
-
-	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, extraContactIDs...)
+	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, historyExtraContactIDs(response.Messages)...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
 		return nil, err
@@ -152,6 +137,10 @@ func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMe
 		if m.DeletedBy != nil {
 			quotedSenders = append(quotedSenders, m.DeletedBy.ContactID)
 		}
+
+		for _, f := range m.Failures {
+			quotedSenders = append(quotedSenders, f.MemberID)
+		}
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
@@ -188,6 +177,7 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 	}
 
 	query.DomainID = int32(identity.GetDomainID())
+	query.CallerID = identity.GetContactID()
 	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
 
 	response, fromInternal, err := s.historyClient.SearchLeftThreads(ctx, query)
@@ -204,6 +194,10 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 
 		if m.DeletedBy != nil {
 			quotedSenders = append(quotedSenders, m.DeletedBy.ContactID)
+		}
+
+		for _, f := range m.Failures {
+			quotedSenders = append(quotedSenders, f.MemberID)
 		}
 	}
 
@@ -270,6 +264,31 @@ func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessage
 	return revisions, nil
 }
 
+// historyExtraContactIDs are the non-sender contacts history messages reference.
+func historyExtraContactIDs(messages []*dto.HistoryMessage) []string {
+	ids := make([]string, 0)
+
+	for _, m := range messages {
+		if m.ReactedMetadata != nil {
+			ids = append(ids, m.ReactedMetadata.ContactID)
+		}
+
+		if m.ReplyTo != nil {
+			ids = append(ids, m.ReplyTo.SenderID)
+		}
+
+		if m.DeletedBy != nil {
+			ids = append(ids, m.DeletedBy.ContactID)
+		}
+
+		for _, f := range m.Failures {
+			ids = append(ids, f.MemberID)
+		}
+	}
+
+	return ids
+}
+
 // fetchParticipantMap fetches the participant map for the given domain ID and IDs.
 // It returns a map of IDs to MessageSender objects from the imap.
 // If there are no IDs provided, it returns an empty map and no error.
@@ -296,23 +315,33 @@ func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32
 		return nil, err
 	}
 
-	res := make(map[string]*dto.MessageSender, len(external.GetContacts()))
-	for _, p := range external.GetContacts() {
-		if mem, ok := uniqunesMap[p.GetId()]; ok || slices.Contains(internalContactIDs, p.GetId()) {
-			res[p.Id] = &dto.MessageSender{
-				ContactID: p.GetId(),
-				Sub:       p.GetSubject(),
-				Iss:       p.GetIssId(),
-				Type:      p.GetType(),
-				Name:      cmp.Or(p.GetName(), p.GetUsername()),
-				IsBot:     p.GetIsBot(),
-				MemberID:  mem.GetId(),
-				Role:      int(mem.GetRole()),
-				Username:  p.GetUsername(),
-			}
+	return senderMap(external.GetContacts(), internal), nil
+}
+
+// senderMap resolves contacts into history's sender shape; member id and role come from members.
+func senderMap(contacts []*contact.Contact, members []*threadv1.ThreadMember) map[string]*dto.MessageSender {
+	byContact := make(map[string]*threadv1.ThreadMember, len(members))
+	for _, m := range members {
+		byContact[m.GetContactId()] = m
+	}
+
+	res := make(map[string]*dto.MessageSender, len(contacts))
+	for _, p := range contacts {
+		mem := byContact[p.GetId()]
+		res[p.GetId()] = &dto.MessageSender{
+			ContactID: p.GetId(),
+			Sub:       p.GetSubject(),
+			Iss:       p.GetIssId(),
+			Type:      p.GetType(),
+			Name:      cmp.Or(p.GetName(), p.GetUsername()),
+			IsBot:     p.GetIsBot(),
+			MemberID:  mem.GetId(),
+			Role:      int(mem.GetRole()),
+			Username:  p.GetUsername(),
 		}
 	}
-	return res, nil
+
+	return res
 }
 
 func enrichContact(member *dto.MessageSender, imap map[string]*dto.MessageSender) {
@@ -336,9 +365,17 @@ func enrichContact(member *dto.MessageSender, imap map[string]*dto.MessageSender
 // enrichResponse enriches the search message history response by replacing the receiver and sender IDs
 // with the corresponding message sender objects from the imap.
 func (s *messageHistory) enrichResponse(resp *dto.SearchMessageHistoryResponse, _ []*threadv1.ThreadMember, imap map[string]*dto.MessageSender) {
-	for _, m := range resp.Messages {
+	enrichMessages(resp.Messages, imap)
+}
+
+func enrichMessages(messages []*dto.HistoryMessage, imap map[string]*dto.MessageSender) {
+	for _, m := range messages {
 		m.Sender = imap[m.SenderID]
 		enrichContact(m.DeletedBy, imap)
+
+		for _, f := range m.Failures {
+			f.Member = imap[f.MemberID]
+		}
 
 		if m.ReplyTo != nil {
 			m.ReplyTo.Sender = imap[m.ReplyTo.SenderID]

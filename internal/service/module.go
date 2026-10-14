@@ -43,6 +43,11 @@ var Module = fx.Module(
 		),
 
 		fx.Annotate(
+			NewUpdates,
+			fx.As(new(UpdatesFetcher)),
+		),
+
+		fx.Annotate(
 			NewBotService,
 			fx.As(new(Botter)),
 		),
@@ -58,6 +63,10 @@ var Module = fx.Module(
 		fx.Annotate(
 			NewThreadTagService,
 			fx.As(new(ThreadTagger)),
+		),
+		fx.Annotate(
+			NewThreadPreviewService,
+			fx.As(new(ThreadPreviewer)),
 		),
 		fx.Annotate(
 			NewContactSettingsService,

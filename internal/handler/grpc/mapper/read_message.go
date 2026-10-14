@@ -12,5 +12,6 @@ func MapToReadMessageRequest(pb *impb.ReadMessageRequest) *dto.ReadMessageReques
 	return &dto.ReadMessageRequest{
 		MessageID: pb.GetId(),
 		ThreadID:  pb.GetThreadId(),
+		UpToSeq:   pb.GetUpToSeq(),
 	}
 }

@@ -27,16 +27,13 @@ func NewThreadService(logger *slog.Logger, threadManager service.ThreadManager) 
 func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchRequest) (*impb.SearchThreadResponse, error) {
 	log := s.logger.With(slog.String("op", "ThreadService.Search"))
 
-	resultThreads, next, err := s.threadManager.Search(ctx, req)
+	resp, err := s.threadManager.Search(ctx, req)
 	if err != nil {
 		log.Error("failed to fetch threads from provider", slog.Any("err", err))
 		return nil, err
 	}
 
-	return &impb.SearchThreadResponse{
-		Items: resultThreads,
-		Next:  next,
-	}, nil
+	return resp, nil
 }
 
 func (s *ThreadService) Create(ctx context.Context, req *impb.ThreadManagementCreateRequest) (*impb.ThreadManagementCreateResponse, error) {
@@ -93,6 +90,24 @@ func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMember
 
 	return &impb.RemoveMemberResponse{}, nil
 
+}
+
+func (s *ThreadService) HandBackToBot(ctx context.Context, req *impb.HandBackToBotRequest) (*impb.HandBackToBotResponse, error) {
+	if err := s.threadManager.HandBackToBot(ctx, req); err != nil {
+		s.logger.Error("failed to hand thread back to bot", slog.String("op", "ThreadService.HandBackToBot"), slog.Any("err", err))
+		return nil, err
+	}
+
+	return &impb.HandBackToBotResponse{}, nil
+}
+
+func (s *ThreadService) TakeOverFromBot(ctx context.Context, req *impb.TakeOverFromBotRequest) (*impb.TakeOverFromBotResponse, error) {
+	if err := s.threadManager.TakeOverFromBot(ctx, req); err != nil {
+		s.logger.Error("failed to take thread over from bot", slog.String("op", "ThreadService.TakeOverFromBot"), slog.Any("err", err))
+		return nil, err
+	}
+
+	return &impb.TakeOverFromBotResponse{}, nil
 }
 
 func (s *ThreadService) Transfer(ctx context.Context, req *impb.TransferRequest) (*impb.TransferResponse, error) {

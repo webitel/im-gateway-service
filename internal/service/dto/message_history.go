@@ -1,10 +1,14 @@
 package dto
 
-import api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+import (
+	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
+	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
+)
 
 type HistoryMessageCursor struct {
 	ID     string `json:"id"`
 	Before bool
+	Around bool
 }
 
 // SystemMessageAllowList mirrors im-thread-service's SystemMessageAllowList
@@ -112,11 +116,6 @@ type HistoryMessage struct {
 	// not a member of this chat, so SenderName is the only usable label.
 	ForwardOrigin *api.ForwardOrigin `json:"forward_origin,omitempty"`
 
-	// DeliveryStatus is the aggregate across recipients; UNSPECIFIED for
-	// messages without per-recipient tracking (historical).
-	DeliveryStatus api.MessageDeliveryStatus     `json:"delivery_status,omitempty"`
-	Statuses       []*api.MessageRecipientStatus `json:"statuses,omitempty"`
-
 	// Reactions are the emoji aggregates currently on the message.
 	Reactions []*api.MessageReaction `json:"reactions,omitempty"`
 
@@ -128,6 +127,9 @@ type HistoryMessage struct {
 	DeletedBy *MessageSender `json:"deleted_by,omitempty"`
 
 	RevisionCount int32 `json:"revision_count,omitempty"`
+
+	// Failures are the members the message could not be delivered to.
+	Failures []*MessageFailure `json:"failures,omitempty"`
 }
 
 type MessageRevision struct {
@@ -144,6 +146,55 @@ type GetMessageRevisionsRequest struct {
 	CallerID  string
 }
 
+// GetUpdatesRequest asks for every thread changed for the caller since an opaque cursor.
+type GetUpdatesRequest struct {
+	Cursor                 string
+	DomainID               int32
+	CallerID               string
+	SystemMessageAllowList *SystemMessageAllowList
+}
+
+// GetUpdatesResponse is the diff a client applies on top of its UI.
+type GetUpdatesResponse struct {
+	Cursor  string
+	Resync  bool
+	Threads []*ThreadUpdates
+}
+
+// ThreadUpdates is one changed thread; messages are in their current state, UpdatedAt holds edited_at.
+type ThreadUpdates struct {
+	ThreadID          string
+	Left              bool
+	UnreadCount       int64
+	Dialog            *api.Thread
+	RawDialog         *threadv1.Thread
+	TopMessage        *HistoryMessage
+	Messages          []*HistoryMessage
+	DeletedMessageIDs []string
+	MemberChanges     []*ThreadMemberChange
+	ReadStates        []*MemberReadState
+	// From are the thread members as im-thread returns them.
+	From []*threadv1.ThreadMember
+}
+
+// ThreadMemberChange is a join/leave; Action is a gateway/v1 ThreadMemberChangeAction.
+type ThreadMemberChange struct {
+	ContactID string         `json:"-"`
+	Member    *MessageSender `json:"member,omitempty"`
+	Action    int32          `json:"action"`
+	ByID      string         `json:"-"`
+	By        *MessageSender `json:"by,omitempty"`
+}
+
+// MemberReadState is one member's delivery/read horizon in a thread, as
+// per-thread message seq (0 = nothing reached that state yet).
+type MemberReadState struct {
+	MemberID         string         `json:"member_id"`
+	DeliveredUpToSeq int64          `json:"delivered_up_to_seq"`
+	ReadUpToSeq      int64          `json:"read_up_to_seq"`
+	Member           *MessageSender `json:"member,omitempty"`
+}
+
 type Cursors struct {
 	After  *HistoryMessageCursor `json:"after,omitempty"`
 	Before *HistoryMessageCursor `json:"before,omitempty"`
@@ -158,6 +209,8 @@ type SearchMessageHistoryResponse struct {
 	NextCursor     *HistoryMessageCursor `json:"next_cursor,omitempty"`
 	PrevCursor     *HistoryMessageCursor
 	MessageSenders []*MessageSender `json:"message_senders"`
+	// UpdatesCursor is the GetUpdates cursor read before this page.
+	UpdatesCursor string `json:"updates_cursor,omitempty"`
 }
 
 type SearchLeftThreadsMessageHistoryRequest struct {
@@ -168,6 +221,7 @@ type SearchLeftThreadsMessageHistoryRequest struct {
 	PeriodFrom             int64                 `json:"period_from,omitempty"`
 	PeriodTo               int64                 `json:"period_to,omitempty"`
 	DomainID               int32                 `json:"domain_id"`
+	CallerID               string                `json:"-"`
 	Cursor                 *HistoryMessageCursor `json:"cursor,omitempty"`
 	Size                   uint32                `json:"size"`
 	SystemMessageAllowList *SystemMessageAllowList
@@ -194,4 +248,12 @@ func NewMessageSender(sub, iss, senderType, name, username string, isBot bool) *
 		IsBot:    isBot,
 		Username: username,
 	}
+}
+
+// MessageFailure is a member a message could not reach, with the provider's reason.
+type MessageFailure struct {
+	MemberID     string
+	Member       *MessageSender
+	ErrorCode    string
+	ErrorMessage string
 }
