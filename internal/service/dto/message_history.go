@@ -171,10 +171,19 @@ type ThreadUpdates struct {
 	TopMessage        *HistoryMessage
 	Messages          []*HistoryMessage
 	DeletedMessageIDs []string
+	DeletedMessages   []*DeletedMessage
 	MemberChanges     []*ThreadMemberChange
 	ReadStates        []*MemberReadState
 	// From are the thread members as im-thread returns them.
 	From []*threadv1.ThreadMember
+}
+
+// DeletedMessage is a message deleted since the cursor; DeletedByID is the deleter's contact.
+type DeletedMessage struct {
+	ID          string         `json:"id"`
+	DeletedAt   int64          `json:"deleted_at"`
+	DeletedByID string         `json:"-"`
+	DeletedBy   *MessageSender `json:"deleted_by,omitempty"`
 }
 
 // ThreadMemberChange is a join/leave; Action is a gateway/v1 ThreadMemberChangeAction.

@@ -32,10 +32,11 @@ func TestUpdatesEnrich(t *testing.T) {
 	s := &updates{contacts: contacts}
 
 	owned := &dto.ThreadUpdates{
-		From:          []*threadv1.ThreadMember{{Id: "m-alice", ContactId: "alice", Role: threadv1.ThreadRole_ROLE_OWNER}},
-		Messages:      []*dto.HistoryMessage{{ID: "1", SenderID: "alice", ReplyTo: &dto.HistoryReplyTo{SenderID: "bob"}}},
-		MemberChanges: []*dto.ThreadMemberChange{{ContactID: "bob", ByID: "alice"}},
-		ReadStates:    []*dto.MemberReadState{{MemberID: "bob"}, {MemberID: "alice"}},
+		From:            []*threadv1.ThreadMember{{Id: "m-alice", ContactId: "alice", Role: threadv1.ThreadRole_ROLE_OWNER}},
+		Messages:        []*dto.HistoryMessage{{ID: "1", SenderID: "alice", ReplyTo: &dto.HistoryReplyTo{SenderID: "bob"}}},
+		MemberChanges:   []*dto.ThreadMemberChange{{ContactID: "bob", ByID: "alice"}},
+		ReadStates:      []*dto.MemberReadState{{MemberID: "bob"}, {MemberID: "alice"}},
+		DeletedMessages: []*dto.DeletedMessage{{ID: "gone", DeletedAt: 1800, DeletedByID: "alice"}},
 	}
 	fresh := &dto.ThreadUpdates{
 		From:       []*threadv1.ThreadMember{{Id: "m-alice-2", ContactId: "alice", Role: threadv1.ThreadRole_ROLE_MEMBER}},
@@ -66,6 +67,10 @@ func TestUpdatesEnrich(t *testing.T) {
 	// A member's read state carries the membership id; a contact with no membership keeps its id.
 	if owned.ReadStates[1].MemberID != "m-alice" || owned.ReadStates[0].MemberID != "bob" {
 		t.Errorf("read state member ids = %q, %q; want m-alice, bob", owned.ReadStates[1].MemberID, owned.ReadStates[0].MemberID)
+	}
+
+	if d := owned.DeletedMessages[0].DeletedBy; d == nil || d.Name != "Alice" || d.MemberID != "m-alice" {
+		t.Errorf("deleted by = %+v, want Alice as m-alice", d)
 	}
 
 	if fresh.TopMessage.Sender.MemberID != "m-alice-2" || fresh.TopMessage.Sender.Role != int(threadv1.ThreadRole_ROLE_MEMBER) {

@@ -186,12 +186,30 @@ func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
 		Dialog:            t.Dialog,
 		Messages:          toProtoUpdatedMessages(t.Messages),
 		DeletedMessageIds: t.DeletedMessageIDs,
+		DeletedMessages:   toProtoDeletedMessages(t.DeletedMessages),
 		MemberChanges:     changes,
 		ReadStates:        readStates,
 	}
 
 	if t.TopMessage != nil {
 		out.TopMessage = toProtoUpdatedMessages([]*dto.HistoryMessage{t.TopMessage})[0]
+	}
+
+	return out
+}
+
+func toProtoDeletedMessages(in []*dto.DeletedMessage) []*pb.DeletedMessage {
+	if len(in) == 0 {
+		return nil
+	}
+
+	out := make([]*pb.DeletedMessage, 0, len(in))
+	for _, d := range in {
+		out = append(out, &pb.DeletedMessage{
+			Id:        d.ID,
+			DeletedAt: d.DeletedAt,
+			DeletedBy: toProtoMessageSender(d.DeletedBy),
+		})
 	}
 
 	return out
