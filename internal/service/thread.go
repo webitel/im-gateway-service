@@ -394,6 +394,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		Sort:         searchQuery.Sort,
 		Page:         searchQuery.Page,
 		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
+		Unread:       searchQuery.GetUnread(),
 	})
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
