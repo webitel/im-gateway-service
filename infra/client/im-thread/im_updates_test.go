@@ -64,3 +64,21 @@ func TestToUpdatesResponseDTO_MessageFailures(t *testing.T) {
 		t.Fatalf("failures = %+v", got)
 	}
 }
+
+// A deletion keeps when it happened and the deleter's contact for the gateway to resolve.
+func TestToUpdatesResponseDTO_DeletedMessages(t *testing.T) {
+	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{
+		Threads: []*threadv1.ThreadUpdates{{
+			ThreadId:          "t1",
+			DeletedMessageIds: []string{"m0"},
+			DeletedMessages: []*threadv1.DeletedMessage{{
+				Id: "m0", DeletedAt: 1800, DeletedBy: &threadv1.ThreadMember{Id: "dlg-1", ContactId: "c1"},
+			}},
+		}},
+	})
+
+	got := out.Threads[0].DeletedMessages
+	if len(got) != 1 || got[0].ID != "m0" || got[0].DeletedAt != 1800 || got[0].DeletedByID != "c1" {
+		t.Fatalf("deleted messages = %+v", got)
+	}
+}

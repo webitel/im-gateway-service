@@ -20,6 +20,7 @@ func TestMapToGetUpdatesProto(t *testing.T) {
 			TopMessage:        &dto.HistoryMessage{ID: "top", Sender: sender},
 			Messages:          []*dto.HistoryMessage{{ID: "msg", Seq: 2, Body: "hi", Sender: sender, UpdatedAt: 1700}},
 			DeletedMessageIDs: []string{"gone"},
+			DeletedMessages:   []*dto.DeletedMessage{{ID: "gone", DeletedAt: 1800, DeletedBy: sender}},
 			MemberChanges:     []*dto.ThreadMemberChange{{Member: sender, By: sender, Action: int32(pb.ThreadMemberChangeAction_THREAD_MEMBER_CHANGE_ACTION_JOINED)}},
 			ReadStates:        []*dto.MemberReadState{{MemberID: "c1", ReadUpToSeq: 1, Member: sender}},
 		}},
@@ -44,11 +45,16 @@ func TestMapToGetUpdatesProto(t *testing.T) {
 		"member":      th.GetMemberChanges()[0].GetMember(),
 		"by":          th.GetMemberChanges()[0].GetBy(),
 		"read member": th.GetReadStates()[0].GetMember(),
+		"deleted by":  th.GetDeletedMessages()[0].GetDeletedBy(),
 	} {
 		c := m.GetContact()
 		if m.GetId() != "m1" || m.GetRole() != pb.ThreadRole_ROLE_OWNER || c.GetSub() != "3" || c.GetName() != "Admin" || c.GetUsername() != "adm" {
 			t.Errorf("%s = %+v, want history-shaped ThreadMember", name, m)
 		}
+	}
+
+	if d := th.GetDeletedMessages()[0]; d.GetId() != "gone" || d.GetDeletedAt() != 1800 {
+		t.Errorf("deleted message = %+v", d)
 	}
 
 	if th.GetMemberChanges()[0].GetAction() != pb.ThreadMemberChangeAction_THREAD_MEMBER_CHANGE_ACTION_JOINED {

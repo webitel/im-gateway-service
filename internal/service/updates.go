@@ -100,6 +100,10 @@ func (s *updates) enrich(ctx context.Context, domainID int32, threads []*dto.Thr
 			mc.By = imap[mc.ByID]
 		}
 
+		for _, d := range t.DeletedMessages {
+			d.DeletedBy = imap[d.DeletedByID]
+		}
+
 		// The thread service keys read states by contact; expose the membership id, as
 		// Thread.members[].id and dialog.read_states do.
 		for _, rs := range t.ReadStates {
@@ -141,6 +145,10 @@ func updatesContactIDs(threads []*dto.ThreadUpdates) []string {
 
 		for _, mc := range t.MemberChanges {
 			add(mc.ContactID, mc.ByID)
+		}
+
+		for _, d := range t.DeletedMessages {
+			add(d.DeletedByID)
 		}
 
 		for _, rs := range t.ReadStates {

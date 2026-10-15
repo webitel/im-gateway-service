@@ -106,6 +106,7 @@ func toThreadUpdatesDTO(t *threadv1.ThreadUpdates) *dto.ThreadUpdates {
 		RawDialog:         t.GetDialog(),
 		Messages:          mapMessages(messages),
 		DeletedMessageIDs: t.GetDeletedMessageIds(),
+		DeletedMessages:   mapDeletedMessages(t.GetDeletedMessages()),
 		MemberChanges:     changes,
 		ReadStates:        mapMemberReadStates(t.GetReadStates()),
 		From:              t.GetMembers(),
@@ -169,4 +170,21 @@ func mapMemberChangeAction(a threadv1.ThreadMemberChangeAction) api.ThreadMember
 	}
 
 	return api.ThreadMemberChangeAction_THREAD_MEMBER_CHANGE_ACTION_UNSPECIFIED
+}
+
+func mapDeletedMessages(in []*threadv1.DeletedMessage) []*dto.DeletedMessage {
+	if len(in) == 0 {
+		return nil
+	}
+
+	out := make([]*dto.DeletedMessage, 0, len(in))
+	for _, d := range in {
+		out = append(out, &dto.DeletedMessage{
+			ID:          d.GetId(),
+			DeletedAt:   d.GetDeletedAt(),
+			DeletedByID: d.GetDeletedBy().GetContactId(),
+		})
+	}
+
+	return out
 }

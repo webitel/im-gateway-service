@@ -202,11 +202,14 @@ type ThreadUpdates struct {
 	// Newest message for the list preview, in place of dialog.last_msg; set with dialog.
 	TopMessage *UpdatedMessage `protobuf:"bytes,6,opt,name=top_message,json=topMessage,proto3" json:"top_message,omitempty"`
 	// New or changed messages in their current state; upsert by id.
-	Messages          []*UpdatedMessage     `protobuf:"bytes,7,rep,name=messages,proto3" json:"messages,omitempty"`
+	Messages []*UpdatedMessage `protobuf:"bytes,7,rep,name=messages,proto3" json:"messages,omitempty"`
+	// Ids of deleted_messages, kept for older clients; prefer deleted_messages.
 	DeletedMessageIds []string              `protobuf:"bytes,8,rep,name=deleted_message_ids,json=deletedMessageIds,proto3" json:"deleted_message_ids,omitempty"`
 	MemberChanges     []*ThreadMemberChange `protobuf:"bytes,9,rep,name=member_changes,json=memberChanges,proto3" json:"member_changes,omitempty"`
 	// Delivery/read horizons in message seq.
 	ReadStates []*MemberReadState `protobuf:"bytes,10,rep,name=read_states,json=readStates,proto3" json:"read_states,omitempty"`
+	// Messages deleted since cursor, with when and who deleted them; drop them by id.
+	DeletedMessages []*DeletedMessage `protobuf:"bytes,12,rep,name=deleted_messages,json=deletedMessages,proto3" json:"deleted_messages,omitempty"`
 }
 
 func (x *ThreadUpdates) Reset() {
@@ -304,6 +307,79 @@ func (x *ThreadUpdates) GetReadStates() []*MemberReadState {
 	return nil
 }
 
+func (x *ThreadUpdates) GetDeletedMessages() []*DeletedMessage {
+	if x != nil {
+		return x.DeletedMessages
+	}
+	return nil
+}
+
+// DeletedMessage is a message deleted since cursor.
+type DeletedMessage struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Unix time in milliseconds when the message was deleted.
+	DeletedAt int64 `protobuf:"varint,2,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
+	// Member who deleted the message, in the same shape as a message's sender.
+	DeletedBy *ThreadMember `protobuf:"bytes,3,opt,name=deleted_by,json=deletedBy,proto3" json:"deleted_by,omitempty"`
+}
+
+func (x *DeletedMessage) Reset() {
+	*x = DeletedMessage{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_gateway_v1_updates_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *DeletedMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeletedMessage) ProtoMessage() {}
+
+func (x *DeletedMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_api_gateway_v1_updates_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeletedMessage.ProtoReflect.Descriptor instead.
+func (*DeletedMessage) Descriptor() ([]byte, []int) {
+	return file_api_gateway_v1_updates_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *DeletedMessage) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DeletedMessage) GetDeletedAt() int64 {
+	if x != nil {
+		return x.DeletedAt
+	}
+	return 0
+}
+
+func (x *DeletedMessage) GetDeletedBy() *ThreadMember {
+	if x != nil {
+		return x.DeletedBy
+	}
+	return nil
+}
+
 // UpdatedMessage is what a client needs to render or re-render a message bubble.
 type UpdatedMessage struct {
 	state         protoimpl.MessageState
@@ -336,7 +412,7 @@ type UpdatedMessage struct {
 func (x *UpdatedMessage) Reset() {
 	*x = UpdatedMessage{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_gateway_v1_updates_proto_msgTypes[3]
+		mi := &file_api_gateway_v1_updates_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -349,7 +425,7 @@ func (x *UpdatedMessage) String() string {
 func (*UpdatedMessage) ProtoMessage() {}
 
 func (x *UpdatedMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_gateway_v1_updates_proto_msgTypes[3]
+	mi := &file_api_gateway_v1_updates_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +438,7 @@ func (x *UpdatedMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdatedMessage.ProtoReflect.Descriptor instead.
 func (*UpdatedMessage) Descriptor() ([]byte, []int) {
-	return file_api_gateway_v1_updates_proto_rawDescGZIP(), []int{3}
+	return file_api_gateway_v1_updates_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *UpdatedMessage) GetId() string {
@@ -505,7 +581,7 @@ type ThreadMemberChange struct {
 func (x *ThreadMemberChange) Reset() {
 	*x = ThreadMemberChange{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_gateway_v1_updates_proto_msgTypes[4]
+		mi := &file_api_gateway_v1_updates_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -518,7 +594,7 @@ func (x *ThreadMemberChange) String() string {
 func (*ThreadMemberChange) ProtoMessage() {}
 
 func (x *ThreadMemberChange) ProtoReflect() protoreflect.Message {
-	mi := &file_api_gateway_v1_updates_proto_msgTypes[4]
+	mi := &file_api_gateway_v1_updates_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -531,7 +607,7 @@ func (x *ThreadMemberChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ThreadMemberChange.ProtoReflect.Descriptor instead.
 func (*ThreadMemberChange) Descriptor() ([]byte, []int) {
-	return file_api_gateway_v1_updates_proto_rawDescGZIP(), []int{4}
+	return file_api_gateway_v1_updates_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *ThreadMemberChange) GetMember() *ThreadMember {
@@ -587,7 +663,7 @@ var file_api_gateway_v1_updates_proto_rawDesc = []byte{
 	0x65, 0x62, 0x69, 0x74, 0x65, 0x6c, 0x2e, 0x69, 0x6d, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x67, 0x61,
 	0x74, 0x65, 0x77, 0x61, 0x79, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x68, 0x72, 0x65, 0x61, 0x64, 0x55,
 	0x70, 0x64, 0x61, 0x74, 0x65, 0x73, 0x52, 0x07, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x73, 0x22,
-	0xa2, 0x04, 0x0a, 0x0d, 0x54, 0x68, 0x72, 0x65, 0x61, 0x64, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
+	0xf8, 0x04, 0x0a, 0x0d, 0x54, 0x68, 0x72, 0x65, 0x61, 0x64, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
 	0x73, 0x12, 0x1b, 0x0a, 0x09, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x69, 0x64, 0x18, 0x01,
 	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x49, 0x64, 0x12, 0x12,
 	0x0a, 0x04, 0x6c, 0x65, 0x66, 0x74, 0x18, 0x03, 0x20, 0x01, 0x28, 0x08, 0x52, 0x04, 0x6c, 0x65,
@@ -619,9 +695,23 @@ var file_api_gateway_v1_updates_proto_rawDesc = []byte{
 	0x2e, 0x77, 0x65, 0x62, 0x69, 0x74, 0x65, 0x6c, 0x2e, 0x69, 0x6d, 0x2e, 0x61, 0x70, 0x69, 0x2e,
 	0x67, 0x61, 0x74, 0x65, 0x77, 0x61, 0x79, 0x2e, 0x76, 0x31, 0x2e, 0x4d, 0x65, 0x6d, 0x62, 0x65,
 	0x72, 0x52, 0x65, 0x61, 0x64, 0x53, 0x74, 0x61, 0x74, 0x65, 0x52, 0x0a, 0x72, 0x65, 0x61, 0x64,
-	0x53, 0x74, 0x61, 0x74, 0x65, 0x73, 0x4a, 0x04, 0x08, 0x02, 0x10, 0x03, 0x4a, 0x04, 0x08, 0x0b,
-	0x10, 0x0c, 0x52, 0x06, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72, 0x52, 0x08, 0x66, 0x61, 0x69, 0x6c,
-	0x75, 0x72, 0x65, 0x73, 0x22, 0xc4, 0x07, 0x0a, 0x0e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64,
+	0x53, 0x74, 0x61, 0x74, 0x65, 0x73, 0x12, 0x54, 0x0a, 0x10, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65,
+	0x64, 0x5f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x18, 0x0c, 0x20, 0x03, 0x28, 0x0b,
+	0x32, 0x29, 0x2e, 0x77, 0x65, 0x62, 0x69, 0x74, 0x65, 0x6c, 0x2e, 0x69, 0x6d, 0x2e, 0x61, 0x70,
+	0x69, 0x2e, 0x67, 0x61, 0x74, 0x65, 0x77, 0x61, 0x79, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x52, 0x0f, 0x64, 0x65, 0x6c,
+	0x65, 0x74, 0x65, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x73, 0x4a, 0x04, 0x08, 0x02,
+	0x10, 0x03, 0x4a, 0x04, 0x08, 0x0b, 0x10, 0x0c, 0x52, 0x06, 0x63, 0x75, 0x72, 0x73, 0x6f, 0x72,
+	0x52, 0x08, 0x66, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x73, 0x22, 0x87, 0x01, 0x0a, 0x0e, 0x44,
+	0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x0e, 0x0a,
+	0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x1d, 0x0a,
+	0x0a, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x5f, 0x61, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x09, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x41, 0x74, 0x12, 0x46, 0x0a, 0x0a,
+	0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64, 0x5f, 0x62, 0x79, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b,
+	0x32, 0x27, 0x2e, 0x77, 0x65, 0x62, 0x69, 0x74, 0x65, 0x6c, 0x2e, 0x69, 0x6d, 0x2e, 0x61, 0x70,
+	0x69, 0x2e, 0x67, 0x61, 0x74, 0x65, 0x77, 0x61, 0x79, 0x2e, 0x76, 0x31, 0x2e, 0x54, 0x68, 0x72,
+	0x65, 0x61, 0x64, 0x4d, 0x65, 0x6d, 0x62, 0x65, 0x72, 0x52, 0x09, 0x64, 0x65, 0x6c, 0x65, 0x74,
+	0x65, 0x64, 0x42, 0x79, 0x22, 0xc4, 0x07, 0x0a, 0x0e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x64,
 	0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x73, 0x65, 0x71, 0x18, 0x02,
 	0x20, 0x01, 0x28, 0x03, 0x52, 0x03, 0x73, 0x65, 0x71, 0x12, 0x3f, 0x0a, 0x06, 0x73, 0x65, 0x6e,
@@ -745,58 +835,61 @@ func file_api_gateway_v1_updates_proto_rawDescGZIP() []byte {
 }
 
 var file_api_gateway_v1_updates_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_gateway_v1_updates_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_api_gateway_v1_updates_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_api_gateway_v1_updates_proto_goTypes = []interface{}{
 	(ThreadMemberChangeAction)(0), // 0: webitel.im.api.gateway.v1.ThreadMemberChangeAction
 	(*GetUpdatesRequest)(nil),     // 1: webitel.im.api.gateway.v1.GetUpdatesRequest
 	(*GetUpdatesResponse)(nil),    // 2: webitel.im.api.gateway.v1.GetUpdatesResponse
 	(*ThreadUpdates)(nil),         // 3: webitel.im.api.gateway.v1.ThreadUpdates
-	(*UpdatedMessage)(nil),        // 4: webitel.im.api.gateway.v1.UpdatedMessage
-	(*ThreadMemberChange)(nil),    // 5: webitel.im.api.gateway.v1.ThreadMemberChange
-	(*Thread)(nil),                // 6: webitel.im.api.gateway.v1.Thread
-	(*MemberReadState)(nil),       // 7: webitel.im.api.gateway.v1.MemberReadState
-	(*ThreadMember)(nil),          // 8: webitel.im.api.gateway.v1.ThreadMember
-	(*structpb.Struct)(nil),       // 9: google.protobuf.Struct
-	(*ReplyToMessage)(nil),        // 10: webitel.im.api.gateway.v1.ReplyToMessage
-	(*ForwardOrigin)(nil),         // 11: webitel.im.api.gateway.v1.ForwardOrigin
-	(*Document)(nil),              // 12: webitel.im.api.gateway.v1.Document
-	(*Image)(nil),                 // 13: webitel.im.api.gateway.v1.Image
-	(*MessageLocation)(nil),       // 14: webitel.im.api.gateway.v1.MessageLocation
-	(*MessageContact)(nil),        // 15: webitel.im.api.gateway.v1.MessageContact
-	(*Interactive)(nil),           // 16: webitel.im.api.gateway.v1.Interactive
-	(*System)(nil),                // 17: webitel.im.api.gateway.v1.System
-	(*MessageReaction)(nil),       // 18: webitel.im.api.gateway.v1.MessageReaction
-	(*DeliveryFailure)(nil),       // 19: webitel.im.api.gateway.v1.DeliveryFailure
+	(*DeletedMessage)(nil),        // 4: webitel.im.api.gateway.v1.DeletedMessage
+	(*UpdatedMessage)(nil),        // 5: webitel.im.api.gateway.v1.UpdatedMessage
+	(*ThreadMemberChange)(nil),    // 6: webitel.im.api.gateway.v1.ThreadMemberChange
+	(*Thread)(nil),                // 7: webitel.im.api.gateway.v1.Thread
+	(*MemberReadState)(nil),       // 8: webitel.im.api.gateway.v1.MemberReadState
+	(*ThreadMember)(nil),          // 9: webitel.im.api.gateway.v1.ThreadMember
+	(*structpb.Struct)(nil),       // 10: google.protobuf.Struct
+	(*ReplyToMessage)(nil),        // 11: webitel.im.api.gateway.v1.ReplyToMessage
+	(*ForwardOrigin)(nil),         // 12: webitel.im.api.gateway.v1.ForwardOrigin
+	(*Document)(nil),              // 13: webitel.im.api.gateway.v1.Document
+	(*Image)(nil),                 // 14: webitel.im.api.gateway.v1.Image
+	(*MessageLocation)(nil),       // 15: webitel.im.api.gateway.v1.MessageLocation
+	(*MessageContact)(nil),        // 16: webitel.im.api.gateway.v1.MessageContact
+	(*Interactive)(nil),           // 17: webitel.im.api.gateway.v1.Interactive
+	(*System)(nil),                // 18: webitel.im.api.gateway.v1.System
+	(*MessageReaction)(nil),       // 19: webitel.im.api.gateway.v1.MessageReaction
+	(*DeliveryFailure)(nil),       // 20: webitel.im.api.gateway.v1.DeliveryFailure
 }
 var file_api_gateway_v1_updates_proto_depIdxs = []int32{
 	3,  // 0: webitel.im.api.gateway.v1.GetUpdatesResponse.threads:type_name -> webitel.im.api.gateway.v1.ThreadUpdates
-	6,  // 1: webitel.im.api.gateway.v1.ThreadUpdates.dialog:type_name -> webitel.im.api.gateway.v1.Thread
-	4,  // 2: webitel.im.api.gateway.v1.ThreadUpdates.top_message:type_name -> webitel.im.api.gateway.v1.UpdatedMessage
-	4,  // 3: webitel.im.api.gateway.v1.ThreadUpdates.messages:type_name -> webitel.im.api.gateway.v1.UpdatedMessage
-	5,  // 4: webitel.im.api.gateway.v1.ThreadUpdates.member_changes:type_name -> webitel.im.api.gateway.v1.ThreadMemberChange
-	7,  // 5: webitel.im.api.gateway.v1.ThreadUpdates.read_states:type_name -> webitel.im.api.gateway.v1.MemberReadState
-	8,  // 6: webitel.im.api.gateway.v1.UpdatedMessage.sender:type_name -> webitel.im.api.gateway.v1.ThreadMember
-	9,  // 7: webitel.im.api.gateway.v1.UpdatedMessage.metadata:type_name -> google.protobuf.Struct
-	10, // 8: webitel.im.api.gateway.v1.UpdatedMessage.reply_to:type_name -> webitel.im.api.gateway.v1.ReplyToMessage
-	11, // 9: webitel.im.api.gateway.v1.UpdatedMessage.forward_origin:type_name -> webitel.im.api.gateway.v1.ForwardOrigin
-	12, // 10: webitel.im.api.gateway.v1.UpdatedMessage.documents:type_name -> webitel.im.api.gateway.v1.Document
-	13, // 11: webitel.im.api.gateway.v1.UpdatedMessage.images:type_name -> webitel.im.api.gateway.v1.Image
-	14, // 12: webitel.im.api.gateway.v1.UpdatedMessage.location:type_name -> webitel.im.api.gateway.v1.MessageLocation
-	15, // 13: webitel.im.api.gateway.v1.UpdatedMessage.contact:type_name -> webitel.im.api.gateway.v1.MessageContact
-	16, // 14: webitel.im.api.gateway.v1.UpdatedMessage.interactive:type_name -> webitel.im.api.gateway.v1.Interactive
-	17, // 15: webitel.im.api.gateway.v1.UpdatedMessage.system:type_name -> webitel.im.api.gateway.v1.System
-	18, // 16: webitel.im.api.gateway.v1.UpdatedMessage.reactions:type_name -> webitel.im.api.gateway.v1.MessageReaction
-	19, // 17: webitel.im.api.gateway.v1.UpdatedMessage.failures:type_name -> webitel.im.api.gateway.v1.DeliveryFailure
-	8,  // 18: webitel.im.api.gateway.v1.ThreadMemberChange.member:type_name -> webitel.im.api.gateway.v1.ThreadMember
-	0,  // 19: webitel.im.api.gateway.v1.ThreadMemberChange.action:type_name -> webitel.im.api.gateway.v1.ThreadMemberChangeAction
-	8,  // 20: webitel.im.api.gateway.v1.ThreadMemberChange.by:type_name -> webitel.im.api.gateway.v1.ThreadMember
-	1,  // 21: webitel.im.api.gateway.v1.Updates.GetUpdates:input_type -> webitel.im.api.gateway.v1.GetUpdatesRequest
-	2,  // 22: webitel.im.api.gateway.v1.Updates.GetUpdates:output_type -> webitel.im.api.gateway.v1.GetUpdatesResponse
-	22, // [22:23] is the sub-list for method output_type
-	21, // [21:22] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	7,  // 1: webitel.im.api.gateway.v1.ThreadUpdates.dialog:type_name -> webitel.im.api.gateway.v1.Thread
+	5,  // 2: webitel.im.api.gateway.v1.ThreadUpdates.top_message:type_name -> webitel.im.api.gateway.v1.UpdatedMessage
+	5,  // 3: webitel.im.api.gateway.v1.ThreadUpdates.messages:type_name -> webitel.im.api.gateway.v1.UpdatedMessage
+	6,  // 4: webitel.im.api.gateway.v1.ThreadUpdates.member_changes:type_name -> webitel.im.api.gateway.v1.ThreadMemberChange
+	8,  // 5: webitel.im.api.gateway.v1.ThreadUpdates.read_states:type_name -> webitel.im.api.gateway.v1.MemberReadState
+	4,  // 6: webitel.im.api.gateway.v1.ThreadUpdates.deleted_messages:type_name -> webitel.im.api.gateway.v1.DeletedMessage
+	9,  // 7: webitel.im.api.gateway.v1.DeletedMessage.deleted_by:type_name -> webitel.im.api.gateway.v1.ThreadMember
+	9,  // 8: webitel.im.api.gateway.v1.UpdatedMessage.sender:type_name -> webitel.im.api.gateway.v1.ThreadMember
+	10, // 9: webitel.im.api.gateway.v1.UpdatedMessage.metadata:type_name -> google.protobuf.Struct
+	11, // 10: webitel.im.api.gateway.v1.UpdatedMessage.reply_to:type_name -> webitel.im.api.gateway.v1.ReplyToMessage
+	12, // 11: webitel.im.api.gateway.v1.UpdatedMessage.forward_origin:type_name -> webitel.im.api.gateway.v1.ForwardOrigin
+	13, // 12: webitel.im.api.gateway.v1.UpdatedMessage.documents:type_name -> webitel.im.api.gateway.v1.Document
+	14, // 13: webitel.im.api.gateway.v1.UpdatedMessage.images:type_name -> webitel.im.api.gateway.v1.Image
+	15, // 14: webitel.im.api.gateway.v1.UpdatedMessage.location:type_name -> webitel.im.api.gateway.v1.MessageLocation
+	16, // 15: webitel.im.api.gateway.v1.UpdatedMessage.contact:type_name -> webitel.im.api.gateway.v1.MessageContact
+	17, // 16: webitel.im.api.gateway.v1.UpdatedMessage.interactive:type_name -> webitel.im.api.gateway.v1.Interactive
+	18, // 17: webitel.im.api.gateway.v1.UpdatedMessage.system:type_name -> webitel.im.api.gateway.v1.System
+	19, // 18: webitel.im.api.gateway.v1.UpdatedMessage.reactions:type_name -> webitel.im.api.gateway.v1.MessageReaction
+	20, // 19: webitel.im.api.gateway.v1.UpdatedMessage.failures:type_name -> webitel.im.api.gateway.v1.DeliveryFailure
+	9,  // 20: webitel.im.api.gateway.v1.ThreadMemberChange.member:type_name -> webitel.im.api.gateway.v1.ThreadMember
+	0,  // 21: webitel.im.api.gateway.v1.ThreadMemberChange.action:type_name -> webitel.im.api.gateway.v1.ThreadMemberChangeAction
+	9,  // 22: webitel.im.api.gateway.v1.ThreadMemberChange.by:type_name -> webitel.im.api.gateway.v1.ThreadMember
+	1,  // 23: webitel.im.api.gateway.v1.Updates.GetUpdates:input_type -> webitel.im.api.gateway.v1.GetUpdatesRequest
+	2,  // 24: webitel.im.api.gateway.v1.Updates.GetUpdates:output_type -> webitel.im.api.gateway.v1.GetUpdatesResponse
+	24, // [24:25] is the sub-list for method output_type
+	23, // [23:24] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_api_gateway_v1_updates_proto_init() }
@@ -846,7 +939,7 @@ func file_api_gateway_v1_updates_proto_init() {
 			}
 		}
 		file_api_gateway_v1_updates_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UpdatedMessage); i {
+			switch v := v.(*DeletedMessage); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -858,6 +951,18 @@ func file_api_gateway_v1_updates_proto_init() {
 			}
 		}
 		file_api_gateway_v1_updates_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdatedMessage); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_gateway_v1_updates_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ThreadMemberChange); i {
 			case 0:
 				return &v.state
@@ -876,7 +981,7 @@ func file_api_gateway_v1_updates_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_gateway_v1_updates_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
