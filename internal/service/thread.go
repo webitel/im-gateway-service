@@ -32,6 +32,7 @@ type ThreadManager interface {
 	RemoveMember(ctx context.Context, req *gtwthread.RemoveMemberRequest) error
 	HandBackToBot(ctx context.Context, req *gtwthread.HandBackToBotRequest) error
 	TakeOverFromBot(ctx context.Context, req *gtwthread.TakeOverFromBotRequest) error
+	SetCrmContact(ctx context.Context, req *gtwthread.SetCrmContactRequest) (*gtwthread.SetCrmContactResponse, error)
 	SetVariables(ctx context.Context, req *gtwthread.SetVariablesRequest) (*gtwthread.ThreadVariables, error)
 	SearchVariables(ctx context.Context, req *gtwthread.SearchVariablesRequest) (*gtwthread.SearchVariablesResponse, error)
 	LocateVariables(ctx context.Context, req *gtwthread.LocateVariablesRequest) (*gtwthread.ThreadVariables, error)
@@ -299,6 +300,31 @@ func readCallerID(ctx context.Context, identity auth.Identifier) string {
 		return ""
 	}
 	return identity.GetContactID()
+}
+
+func (t *thread) SetCrmContact(ctx context.Context, req *gtwthread.SetCrmContactRequest) (*gtwthread.SetCrmContactResponse, error) {
+	if req.GetThreadId() == "" {
+		return nil, errors.InvalidArgument("thread id is required", errors.WithID("service.thread.set_crm_contact"))
+	}
+
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := t.threadClient.SetCrmContact(ctx, &threadv1.SetCrmContactRequest{
+		ThreadId:           req.GetThreadId(),
+		CrmContactId:       req.GetCrmContactId(),
+		InitiatorContactId: identity.GetContactID(),
+		DomainId:           int32(identity.GetDomainID()),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &gtwthread.SetCrmContactResponse{
+		CrmContactId: resp.GetCrmContactId(),
+	}, nil
 }
 
 func (t *thread) fetchContact(ctx context.Context, sub, iss string, domainID int32) (*contact.Contact, error) {
@@ -723,7 +749,8 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		UnreadCount: thr.GetUnreadCount(),
 
 		// Per-member read horizons; client derives inbox/outbox watermarks from this.
-		ReadStates: convertThreadMemberReadStates(thr.GetReadStates()),
+		ReadStates:   convertThreadMemberReadStates(thr.GetReadStates()),
+		CrmContactId: thr.GetCrmContactId(),
 	}
 }
 
@@ -863,6 +890,7 @@ func convertToThreadProto(request []*gtwthread.VariableEntryRequest) []*threadv1
 
 func convertToContact(c *contact.Contact) *gtwthread.Contact {
 	return &gtwthread.Contact{
+		Id:       c.GetId(),
 		Iss:      c.GetIssId(),
 		Sub:      c.GetSubject(),
 		Type:     c.GetType(),
