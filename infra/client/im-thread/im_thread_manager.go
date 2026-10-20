@@ -4,12 +4,14 @@ import (
 	"context"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type ThreadClient struct {
@@ -52,7 +54,6 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 		resp, err = tmc.Search(ctx, searchQuery)
 		return err
 	})
-
 	if err != nil {
 		log.Error("failed to fetch thread information from provider", slog.Any("error", err))
 		return nil, err
@@ -110,7 +111,6 @@ func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberReq
 		resp, err = tmc.AddMember(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +119,10 @@ func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberReq
 }
 
 func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error {
-
 	err := c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		_, err := tmc.RemoveMember(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return err
 	}
@@ -146,6 +144,24 @@ func (c *ThreadClient) TakeOverFromBot(ctx context.Context, req *threadv1.TakeOv
 	})
 }
 
+func (c *ThreadClient) SetCrmContact(ctx context.Context, req *threadv1.SetCrmContactRequest) (*threadv1.SetCrmContactResponse, error) {
+	var (
+		err  error
+		resp *threadv1.SetCrmContactResponse
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.SetCrmContact(ctx, req)
+
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (c *ThreadClient) Transfer(ctx context.Context, req *threadv1.TransferRequest) (*threadv1.TransferResponse, error) {
 	var (
 		err  error
@@ -155,7 +171,6 @@ func (c *ThreadClient) Transfer(ctx context.Context, req *threadv1.TransferReque
 		resp, err = tmc.Transfer(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +188,6 @@ func (c *ThreadClient) SetVariables(ctx context.Context, req *threadv1.SetVariab
 		resp, err = tmc.SetVariables(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +205,6 @@ func (c *ThreadClient) SearchVariables(ctx context.Context, req *threadv1.Search
 		resp, err = tmc.SearchVariables(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +222,6 @@ func (c *ThreadClient) LocateVariables(ctx context.Context, req *threadv1.Locate
 		resp, err = tmc.LocateVariables(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +239,6 @@ func (c *ThreadClient) FlushVariables(ctx context.Context, req *threadv1.FlushVa
 		resp, err = tmc.FlushVariables(ctx, req)
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +255,6 @@ func (c *ThreadClient) Create(ctx context.Context, req *threadv1.ThreadManagemen
 		}
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}

@@ -16,31 +16,29 @@ import (
 	"github.com/webitel/im-gateway-service/internal/domain/model"
 )
 
-var (
-	contactData = map[string]*contactv1.Contact{
-		"1": {
-			Id:       "1",
-			Name:     "Contact One",
-			Subject:  "1",
-			IssId:    "1",
-			Username: "one",
-		},
-		"2": {
-			Id:       "2",
-			Name:     "Contact Two",
-			IssId:    "1",
-			Subject:  "2",
-			Username: "two",
-		},
-		"3": {
-			Id:       "3",
-			Name:     "Contact Three",
-			IssId:    "1",
-			Subject:  "3",
-			Username: "three",
-		},
-	}
-)
+var contactData = map[string]*contactv1.Contact{
+	"1": {
+		Id:       "1",
+		Name:     "Contact One",
+		Subject:  "1",
+		IssId:    "1",
+		Username: "one",
+	},
+	"2": {
+		Id:       "2",
+		Name:     "Contact Two",
+		IssId:    "1",
+		Subject:  "2",
+		Username: "two",
+	},
+	"3": {
+		Id:       "3",
+		Name:     "Contact Three",
+		IssId:    "1",
+		Subject:  "3",
+		Username: "three",
+	},
+}
 
 func equalThreadEntities(got, want []*threadv1.Entity) bool {
 	if (got == nil) != (want == nil) {
@@ -116,6 +114,7 @@ func Test_convertToThread(t *testing.T) {
 						Role: gtwthread.ThreadRole_ROLE_OWNER,
 						Contact: &gtwthread.Contact{
 							Name:     "Contact One",
+							Id:       "1",
 							Iss:      "1",
 							Sub:      "1",
 							Username: "one",
@@ -126,12 +125,33 @@ func Test_convertToThread(t *testing.T) {
 						Role: gtwthread.ThreadRole_ROLE_OWNER,
 						Contact: &gtwthread.Contact{
 							Name:     "Contact Two",
+							Id:       "2",
 							Iss:      "1",
 							Sub:      "2",
 							Username: "two",
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "Test convertToThread maps crm_contact_id",
+			thr: &threadv1.Thread{
+				Id:           "thread2",
+				Kind:         threadv1.ThreadKind_DIRECT,
+				Subject:      "thread2",
+				CrmContactId: "crm-123",
+				Description:  "Thread with CRM contact",
+				Members:      []*threadv1.ThreadMember{},
+			},
+			contactData: contactData,
+			want: &gtwthread.Thread{
+				Id:           "thread2",
+				Subject:      "thread2",
+				Type:         gtwthread.ThreadKind_DIRECT,
+				Description:  "Thread with CRM contact",
+				CrmContactId: "crm-123",
+				Members:      []*gtwthread.ThreadMember{},
 			},
 		},
 	}
@@ -400,5 +420,51 @@ func Test_readCallerID(t *testing.T) {
 				t.Errorf("readCallerID() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSetCrmContactValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     *gtwthread.SetCrmContactRequest
+		wantErr bool
+	}{
+		{
+			name:    "missing thread id returns error",
+			req:     &gtwthread.SetCrmContactRequest{ThreadId: ""},
+			wantErr: true,
+		},
+		{
+			name:    "missing identity in context returns error",
+			req:     &gtwthread.SetCrmContactRequest{ThreadId: "thread1"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			th := &thread{
+				logger:       slog.New(slog.NewTextHandler(nil, nil)),
+				threadClient: nil,
+			}
+
+			resp, err := th.SetCrmContact(context.Background(), tt.req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("SetCrmContact() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr && resp != nil {
+				t.Errorf("SetCrmContact() expected nil response on error, got %v", resp)
+			}
+		})
+	}
+}
+
+// Members carry the IM contact id so the client can look the contact up in the CRM.
+func Test_convertToContact_ID(t *testing.T) {
+	got := convertToContact(&contactv1.Contact{Id: "0190a6f6-0000-7000-8000-000000000001", IssId: "facebook", Subject: "psid-1", Name: "Ivan"})
+
+	if got.GetId() != "0190a6f6-0000-7000-8000-000000000001" {
+		t.Errorf("convertToContact().Id = %q, want contact id", got.GetId())
 	}
 }

@@ -89,7 +89,6 @@ func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMember
 	}
 
 	return &impb.RemoveMemberResponse{}, nil
-
 }
 
 func (s *ThreadService) HandBackToBot(ctx context.Context, req *impb.HandBackToBotRequest) (*impb.HandBackToBotResponse, error) {
@@ -108,6 +107,17 @@ func (s *ThreadService) TakeOverFromBot(ctx context.Context, req *impb.TakeOverF
 	}
 
 	return &impb.TakeOverFromBotResponse{}, nil
+}
+
+func (s *ThreadService) SetCrmContact(ctx context.Context, req *impb.SetCrmContactRequest) (*impb.SetCrmContactResponse, error) {
+	resp, err := s.threadManager.SetCrmContact(ctx, req)
+	if err != nil {
+		s.logger.Error("failed to set CRM contact", slog.String("op", "ThreadService.SetCrmContact"), slog.Any("err", err))
+
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (s *ThreadService) Transfer(ctx context.Context, req *impb.TransferRequest) (*impb.TransferResponse, error) {

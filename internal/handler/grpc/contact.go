@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"google.golang.org/protobuf/proto"
+
 	contactservice "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
@@ -49,11 +51,12 @@ func (c *ContactService) Create(ctx context.Context, req *impb.CreateContactRequ
 		UpdatedAt: out.GetUpdatedAt(),
 		Sub:       out.GetSubject(),
 		IsBot:     out.GetIsBot(),
+		Id:        out.GetId(),
 	}, nil
 }
 
 func (c *ContactService) Search(ctx context.Context, request *impb.SearchContactRequest) (*impb.ContactList, error) {
-	mapped, err := mapper.Convert(request, new(contactservice.SearchContactRequest))
+	mapped, err := mapSearchContactRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +67,24 @@ func (c *ContactService) Search(ctx context.Context, request *impb.SearchContact
 	}
 
 	return mapContactsToGatewayResponseProto(out), nil
+}
+
+// mapSearchContactRequest proxies the request by wire format, then sets the fields
+// whose numbers differ between the gateway and contact-service protos.
+func mapSearchContactRequest(request *impb.SearchContactRequest) (*contactservice.SearchContactRequest, error) {
+	wire := proto.CloneOf(request)
+	wire.Ids = nil
+	wire.OnlyBots = nil
+
+	mapped, err := mapper.Convert(wire, new(contactservice.SearchContactRequest))
+	if err != nil {
+		return nil, err
+	}
+
+	mapped.Ids = request.GetIds()
+	mapped.OnlyBots = request.OnlyBots //nolint:protogetter // optional presence must be kept
+
+	return mapped, nil
 }
 
 // WARNING: rewritten from proto proxy
@@ -90,6 +111,7 @@ func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *im
 			Sub:       c.GetSubject(),
 			IsBot:     c.GetIsBot(),
 			Vias:      ConvertInternalViaToOut(c.GetVias()),
+			Id:        c.GetId(),
 		})
 	}
 
@@ -119,6 +141,7 @@ func (c *ContactService) Locate(ctx context.Context, req *impb.LocateConatctRequ
 			Sub:       response.GetItem().GetSubject(),
 			IsBot:     response.GetItem().GetIsBot(),
 			Vias:      ConvertInternalViaToOut(response.GetItem().GetVias()),
+			Id:        response.GetItem().GetId(),
 		},
 	}, nil
 }
