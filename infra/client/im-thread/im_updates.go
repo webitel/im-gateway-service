@@ -109,6 +109,7 @@ func toThreadUpdatesDTO(t *threadv1.ThreadUpdates) *dto.ThreadUpdates {
 		DeletedMessages:   mapDeletedMessages(t.GetDeletedMessages()),
 		MemberChanges:     changes,
 		ReadStates:        mapMemberReadStates(t.GetReadStates()),
+		Tags:              mapThreadTags(t.GetTags()),
 		From:              t.GetMembers(),
 	}
 
@@ -187,4 +188,12 @@ func mapDeletedMessages(in []*threadv1.DeletedMessage) []*dto.DeletedMessage {
 	}
 
 	return out
+}
+
+func mapThreadTags(tags *threadv1.ThreadTags) *dto.ThreadTags {
+	if tags == nil {
+		return nil
+	}
+
+	return &dto.ThreadTags{Items: tags.GetItems()}
 }

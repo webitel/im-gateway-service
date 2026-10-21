@@ -161,6 +161,10 @@ type GetUpdatesResponse struct {
 	Threads []*ThreadUpdates
 }
 
+type ThreadTags struct {
+	Items []string
+}
+
 // ThreadUpdates is one changed thread; messages are in their current state, UpdatedAt holds edited_at.
 type ThreadUpdates struct {
 	ThreadID          string
@@ -174,6 +178,8 @@ type ThreadUpdates struct {
 	DeletedMessages   []*DeletedMessage
 	MemberChanges     []*ThreadMemberChange
 	ReadStates        []*MemberReadState
+	// Tags is nil when the caller's tags did not change since cursor.
+	Tags *ThreadTags
 	// From are the thread members as im-thread returns them.
 	From []*threadv1.ThreadMember
 }

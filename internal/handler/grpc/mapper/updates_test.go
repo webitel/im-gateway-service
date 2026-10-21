@@ -104,3 +104,24 @@ func TestMapToSearchHistoryProto_Failures(t *testing.T) {
 		t.Fatalf("failure = %+v", f)
 	}
 }
+
+// The caller's tags pass through only when they changed; empty items means every tag was removed.
+func TestMapToGetUpdatesProto_Tags(t *testing.T) {
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{
+		{ThreadID: "snoozed", Tags: &dto.ThreadTags{Items: []string{"snoozed"}}},
+		{ThreadID: "cleared", Tags: &dto.ThreadTags{}},
+		{ThreadID: "untouched"},
+	}})
+
+	if tags := got.GetThreads()[0].GetTags(); tags == nil || len(tags.GetItems()) != 1 {
+		t.Errorf("snoozed: tags = %v", tags)
+	}
+
+	if tags := got.GetThreads()[1].GetTags(); tags == nil || len(tags.GetItems()) != 0 {
+		t.Errorf("cleared: tags = %v, want present and empty", tags)
+	}
+
+	if tags := got.GetThreads()[2].GetTags(); tags != nil {
+		t.Errorf("untouched: tags = %v, want absent", tags)
+	}
+}
