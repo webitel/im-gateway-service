@@ -40,6 +40,30 @@ func (t *ThreadTagServer) RemoveTag(ctx context.Context, req *impb.RemoveThreadT
 	return t.tagger.RemoveTag(ctx, req)
 }
 
+// RemoveTagByName implements [api.ThreadTagManagementServer].
+func (t *ThreadTagServer) RemoveTagByName(ctx context.Context, req *impb.RemoveThreadTagByNameRequest) (*impb.RemoveThreadTagResponse, error) {
+	if req == nil {
+		return nil, errors.InvalidArgument("request cannot be nil")
+	}
+	return t.tagger.RemoveTagByName(ctx, req)
+}
+
+// Snooze implements [api.ThreadTagManagementServer].
+func (t *ThreadTagServer) Snooze(ctx context.Context, req *impb.SnoozeThreadRequest) (*impb.ChatTag, error) {
+	if req == nil {
+		return nil, errors.InvalidArgument("request cannot be nil")
+	}
+	return t.tagger.Snooze(ctx, req)
+}
+
+// Unsnooze implements [api.ThreadTagManagementServer].
+func (t *ThreadTagServer) Unsnooze(ctx context.Context, req *impb.UnsnoozeThreadRequest) (*impb.RemoveThreadTagResponse, error) {
+	if req == nil {
+		return nil, errors.InvalidArgument("request cannot be nil")
+	}
+	return t.tagger.Unsnooze(ctx, req)
+}
+
 // Search implements [api.ThreadTagManagementServer].
 func (t *ThreadTagServer) Search(ctx context.Context, req *impb.SearchThreadTagsRequest) (*impb.SearchThreadTagsResponse, error) {
 	if req == nil {

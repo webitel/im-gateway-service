@@ -58,6 +58,39 @@ func (c *ThreadTagClient) RemoveTag(ctx context.Context, in *threadv1.RemoveThre
 	return resp, err
 }
 
+func (c *ThreadTagClient) RemoveTagByName(ctx context.Context, in *threadv1.RemoveThreadTagByNameRequest, opts ...grpc.CallOption) (*threadv1.RemoveThreadTagResponse, error) {
+	var resp *threadv1.RemoveThreadTagResponse
+	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
+		var err error
+		resp, err = api.RemoveTagByName(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *ThreadTagClient) Snooze(ctx context.Context, in *threadv1.SnoozeThreadRequest, opts ...grpc.CallOption) (*threadv1.ChatTag, error) {
+	var resp *threadv1.ChatTag
+	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
+		var err error
+		resp, err = api.Snooze(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *ThreadTagClient) Unsnooze(ctx context.Context, in *threadv1.UnsnoozeThreadRequest, opts ...grpc.CallOption) (*threadv1.RemoveThreadTagResponse, error) {
+	var resp *threadv1.RemoveThreadTagResponse
+	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
+		var err error
+		resp, err = api.Unsnooze(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
 func (c *ThreadTagClient) Search(ctx context.Context, in *threadv1.SearchThreadTagsRequest, opts ...grpc.CallOption) (*threadv1.SearchThreadTagsResponse, error) {
 	var resp *threadv1.SearchThreadTagsResponse
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {

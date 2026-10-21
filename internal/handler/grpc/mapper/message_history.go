@@ -191,6 +191,10 @@ func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
 		ReadStates:        readStates,
 	}
 
+	if t.Tags != nil {
+		out.Tags = &pb.ThreadTags{Items: t.Tags.Items}
+	}
+
 	if t.TopMessage != nil {
 		out.TopMessage = toProtoUpdatedMessages([]*dto.HistoryMessage{t.TopMessage})[0]
 	}

@@ -421,6 +421,8 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		Page:         searchQuery.Page,
 		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
 		Unread:       searchQuery.GetUnread(),
+		Tags:         searchQuery.GetTags(),
+		ExcludeTags:  searchQuery.GetExcludeTags(),
 	})
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
@@ -751,7 +753,26 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		// Per-member read horizons; client derives inbox/outbox watermarks from this.
 		ReadStates:   convertThreadMemberReadStates(thr.GetReadStates()),
 		CrmContactId: thr.GetCrmContactId(),
+		Tags:         convertThreadTags(thr.GetTags()),
 	}
+}
+
+func convertThreadTags(tags []*threadv1.ChatTag) []*gtwthread.ChatTag {
+	if len(tags) == 0 {
+		return nil
+	}
+
+	out := make([]*gtwthread.ChatTag, 0, len(tags))
+	for _, tag := range tags {
+		out = append(out, &gtwthread.ChatTag{
+			Id:        tag.GetId(),
+			ThreadId:  tag.GetThreadId(),
+			Tag:       tag.GetTag(),
+			CreatedAt: tag.GetCreatedAt(),
+		})
+	}
+
+	return out
 }
 
 func convertThreadMemberReadStates(states []*threadv1.MemberReadState) []*gtwthread.MemberReadState {

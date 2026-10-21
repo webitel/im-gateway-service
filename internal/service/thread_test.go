@@ -154,6 +154,26 @@ func Test_convertToThread(t *testing.T) {
 				Members:      []*gtwthread.ThreadMember{},
 			},
 		},
+		{
+			name: "Test convertToThread maps the caller's tags",
+			thr: &threadv1.Thread{
+				Id:      "thread3",
+				Kind:    threadv1.ThreadKind_GROUP,
+				Members: []*threadv1.ThreadMember{},
+				Tags: []*threadv1.ChatTag{
+					{Id: "tag1", ThreadId: "thread3", ContactId: "1", Tag: "snoozed", CreatedAt: 1700},
+				},
+			},
+			contactData: contactData,
+			want: &gtwthread.Thread{
+				Id:      "thread3",
+				Type:    gtwthread.ThreadKind_GROUP,
+				Members: []*gtwthread.ThreadMember{},
+				Tags: []*gtwthread.ChatTag{
+					{Id: "tag1", ThreadId: "thread3", Tag: "snoozed", CreatedAt: 1700},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

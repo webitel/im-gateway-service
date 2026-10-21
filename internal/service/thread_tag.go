@@ -14,6 +14,9 @@ import (
 type ThreadTagger interface {
 	AddTag(ctx context.Context, req *gtwtag.AddThreadTagRequest) (*gtwtag.ChatTag, error)
 	RemoveTag(ctx context.Context, req *gtwtag.RemoveThreadTagRequest) (*gtwtag.RemoveThreadTagResponse, error)
+	RemoveTagByName(ctx context.Context, req *gtwtag.RemoveThreadTagByNameRequest) (*gtwtag.RemoveThreadTagResponse, error)
+	Snooze(ctx context.Context, req *gtwtag.SnoozeThreadRequest) (*gtwtag.ChatTag, error)
+	Unsnooze(ctx context.Context, req *gtwtag.UnsnoozeThreadRequest) (*gtwtag.RemoveThreadTagResponse, error)
 	Search(ctx context.Context, req *gtwtag.SearchThreadTagsRequest) (*gtwtag.SearchThreadTagsResponse, error)
 }
 
@@ -68,6 +71,67 @@ func (s *ThreadTagService) RemoveTag(ctx context.Context, req *gtwtag.RemoveThre
 
 	_, err := s.tagClient.RemoveTag(ctx, internalReq)
 	if err != nil {
+		return nil, err
+	}
+
+	return &gtwtag.RemoveThreadTagResponse{}, nil
+}
+
+func (s *ThreadTagService) RemoveTagByName(ctx context.Context, req *gtwtag.RemoveThreadTagByNameRequest) (*gtwtag.RemoveThreadTagResponse, error) {
+	if req == nil {
+		return nil, errors.InvalidArgument("request cannot be nil")
+	}
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	internalReq := &tagcli.RemoveThreadTagByNameRequest{
+		ContactId: identity.GetContactID(),
+		ThreadId:  req.GetThreadId(),
+		Tag:       req.GetTag(),
+	}
+
+	if _, err := s.tagClient.RemoveTagByName(ctx, internalReq); err != nil {
+		return nil, err
+	}
+
+	return &gtwtag.RemoveThreadTagResponse{}, nil
+}
+
+func (s *ThreadTagService) Snooze(ctx context.Context, req *gtwtag.SnoozeThreadRequest) (*gtwtag.ChatTag, error) {
+	if req == nil {
+		return nil, errors.InvalidArgument("request cannot be nil")
+	}
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := s.tagClient.Snooze(ctx, &tagcli.SnoozeThreadRequest{
+		ContactId: identity.GetContactID(),
+		ThreadId:  req.GetThreadId(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return s.convertToChatTag(resp), nil
+}
+
+func (s *ThreadTagService) Unsnooze(ctx context.Context, req *gtwtag.UnsnoozeThreadRequest) (*gtwtag.RemoveThreadTagResponse, error) {
+	if req == nil {
+		return nil, errors.InvalidArgument("request cannot be nil")
+	}
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	if _, err := s.tagClient.Unsnooze(ctx, &tagcli.UnsnoozeThreadRequest{
+		ContactId: identity.GetContactID(),
+		ThreadId:  req.GetThreadId(),
+	}); err != nil {
 		return nil, err
 	}
 
