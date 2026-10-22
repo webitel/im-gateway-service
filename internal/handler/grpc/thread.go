@@ -36,6 +36,10 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 	return resp, nil
 }
 
+func (s *ThreadService) GetCounters(ctx context.Context, req *impb.GetCountersRequest) (*impb.GetCountersResponse, error) {
+	return s.threadManager.GetCounters(ctx, req)
+}
+
 func (s *ThreadService) Create(ctx context.Context, req *impb.ThreadManagementCreateRequest) (*impb.ThreadManagementCreateResponse, error) {
 	return s.threadManager.Create(ctx, req)
 }
