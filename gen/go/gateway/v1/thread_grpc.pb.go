@@ -22,6 +22,7 @@ const (
 	ThreadManagement_Search_FullMethodName           = "/webitel.im.api.gateway.v1.ThreadManagement/Search"
 	ThreadManagement_SearchLeft_FullMethodName       = "/webitel.im.api.gateway.v1.ThreadManagement/SearchLeft"
 	ThreadManagement_GetUnreadSummary_FullMethodName = "/webitel.im.api.gateway.v1.ThreadManagement/GetUnreadSummary"
+	ThreadManagement_GetCounters_FullMethodName      = "/webitel.im.api.gateway.v1.ThreadManagement/GetCounters"
 	ThreadManagement_Create_FullMethodName           = "/webitel.im.api.gateway.v1.ThreadManagement/Create"
 	ThreadManagement_Get_FullMethodName              = "/webitel.im.api.gateway.v1.ThreadManagement/Get"
 	ThreadManagement_AddMember_FullMethodName        = "/webitel.im.api.gateway.v1.ThreadManagement/AddMember"
@@ -50,6 +51,9 @@ type ThreadManagementClient interface {
 	// Returns the unread summary for the calling participant: the number of
 	// chats with unread messages and the total number of unread messages.
 	GetUnreadSummary(ctx context.Context, in *GetUnreadSummaryRequest, opts ...grpc.CallOption) (*GetUnreadSummaryResponse, error)
+	// Returns the caller's chat counters for the chat panel tabs: every active
+	// chat, the active chats outside Snoozed, and the snoozed chats.
+	GetCounters(ctx context.Context, in *GetCountersRequest, opts ...grpc.CallOption) (*GetCountersResponse, error)
 	Create(ctx context.Context, in *ThreadManagementCreateRequest, opts ...grpc.CallOption) (*ThreadManagementCreateResponse, error)
 	// Returns a single thread by its identifier.
 	Get(ctx context.Context, in *GetThreadRequest, opts ...grpc.CallOption) (*Thread, error)
@@ -114,6 +118,16 @@ func (c *threadManagementClient) GetUnreadSummary(ctx context.Context, in *GetUn
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetUnreadSummaryResponse)
 	err := c.cc.Invoke(ctx, ThreadManagement_GetUnreadSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *threadManagementClient) GetCounters(ctx context.Context, in *GetCountersRequest, opts ...grpc.CallOption) (*GetCountersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCountersResponse)
+	err := c.cc.Invoke(ctx, ThreadManagement_GetCounters_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -254,6 +268,9 @@ type ThreadManagementServer interface {
 	// Returns the unread summary for the calling participant: the number of
 	// chats with unread messages and the total number of unread messages.
 	GetUnreadSummary(context.Context, *GetUnreadSummaryRequest) (*GetUnreadSummaryResponse, error)
+	// Returns the caller's chat counters for the chat panel tabs: every active
+	// chat, the active chats outside Snoozed, and the snoozed chats.
+	GetCounters(context.Context, *GetCountersRequest) (*GetCountersResponse, error)
 	Create(context.Context, *ThreadManagementCreateRequest) (*ThreadManagementCreateResponse, error)
 	// Returns a single thread by its identifier.
 	Get(context.Context, *GetThreadRequest) (*Thread, error)
@@ -302,6 +319,9 @@ func (UnimplementedThreadManagementServer) SearchLeft(context.Context, *SearchLe
 }
 func (UnimplementedThreadManagementServer) GetUnreadSummary(context.Context, *GetUnreadSummaryRequest) (*GetUnreadSummaryResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUnreadSummary not implemented")
+}
+func (UnimplementedThreadManagementServer) GetCounters(context.Context, *GetCountersRequest) (*GetCountersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCounters not implemented")
 }
 func (UnimplementedThreadManagementServer) Create(context.Context, *ThreadManagementCreateRequest) (*ThreadManagementCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
@@ -410,6 +430,24 @@ func _ThreadManagement_GetUnreadSummary_Handler(srv interface{}, ctx context.Con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ThreadManagementServer).GetUnreadSummary(ctx, req.(*GetUnreadSummaryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ThreadManagement_GetCounters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCountersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ThreadManagementServer).GetCounters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ThreadManagement_GetCounters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ThreadManagementServer).GetCounters(ctx, req.(*GetCountersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -648,6 +686,10 @@ var ThreadManagement_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUnreadSummary",
 			Handler:    _ThreadManagement_GetUnreadSummary_Handler,
+		},
+		{
+			MethodName: "GetCounters",
+			Handler:    _ThreadManagement_GetCounters_Handler,
 		},
 		{
 			MethodName: "Create",

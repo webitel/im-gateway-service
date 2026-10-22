@@ -26,6 +26,7 @@ const (
 type ThreadManager interface {
 	Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) (*gtwthread.SearchThreadResponse, error)
 	SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error)
+	GetCounters(ctx context.Context, req *gtwthread.GetCountersRequest) (*gtwthread.GetCountersResponse, error)
 	Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtwthread.Thread, error)
 	AddMember(ctx context.Context, req *gtwthread.AddMemberRequest) (*gtwthread.AddMemberResponse, error)
 	Transfer(ctx context.Context, req *gtwthread.TransferRequest) (*gtwthread.TransferResponse, error)
@@ -396,6 +397,32 @@ func participantsToInternal(participants []*gtwthread.PeerIdentity) []*threadv1.
 		})
 	}
 	return internal
+}
+
+func (t *thread) GetCounters(ctx context.Context, req *gtwthread.GetCountersRequest) (*gtwthread.GetCountersResponse, error) {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
+		return nil, auth.IdentityNotFoundErr
+	}
+
+	resp, err := t.threadClient.GetCounters(ctx, &threadv1.GetCountersRequest{
+		SelfId:   identity.GetContactID(),
+		DomainId: int32(identity.GetDomainID()),
+		Kinds:    gtwThreadKindToInternal(req.GetTypes()),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &gtwthread.GetCountersResponse{
+		All:     convertThreadCounters(resp.GetAll()),
+		Active:  convertThreadCounters(resp.GetActive()),
+		Snoozed: convertThreadCounters(resp.GetSnoozed()),
+	}, nil
+}
+
+func convertThreadCounters(c *threadv1.ThreadCounters) *gtwthread.ThreadCounters {
+	return &gtwthread.ThreadCounters{Total: c.GetTotal(), UnreadChats: c.GetUnreadChats()}
 }
 
 func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearchRequest) (*gtwthread.SearchThreadResponse, error) {

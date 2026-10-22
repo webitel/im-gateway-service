@@ -62,6 +62,24 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 	return resp, nil
 }
 
+func (c *ThreadClient) GetCounters(ctx context.Context, req *threadv1.GetCountersRequest) (*threadv1.GetCountersResponse, error) {
+	var (
+		err  error
+		resp *threadv1.GetCountersResponse
+	)
+
+	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
+		resp, err = tmc.GetCounters(ctx, req)
+		return err
+	})
+	if err != nil {
+		c.logger.Error("failed to fetch thread counters", slog.Any("error", err), slog.Int("domain_id", int(req.GetDomainId())))
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftRequest) (*threadv1.SearchLeftResponse, error) {
 	log := c.logger.With(
 		slog.Any("domain_id", req.DomainId),
