@@ -57,9 +57,9 @@ func (f *fakeRecipientVias) Create(_ context.Context, req *impb.CreateViaRequest
 func ptr[T any](v T) *T { return &v }
 
 func TestResolveContact(t *testing.T) {
-	const gate = "01a158cf-a2e4-7640-bc76-d6077c51d246"
+	const gate = "00000000-0000-0000-0000-000000000001"
 
-	viberContact := &impb.Contact{Id: "existing", IssId: "viber_bm", Subject: "380937415826", Name: "Volodia"}
+	viberContact := &impb.Contact{Id: "existing", IssId: "viber_bm", Subject: "380000000001", Name: "Volodia"}
 	fbContact := &impb.Contact{Id: "fb", IssId: "facebook", Subject: "+123"}
 
 	tests := []struct {
@@ -74,15 +74,15 @@ func TestResolveContact(t *testing.T) {
 		wantCreates int
 		wantVias    int
 	}{
-		{name: "viber_bm existing, plus prefix normalized", stored: []*impb.Contact{viberContact}, sub: "+380937415826", iss: "viber_bm", via: ptr(gate), wantID: "existing"},
-		{name: "viber_bm existing, spaces normalized", stored: []*impb.Contact{viberContact}, sub: " +380 93 741 5826 ", iss: "viber_bm", via: ptr(gate), wantID: "existing"},
-		{name: "viber_bm unknown is created and linked", sub: "+380937415826", iss: "viber_bm", via: ptr(gate), wantID: "new", wantCreates: 1, wantVias: 1},
-		{name: "viber_bm create race falls back to search", stored: []*impb.Contact{viberContact}, createErr: status.Error(codes.AlreadyExists, "exists"), sub: "380937415826", iss: "viber_bm", via: ptr(gate), wantID: "existing"},
-		{name: "viber_bm via failure does not fail send", viaErr: errors.New("boom"), sub: "380937415826", iss: "viber_bm", via: ptr(gate), wantID: "new", wantCreates: 1, wantVias: 1},
-		{name: "viber_bm create failure", createErr: status.Error(codes.Internal, "boom"), sub: "380937415826", iss: "viber_bm", via: ptr(gate), wantErr: true, wantCreates: 1},
-		{name: "viber_bm without via is not created", sub: "380937415826", iss: "viber_bm", wantErr: true},
-		{name: "viber_bm with empty via is not created", sub: "380937415826", iss: "viber_bm", via: ptr(""), wantErr: true},
-		{name: "other issuer unknown stays not found", sub: "+380937415826", iss: "facebook", via: ptr(gate), wantErr: true},
+		{name: "viber_bm existing, plus prefix normalized", stored: []*impb.Contact{viberContact}, sub: "+380000000001", iss: "viber_bm", via: ptr(gate), wantID: "existing"},
+		{name: "viber_bm existing, spaces normalized", stored: []*impb.Contact{viberContact}, sub: " +380 00 000 0001 ", iss: "viber_bm", via: ptr(gate), wantID: "existing"},
+		{name: "viber_bm unknown is created and linked", sub: "+380000000001", iss: "viber_bm", via: ptr(gate), wantID: "new", wantCreates: 1, wantVias: 1},
+		{name: "viber_bm create race falls back to search", stored: []*impb.Contact{viberContact}, createErr: status.Error(codes.AlreadyExists, "exists"), sub: "380000000001", iss: "viber_bm", via: ptr(gate), wantID: "existing"},
+		{name: "viber_bm via failure does not fail send", viaErr: errors.New("boom"), sub: "380000000001", iss: "viber_bm", via: ptr(gate), wantID: "new", wantCreates: 1, wantVias: 1},
+		{name: "viber_bm create failure", createErr: status.Error(codes.Internal, "boom"), sub: "380000000001", iss: "viber_bm", via: ptr(gate), wantErr: true, wantCreates: 1},
+		{name: "viber_bm without via is not created", sub: "380000000001", iss: "viber_bm", wantErr: true},
+		{name: "viber_bm with empty via is not created", sub: "380000000001", iss: "viber_bm", via: ptr(""), wantErr: true},
+		{name: "other issuer unknown stays not found", sub: "+380000000001", iss: "facebook", via: ptr(gate), wantErr: true},
 		{name: "other issuer sub is not normalized", stored: []*impb.Contact{fbContact}, sub: "+123", iss: "facebook", via: ptr(gate), wantID: "fb"},
 	}
 
@@ -110,7 +110,7 @@ func TestResolveContact(t *testing.T) {
 			}
 
 			for _, c := range contacts.creates {
-				if c.GetSubject() != "380937415826" || c.GetUsername() != c.GetSubject() || c.GetType() != "viber_bm" || c.GetDomainId() != 1 {
+				if c.GetSubject() != "380000000001" || c.GetUsername() != c.GetSubject() || c.GetType() != "viber_bm" || c.GetDomainId() != 1 {
 					t.Errorf("unexpected create request: %v", c)
 				}
 			}
