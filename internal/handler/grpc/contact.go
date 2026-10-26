@@ -52,6 +52,7 @@ func (c *ContactService) Create(ctx context.Context, req *impb.CreateContactRequ
 		Sub:       out.GetSubject(),
 		IsBot:     out.GetIsBot(),
 		Id:        out.GetId(),
+		Phone:     out.GetPhone(),
 	}, nil
 }
 
@@ -112,6 +113,7 @@ func mapContactsToGatewayResponseProto(internal *contactservice.ContactList) *im
 			IsBot:     c.GetIsBot(),
 			Vias:      ConvertInternalViaToOut(c.GetVias()),
 			Id:        c.GetId(),
+			Phone:     c.GetPhone(),
 		})
 	}
 
@@ -142,6 +144,7 @@ func (c *ContactService) Locate(ctx context.Context, req *impb.LocateConatctRequ
 			IsBot:     response.GetItem().GetIsBot(),
 			Vias:      ConvertInternalViaToOut(response.GetItem().GetVias()),
 			Id:        response.GetItem().GetId(),
+			Phone:     response.GetItem().GetPhone(),
 		},
 	}, nil
 }

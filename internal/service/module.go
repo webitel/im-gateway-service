@@ -7,6 +7,7 @@ import (
 
 	"github.com/webitel/im-gateway-service/config"
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
+	improviders "github.com/webitel/im-gateway-service/infra/client/im-providers"
 	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
 )
 
@@ -81,6 +82,14 @@ var Module = fx.Module(
 		fx.Annotate(
 			func(c *imauth.AdminClient) AdminAppSearcher { return c },
 			fx.As(new(AdminAppSearcher)),
+		),
+		fx.Annotate(
+			NewThreadChannelService,
+			fx.As(new(ThreadChannelResolver)),
+		),
+		fx.Annotate(
+			func(c *improviders.GateClient) GateGetter { return c },
+			fx.As(new(GateGetter)),
 		),
 	),
 )

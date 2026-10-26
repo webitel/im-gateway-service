@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	providerv1 "github.com/webitel/im-gateway-service/gen/go/provider/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type GateClient struct {
@@ -37,6 +39,20 @@ func (c *GateClient) ListGates(ctx context.Context, in *providerv1.ProviderListG
 	err := c.rpc.Execute(ctx, func(api providerv1.GateServiceClient) error {
 		var err error
 		resp, err = api.ListGates(ctx, in, opts...)
+		return err
+	})
+
+	return resp, err
+}
+
+func (c *GateClient) GetGate(ctx context.Context, in *providerv1.GetGateRequest, opts ...grpc.CallOption) (*providerv1.GetGateResponse, error) {
+	var resp *providerv1.GetGateResponse
+
+	err := c.rpc.Execute(ctx, func(api providerv1.GateServiceClient) error {
+		var err error
+
+		resp, err = api.GetGate(ctx, in, opts...)
+
 		return err
 	})
 
