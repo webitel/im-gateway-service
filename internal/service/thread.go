@@ -450,7 +450,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
-		Fields:       searchQuery.Fields,
+		Fields:       toInternalThreadFields(searchQuery.Fields),
 		Ids:          searchQuery.Ids,
 		DomainIds:    []int32{int32(identity.GetDomainID())},
 		Q:            searchQuery.Q,
@@ -458,7 +458,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		MemberIds:    searchQuery.ContactIds,
 		Participants: participantsToInternal(searchQuery.GetParticipants()),
 		Size:         searchQuery.Size,
-		Sort:         searchQuery.Sort,
+		Sort:         toInternalThreadSort(searchQuery.Sort),
 		Page:         searchQuery.Page,
 		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
 		Unread:       searchQuery.GetUnread(),
@@ -510,12 +510,12 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 	}
 
 	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{
-		Fields:   request.Fields,
+		Fields:   toInternalThreadFields(request.Fields),
 		MemberId: identity.GetContactID(),
 		DomainId: int32(identity.GetDomainID()),
 		Kinds:    gtwThreadKindToInternal(request.Types),
 		Size:     request.Size,
-		Sort:     request.Sort,
+		Sort:     toInternalThreadSort(request.Sort),
 		Page:     request.Page,
 	})
 	if err != nil {
@@ -554,7 +554,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 	internalThread, err := t.threadClient.Get(ctx, &threadv1.GetThreadRequest{
 		Id:       req.GetId(),
 		DomainId: int32(identity.GetDomainID()),
-		Fields:   req.GetFields(),
+		Fields:   toInternalThreadFields(req.GetFields()),
 		CallerId: readCallerID(ctx, identity),
 	})
 	if err != nil {
@@ -794,7 +794,6 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		ReadStates:   convertThreadMemberReadStates(thr.GetReadStates()),
 		CrmContactId: thr.GetCrmContactId(),
 		Tags:         convertThreadTags(thr.GetTags()),
-		Source:       convertThreadSource(thr.GetSource()),
 		Queue:        convertThreadQueue(thr.GetQueue()),
 	}
 }
@@ -821,13 +820,38 @@ func queueFromContext(ctx context.Context, logger *slog.Logger) *threadv1.Thread
 	return &threadv1.ThreadQueue{Id: id, Name: auth.BinaryHeader(md, auth.QueueNameIdentificationHeader)}
 }
 
-// convertThreadSource maps the gate the thread arrived through; nil stays nil.
-func convertThreadSource(s *threadv1.ThreadSource) *gtwthread.ThreadSource {
-	if s == nil {
-		return nil
+// The gateway exposes the thread's gate as "channel"; im-thread calls it "source".
+const (
+	channelField         = "channel"
+	channelNameSortKey   = "channel_name"
+	internalSourceField  = "source"
+	internalSourceSortBy = "source_name"
+)
+
+// toInternalThreadFields renames the gateway "channel" field to im-thread's "source",
+// which carries the gate the channel is resolved from.
+func toInternalThreadFields(fields []string) []string {
+	if !slices.Contains(fields, channelField) {
+		return fields
 	}
 
-	return &gtwthread.ThreadSource{Id: s.GetId(), Name: s.GetName(), Type: s.GetType()}
+	out := slices.Clone(fields)
+	for i, f := range out {
+		if f == channelField {
+			out[i] = internalSourceField
+		}
+	}
+
+	return out
+}
+
+// toInternalThreadSort maps the gateway "±channel_name" sort key to im-thread's "±source_name".
+func toInternalThreadSort(sort string) string {
+	if len(sort) > 1 && sort[1:] == channelNameSortKey {
+		return sort[:1] + internalSourceSortBy
+	}
+
+	return sort
 }
 
 // convertThreadQueue maps the queue through which the caller received the thread; nil stays nil.

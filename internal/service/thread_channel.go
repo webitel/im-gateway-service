@@ -69,9 +69,11 @@ func (s *ThreadChannelService) Resolve(ctx context.Context, domainID int64, thr 
 
 	switch {
 	case src.gateID != "":
-		return s.cache.get(ctx, "gate:"+cacheKey(domainID, src.gateID), func(ctx context.Context) (*gtwthread.ThreadChannel, error) {
+		ch := s.cache.get(ctx, "gate:"+cacheKey(domainID, src.gateID), func(ctx context.Context) (*gtwthread.ThreadChannel, error) {
 			return s.gateChannel(ctx, domainID, src.gateID)
 		})
+
+		return withSourceName(ch, thr.GetSource())
 	case src.appID != "":
 		return s.cache.get(ctx, "app:"+cacheKey(domainID, src.appID), func(ctx context.Context) (*gtwthread.ThreadChannel, error) {
 			return s.appChannel(ctx, domainID, src.appID)
@@ -126,6 +128,18 @@ func (s *ThreadChannelService) appChannel(ctx context.Context, domainID int64, a
 	return nil, status.Error(codes.NotFound, "application not found")
 }
 
+// withSourceName shows the gate name im-thread stores for the thread, so the
+// displayed channel name is the one Search sorts by ("channel_name"). The live
+// gate name is kept only while im-thread has none yet. ch is the caller's own
+// copy (see channelCache.get), so it is safe to modify.
+func withSourceName(ch *gtwthread.ThreadChannel, src *threadv1.ThreadSource) *gtwthread.ThreadChannel {
+	if ch != nil && src.GetName() != "" && src.GetId() == ch.GetId() {
+		ch.Name = src.GetName()
+	}
+
+	return ch
+}
+
 // channelSource identifies where a thread came from: the gate an external
 // member reaches it through, or the application a portal client signed in via.
 type channelSource struct {
@@ -133,11 +147,16 @@ type channelSource struct {
 	appID  string
 }
 
-// channelSourceOf picks the thread's channel source. A human member behind a
-// gate wins; a bot-only gate is the fallback; otherwise the application of the
-// first non-operator human member is used. Operators (webitel issuer) carry
-// the operator app and never define the channel.
+// channelSourceOf picks the thread's channel source. The gate im-thread
+// reports as the thread source wins, so the channel matches what Search sorts
+// by. Otherwise a human member behind a gate; a bot-only gate is the fallback;
+// otherwise the application of the first non-operator human member is used.
+// Operators (webitel issuer) carry the operator app and never define the channel.
 func channelSourceOf(thr *threadv1.Thread, contacts map[string]*contact.Contact) channelSource {
+	if gateID := thr.GetSource().GetId(); gateID != "" {
+		return channelSource{gateID: gateID}
+	}
+
 	var botGate string
 
 	for _, m := range thr.GetMembers() {

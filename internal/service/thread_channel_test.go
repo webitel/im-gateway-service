@@ -102,6 +102,46 @@ func TestChannelSourceOf(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("im-thread source wins over members", func(t *testing.T) {
+		thr := &threadv1.Thread{
+			Source:  &threadv1.ThreadSource{Id: "gate-src"},
+			Members: []*threadv1.ThreadMember{{ContactId: "wa-client", Via: "gate-1"}},
+		}
+		if got := channelSourceOf(thr, contacts); got != (channelSource{gateID: "gate-src"}) {
+			t.Errorf("channelSourceOf() = %+v, want gate-src", got)
+		}
+	})
+}
+
+func TestThreadChannelService_SourceName(t *testing.T) {
+	gates := &fakeGates{fn: func(*providerv1.GetGateRequest) (*providerv1.GetGateResponse, error) {
+		return &providerv1.GetGateResponse{Item: &providerv1.ProviderSummary{
+			Id: "gate-1", Name: "Shop (live)", Type: providerv1.ProviderType_PROVIDER_TYPE_WHATSAPP, Address: "+380671234567",
+		}}, nil
+	}}
+	svc := NewThreadChannelService(gates, &fakeApps{}, discardLogger())
+
+	tests := []struct {
+		name     string
+		source   *threadv1.ThreadSource
+		wantName string
+	}{
+		{name: "stored source name is shown", source: &threadv1.ThreadSource{Id: "gate-1", Name: "Shop"}, wantName: "Shop"},
+		{name: "no stored name keeps the live name", source: &threadv1.ThreadSource{Id: "gate-1"}, wantName: "Shop (live)"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := svc.Resolve(context.Background(), 7, &threadv1.Thread{Source: tt.source}, nil)
+
+			want := &gtwthread.ThreadChannel{
+				Type: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_WHATSAPP, Name: tt.wantName, Address: "+380671234567", Id: "gate-1",
+			}
+			if !proto.Equal(got, want) {
+				t.Errorf("Resolve() = %v, want %v", got, want)
+			}
+		})
+	}
 }
 
 func TestThreadChannelService_Gate(t *testing.T) {

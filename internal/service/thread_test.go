@@ -177,7 +177,7 @@ func Test_convertToThread(t *testing.T) {
 			},
 		},
 		{
-			name: "source and queue are mapped when set",
+			name: "queue is mapped when set",
 			thr: &threadv1.Thread{
 				Id:      "thread4",
 				Kind:    threadv1.ThreadKind_DIRECT,
@@ -189,7 +189,6 @@ func Test_convertToThread(t *testing.T) {
 				Id:      "thread4",
 				Type:    gtwthread.ThreadKind_DIRECT,
 				Members: []*gtwthread.ThreadMember{},
-				Source:  &gtwthread.ThreadSource{Id: "gate-1", Name: "Support", Type: "facebook"},
 				Queue:   &gtwthread.ThreadQueue{Id: 7, Name: "Sales"},
 			},
 		},
@@ -546,5 +545,39 @@ func Test_queueFromContext(t *testing.T) {
 				t.Errorf("queueFromContext() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_toInternalThreadFields(t *testing.T) {
+	tests := []struct {
+		name   string
+		fields []string
+		want   []string
+	}{
+		{name: "nil stays nil", fields: nil, want: nil},
+		{name: "no channel is unchanged", fields: []string{"id", "members"}, want: []string{"id", "members"}},
+		{name: "channel becomes source", fields: []string{"id", "channel"}, want: []string{"id", "source"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := toInternalThreadFields(tt.fields); !slices.Equal(got, tt.want) {
+				t.Errorf("toInternalThreadFields() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_toInternalThreadSort(t *testing.T) {
+	tests := map[string]string{
+		"":              "",
+		"+channel_name": "+source_name",
+		"-channel_name": "-source_name",
+		"-queue_name":   "-queue_name",
+		"+updated_at":   "+updated_at",
+	}
+	for in, want := range tests {
+		if got := toInternalThreadSort(in); got != want {
+			t.Errorf("toInternalThreadSort(%q) = %q, want %q", in, got, want)
+		}
 	}
 }

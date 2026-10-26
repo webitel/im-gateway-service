@@ -12,7 +12,7 @@ Agents need to see which gate (provider) a thread came in through and which call
 
 1. pass the gate's name and type from the provider's headers to im-thread, so im-thread can record the thread's source,
 2. forward the queue that call_center sends in `x-webitel-queue-id` / `x-webitel-queue-name-bin` headers when it adds, transfers or upgrades a member,
-3. expose `source` and `queue` on the gateway `Thread`.
+3. expose `queue` on the gateway `Thread`, and make the existing `channel` (WS-68) use the gate and name im-thread stores, so the channel name shown is the one Search sorts by.
 
 ### Protos
 
@@ -21,7 +21,7 @@ Protos branch `feat/thread-search-source-queue` (commit `943524a8`, `main` merge
 | Proto | Change |
 |---|---|
 | `im/api/gateway/v1/thread_member.proto` | new `message ThreadQueue { int64 id = 1; string name = 2; }` |
-| `im/api/gateway/v1/thread.proto` | new `message ThreadSource { string id = 1; string name = 2; string type = 3; }`; `Thread.source = 21`, `Thread.queue = 22` (main already uses 18 `crm_contact_id` / 19 `tags` / 20 `channel`). The member/preview requests get **no** queue field: the queue comes in headers |
+| `im/api/gateway/v1/thread.proto` | `Thread.queue = 21` (main already uses 18 `crm_contact_id` / 19 `tags` / 20 `channel`). No gateway `source`: the gate is exposed only as `channel`, sorted with the sort-only key `channel_name`. The member/preview requests get **no** queue field: the queue comes in headers |
 | `im/service/thread/v1/thread_service.proto` | `Thread.source` / `Thread.queue` renumbered from 21/22 to **22/23**, so they do not clash with `crm_contact_id = 21` on protos `main` |
 
 These thread/v1 additions were already in the local diff: `Identity.via_ref = 5` with `message Via{id,name,type}` (`Identity.via` is now `[deprecated = true]`), `message ThreadQueue`, `AddMemberRequest.queue = 8`, `TransferRequest.queue = 7`, `UpgradePreviewToFullMemberRequest.queue = 6` and `message ThreadSource`.
@@ -51,9 +51,16 @@ The queue travels in gRPC headers, like the gate (`via`), not in the gateway req
 - `internal/service/thread.go`: `queueFromContext(ctx, logger)` reads both headers. No id header gives nil. An id that does not parse or is `<= 0` is logged (`QUEUE_HEADER_INVALID`) and dropped, and the call still succeeds, because the queue is only shown in the UI. The name is read with `auth.BinaryHeader`.
 - `AddMember`, `Transfer` (`thread.go`) and `UpgradePreviewToFullMember` (`thread_preview.go`) set `Queue: queueFromContext(ctx, logger)` directly in their request literals. `GivePreview` and `RemoveFromPreview` are not touched.
 
-### Source/queue in responses
+### Channel and queue in responses
 
-`convertToThread` maps `Source` via `convertThreadSource` and `Queue` via `convertThreadQueue`; a nil input gives a nil output. Search, SearchLeft, Get, Create and GetUpdates (`updates.go`, `Dialog`) all go through `convertToThread`, so all of them return the fields. Which fields are actually populated is decided by im-thread: Search returns `queue`; Get does not compute it; `source` is set only when a source ref row exists.
+There is one gate object for clients: `channel`. im-thread's thread/v1 `source` stays internal to the gateway:
+
+- `channelSourceOf` (`thread_channel.go`) takes the gate id from `thr.Source.Id` first; the member-based rules (human with via, then bot with via, then portal/widget application) are the fallback. im-thread returns `source.id` for every thread that has a gate and in every query (not only Search), with empty name/type until it has a `source_ref` row.
+- `withSourceName` replaces the live `GetGate` name with `source.name` when im-thread has one, so the displayed name always equals the `source_name` sort key. `type` (logo) and `address` still come from `GetGate` (cached).
+- `toInternalThreadSort` maps the gateway sort key `±channel_name` to im-thread's `±source_name`; `toInternalThreadFields` maps the `channel` field to `source` (Search, SearchLeft, Get).
+- Portal/widget threads have no gate, so they show the application name but sort last on `channel_name` (`NULLS LAST`), as do gate threads whose gate has no `source_ref` row yet.
+
+`convertToThread` maps `Queue` via `convertThreadQueue`; a nil input gives a nil output. Search returns `queue`; Get does not compute it by default.
 
 ## Acceptance criteria
 
@@ -65,7 +72,7 @@ The queue travels in gRPC headers, like the gate (`via`), not in the gateway req
 | 4 | Header constants; `auth.BinaryHeader` UTF-8 coercion; `GetViaName`/`GetViaType` on `auth.Identifier` | Yes | |
 | 5 | `via_ref` on SendText/SendDocument/SendInteractive (full / id-only / nil), deprecated `via` kept; ForwardMessages and resolveContact also set `via_ref` | Yes | |
 | 6 | Queue forwarded on AddMember/Transfer/UpgradePreviewToFullMember from the `x-webitel-queue-id` / `x-webitel-queue-name-bin` headers when the id is a positive integer; GivePreview untouched | Yes | Changed after review, at the user's request: headers instead of a request field |
-| 7 | Unit tests: headers, via_ref building, queue headers (`Test_queueFromContext`: none / id only / non-ASCII and invalid UTF-8 name / 0, negative, non-numeric id), convertToThread source/queue | Yes | |
+| 7 | Unit tests: headers, via_ref building, queue headers (`Test_queueFromContext`: none / id only / non-ASCII and invalid UTF-8 name / 0, negative, non-numeric id), convertToThread queue, channel from source (id preference, stored name), `channel` field / `channel_name` sort mapping | Yes | |
 | 8 | `go build ./...` and `go test ./...` pass | Yes | |
 
 ## Open issues (from review)
@@ -93,10 +100,10 @@ x-webitel-queue-name-bin: <queue display name, raw UTF-8; gRPC base64-encodes -b
 
 No `x-webitel-queue-id`, or an id that is not a positive integer, means no queue. The headers are ignored on every other RPC.
 
-**Clients** read the new fields on gateway `Thread` (Search, Get, SearchLeft, GetUpdates `Dialog`):
+**Clients** read `channel` and `queue` on gateway `Thread` and sort with `"sort": "+channel_name"` / `"-queue_name"`:
 
 ```jsonc
-{ "id": "...", "source": { "id": "gate-1", "name": "Support", "type": "facebook" }, "queue": { "id": 7, "name": "Sales" } }
+{ "id": "...", "channel": { "type": "THREAD_CHANNEL_TYPE_FACEBOOK", "name": "Support", "address": "Support page", "id": "gate-1" }, "queue": { "id": 7, "name": "Sales" } }
 ```
 
 **Verify locally** (from the repo root):
