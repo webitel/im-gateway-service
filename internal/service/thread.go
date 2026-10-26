@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strconv"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -152,24 +154,23 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	if err != nil {
 		return nil, err
 	}
-	addMemberRequest := &threadv1.AddMemberRequest{
-		ThreadId:           req.GetThreadId(),
-		NewMemberContactId: target.GetId(),
-		Role:               threadv1.ThreadRole(req.Role),
-		DomainId:           int32(identity.GetDomainID()),
-	}
-
 	// Always record who acted as the message sender. Trusted service
 	// orchestrators (schema — flow_manager/call_center — or engine) also set
 	// system_call so im-thread skips membership/permission checks while still
 	// attributing the system message to the schema/engine contact. Regular user
 	// calls leave system_call false so those checks are enforced.
 	initiatorContactId := identity.GetContactID()
-	addMemberRequest.InitiatorContactId = &initiatorContactId
 	systemCall := auth.IsSystemCall(ctx)
-	addMemberRequest.SystemCall = &systemCall
 
-	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
+	response, err := t.threadClient.AddMember(ctx, &threadv1.AddMemberRequest{
+		ThreadId:           req.GetThreadId(),
+		NewMemberContactId: target.GetId(),
+		Role:               threadv1.ThreadRole(req.Role),
+		DomainId:           int32(identity.GetDomainID()),
+		InitiatorContactId: &initiatorContactId,
+		SystemCall:         &systemCall,
+		Queue:              queueFromContext(ctx, t.logger),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -221,6 +222,7 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 		Role:               threadv1.ThreadRole(req.Role),
 		InitiatorContactId: initiatorContactId,
 		TargetIsBot:        target.GetIsBot(),
+		Queue:              queueFromContext(ctx, t.logger),
 	}
 
 	response, err := t.threadClient.Transfer(ctx, transferRequest)
@@ -781,7 +783,49 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		ReadStates:   convertThreadMemberReadStates(thr.GetReadStates()),
 		CrmContactId: thr.GetCrmContactId(),
 		Tags:         convertThreadTags(thr.GetTags()),
+		Source:       convertThreadSource(thr.GetSource()),
+		Queue:        convertThreadQueue(thr.GetQueue()),
 	}
+}
+
+// queueFromContext reads the optional call_center queue a member/preview call carries in the
+// x-webitel-queue-id / x-webitel-queue-name-bin headers. No id header -> nil. An id that is not
+// a positive integer (im-thread's "no queue") is logged and dropped: the queue is display-only,
+// so it never fails the call.
+func queueFromContext(ctx context.Context, logger *slog.Logger) *threadv1.ThreadQueue {
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	ids := md.Get(auth.QueueIDIdentificationHeader)
+	if len(ids) == 0 || ids[0] == "" {
+		return nil
+	}
+
+	id, err := strconv.ParseInt(ids[0], 10, 64)
+	if err != nil || id <= 0 {
+		logger.WarnContext(ctx, "QUEUE_HEADER_INVALID", slog.String("queue_id", ids[0]))
+
+		return nil
+	}
+
+	return &threadv1.ThreadQueue{Id: id, Name: auth.BinaryHeader(md, auth.QueueNameIdentificationHeader)}
+}
+
+// convertThreadSource maps the gate the thread arrived through; nil stays nil.
+func convertThreadSource(s *threadv1.ThreadSource) *gtwthread.ThreadSource {
+	if s == nil {
+		return nil
+	}
+
+	return &gtwthread.ThreadSource{Id: s.GetId(), Name: s.GetName(), Type: s.GetType()}
+}
+
+// convertThreadQueue maps the queue through which the caller received the thread; nil stays nil.
+func convertThreadQueue(q *threadv1.ThreadQueue) *gtwthread.ThreadQueue {
+	if q == nil {
+		return nil
+	}
+
+	return &gtwthread.ThreadQueue{Id: q.GetId(), Name: q.GetName()}
 }
 
 func convertThreadTags(tags []*threadv1.ChatTag) []*gtwthread.ChatTag {

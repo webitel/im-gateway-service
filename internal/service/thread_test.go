@@ -7,6 +7,8 @@ import (
 	"slices"
 	"testing"
 
+	"google.golang.org/grpc/metadata"
+
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
@@ -172,6 +174,23 @@ func Test_convertToThread(t *testing.T) {
 				Tags: []*gtwthread.ChatTag{
 					{Id: "tag1", ThreadId: "thread3", Tag: "snoozed", CreatedAt: 1700},
 				},
+			},
+		},
+		{
+			name: "source and queue are mapped when set",
+			thr: &threadv1.Thread{
+				Id:      "thread4",
+				Kind:    threadv1.ThreadKind_DIRECT,
+				Members: []*threadv1.ThreadMember{},
+				Source:  &threadv1.ThreadSource{Id: "gate-1", Name: "Support", Type: "facebook"},
+				Queue:   &threadv1.ThreadQueue{Id: 7, Name: "Sales"},
+			},
+			want: &gtwthread.Thread{
+				Id:      "thread4",
+				Type:    gtwthread.ThreadKind_DIRECT,
+				Members: []*gtwthread.ThreadMember{},
+				Source:  &gtwthread.ThreadSource{Id: "gate-1", Name: "Support", Type: "facebook"},
+				Queue:   &gtwthread.ThreadQueue{Id: 7, Name: "Sales"},
 			},
 		},
 	}
@@ -413,6 +432,8 @@ func (i readCallerIdentity) GetChatName() string      { return "" }
 func (i readCallerIdentity) GetApplicationID() string { return "" }
 func (i readCallerIdentity) GetVia() string           { return "" }
 func (i readCallerIdentity) GetViaPtr() *string       { return nil }
+func (i readCallerIdentity) GetViaName() string       { return "" }
+func (i readCallerIdentity) GetViaType() string       { return "" }
 
 func Test_readCallerID(t *testing.T) {
 	identity := readCallerIdentity{contactID: "contact-1"}
@@ -486,5 +507,44 @@ func Test_convertToContact_ID(t *testing.T) {
 
 	if got.GetId() != "0190a6f6-0000-7000-8000-000000000001" {
 		t.Errorf("convertToContact().Id = %q, want contact id", got.GetId())
+	}
+}
+
+func Test_queueFromContext(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+
+	tests := []struct {
+		name string
+		md   metadata.MD
+		want *threadv1.ThreadQueue
+	}{
+		{name: "no metadata is no queue", md: nil, want: nil},
+		{name: "no id header is no queue", md: metadata.Pairs(auth.QueueNameIdentificationHeader, "Sales"), want: nil},
+		{name: "zero id is no queue", md: metadata.Pairs(auth.QueueIDIdentificationHeader, "0"), want: nil},
+		{name: "negative id is no queue", md: metadata.Pairs(auth.QueueIDIdentificationHeader, "-3"), want: nil},
+		{name: "non-numeric id is no queue", md: metadata.Pairs(auth.QueueIDIdentificationHeader, "abc"), want: nil},
+		{name: "id only", md: metadata.Pairs(auth.QueueIDIdentificationHeader, "7"), want: &threadv1.ThreadQueue{Id: 7}},
+		{
+			name: "id and non-ASCII name",
+			md:   metadata.Pairs(auth.QueueIDIdentificationHeader, "7", auth.QueueNameIdentificationHeader, "Продажі"),
+			want: &threadv1.ThreadQueue{Id: 7, Name: "Продажі"},
+		},
+		{
+			name: "invalid UTF-8 name is coerced",
+			md:   metadata.Pairs(auth.QueueIDIdentificationHeader, "7", auth.QueueNameIdentificationHeader, "a\xffb"),
+			want: &threadv1.ThreadQueue{Id: 7, Name: "a\uFFFDb"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.md != nil {
+				ctx = metadata.NewIncomingContext(ctx, tt.md)
+			}
+			got := queueFromContext(ctx, logger)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("queueFromContext() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

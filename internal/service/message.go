@@ -118,12 +118,8 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 
 	converted.To = to
 	converted.From = &threadv1.Peer{
-		Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
-		Identity: &threadv1.Identity{
-			Name:     identity.GetName(),
-			ChatName: identity.GetChatName(),
-			Via:      identity.GetViaPtr(),
-		},
+		Kind:     &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+		Identity: senderIdentity(identity),
 	}
 	converted.DomainId = int32(identity.GetDomainID())
 	converted.SendAs = sendAs.GetContactIDPtr()
@@ -251,12 +247,8 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 
 	resp, err := m.threader.SendText(ctx, &threadv1.SendTextRequest{
 		From: &threadv1.Peer{
-			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
-			Identity: &threadv1.Identity{
-				Name:     identity.GetName(),
-				ChatName: identity.GetChatName(),
-				Via:      identity.GetViaPtr(),
-			},
+			Kind:     &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: senderIdentity(identity),
 		},
 		To:                to,
 		Body:              plainText,
@@ -306,12 +298,8 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 
 	resp, err := m.threader.SendDocument(ctx, &threadv1.SendDocumentRequest{
 		From: &threadv1.Peer{
-			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
-			Identity: &threadv1.Identity{
-				Name:     identity.GetName(),
-				ChatName: identity.GetChatName(),
-				Via:      identity.GetViaPtr(),
-			},
+			Kind:     &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
+			Identity: senderIdentity(identity),
 		},
 		To:                to,
 		DomainId:          identity.GetDomainID(),
@@ -550,6 +538,33 @@ func (m *MessageService) SendTyping(ctx context.Context, in *api.SendTypingReque
 
 // --- Internal Helpers & Mappers ---
 
+// senderIdentity builds the thread/v1 identity of the calling sender. The gate is sent both
+// as via_ref{id,name,type} and as the deprecated via (id only) so im-thread versions that
+// predate via_ref keep working; im-thread prefers via_ref.id when both are set.
+func senderIdentity(identity auth.Identifier) *threadv1.Identity {
+	return &threadv1.Identity{
+		Name:     identity.GetName(),
+		ChatName: identity.GetChatName(),
+		Via:      identity.GetViaPtr(), //nolint:staticcheck // legacy field kept until every im-thread-service reads via_ref
+		ViaRef:   callerViaRef(identity),
+	}
+}
+
+// callerViaRef returns the gate the caller came through. name/type are empty for
+// providers that do not send the new headers yet.
+func callerViaRef(identity auth.Identifier) *threadv1.Via {
+	return viaRef(identity.GetVia(), identity.GetViaName(), identity.GetViaType())
+}
+
+// viaRef returns the gate reference, or nil when there is no gate id.
+func viaRef(id, name, typ string) *threadv1.Via {
+	if id == "" {
+		return nil
+	}
+
+	return &threadv1.Via{Id: id, Name: name, Type: typ}
+}
+
 // [INTERNAL] resolveRecipient maps shared.Peer to threadv1.Peer and performs contact lookup if necessary
 func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, domainID int32) (*threadv1.Peer, error) {
 	switch p.Type {
@@ -608,11 +623,18 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, vi
 		slog.String("name", contact.GetName()),
 		slog.String("username", contact.GetUsername()),
 	)
+	// Recipient side: only the gate id is known.
+	var viaID string
+	if via != nil {
+		viaID = *via
+	}
+
 	return &threadv1.Peer{
 		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
 		Identity: &threadv1.Identity{
-			Name: cmp.Or(contact.GetName(), contact.GetUsername(), NoNameRecipient),
-			Via:  via,
+			Name:   cmp.Or(contact.GetName(), contact.GetUsername(), NoNameRecipient),
+			Via:    via, //nolint:staticcheck // legacy field kept until every im-thread-service reads via_ref
+			ViaRef: viaRef(viaID, "", ""),
 		},
 	}, nil
 }
