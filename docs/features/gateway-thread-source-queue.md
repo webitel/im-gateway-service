@@ -14,21 +14,21 @@ Agents need to see which gate (provider) a thread came in through and which call
 2. forward the queue that call_center sends in `x-webitel-queue-id` / `x-webitel-queue-name-bin` headers when it adds, transfers or upgrades a member,
 3. expose `source` and `queue` on the gateway `Thread`.
 
-### Protos (local protos working copy, not committed)
+### Protos
 
-Working copy `/Users/dtsnk0/Documents/projects/protos`, branch `feat/thread-search-source-queue`.
+Protos branch `feat/thread-search-source-queue` (commit `943524a8`, `main` merged in, not yet merged to protos `main`).
 
 | Proto | Change |
 |---|---|
 | `im/api/gateway/v1/thread_member.proto` | new `message ThreadQueue { int64 id = 1; string name = 2; }` |
-| `im/api/gateway/v1/thread.proto` | new `message ThreadSource { string id = 1; string name = 2; string type = 3; }`; `Thread.source = 20`, `Thread.queue = 21` (main already uses 18 `crm_contact_id` / 19 `tags`). The member/preview requests get **no** queue field: the queue comes in headers |
+| `im/api/gateway/v1/thread.proto` | new `message ThreadSource { string id = 1; string name = 2; string type = 3; }`; `Thread.source = 21`, `Thread.queue = 22` (main already uses 18 `crm_contact_id` / 19 `tags` / 20 `channel`). The member/preview requests get **no** queue field: the queue comes in headers |
 | `im/service/thread/v1/thread_service.proto` | `Thread.source` / `Thread.queue` renumbered from 21/22 to **22/23**, so they do not clash with `crm_contact_id = 21` on protos `main` |
 
 These thread/v1 additions were already in the local diff: `Identity.via_ref = 5` with `message Via{id,name,type}` (`Identity.via` is now `[deprecated = true]`), `message ThreadQueue`, `AddMemberRequest.queue = 8`, `TransferRequest.queue = 7`, `UpgradePreviewToFullMemberRequest.queue = 6` and `message ThreadSource`.
 
 ### Generated code
 
-`gen/go/thread/v1/{peer,shared,thread_preview_service,thread_service}.pb.go` and `gen/go/gateway/v1/{thread,thread_member,thread_preview}.pb.go` were regenerated. The local protos branch is behind `origin/main`, so they were **not** generated from it directly; that would drop `GetCounters`, `SetCrmContact`, tags and other symbols. The input was a throwaway tree instead: `git archive origin/main im` plus the local `git diff`, with the conflicting `Thread` hunks re-applied by hand (thread/v1 22/23, gateway 20/21). `buf generate` was run by hand from `buf/`. The `//go:generate` lines in `buf/*.go` and the `buf/buf.gen.*.yaml` templates are unchanged.
+`gen/go/thread` and `gen/go/gateway` are generated from the protos branch above (`943524a8`, which already contains protos `main`), after merging im-gateway-service `main` (WS-68 thread channel). Compared to `origin/main`, only `gen/go/thread/v1/{peer,shared,thread_preview_service,thread_service}.pb.go` and `gen/go/gateway/v1/{thread,thread_member}.pb.go` differ. `buf generate` was run by hand from `buf/` with an absolute input (`buf generate /Users/dtsnk0/Documents/projects/protos/im --template buf.gen.<x>.yaml --path .../im/<service/thread|api/gateway>`), because the relative path in the `//go:generate` lines does not resolve from a worktree. The `buf/*` files are unchanged.
 
 > Before merge, regenerate gen/go from protos `main` once the protos PR is merged.
 
@@ -71,7 +71,7 @@ The queue travels in gRPC headers, like the gate (`via`), not in the gateway req
 ## Open issues (from review)
 
 - **Indirect coverage only (info):** no test calls `ForwardMessages` or `resolveContact` directly; their `via_ref` is covered only through the `senderIdentity` / `viaRef` unit tests. Queue wiring in AddMember/Transfer/UpgradePreviewToFullMember is likewise not unit-tested; only `queueFromContext` is. The thread and contact clients are concrete discovery clients and cannot be mocked, so a regression where these paths stop calling the helpers would not be caught.
-- **Cross-repo follow-ups:** im-thread-service must regenerate its gen/go with thread/v1 `Thread.source = 22` / `queue = 23`; its current branch was generated with 21/22. The protos branch must be brought up to date with `main` and merged, and then this repo's gen/go regenerated from `main`.
+- **Cross-repo follow-ups:** im-thread-service must regenerate its gen/go with thread/v1 `Thread.source = 22` / `queue = 23`; its current branch was generated with 21/22. The protos branch is up to date with `main` (`943524a8`); once its PR is merged, regenerate this repo's gen/go from protos `main` (expected to be byte-identical).
 
 ## How to use / verify
 
