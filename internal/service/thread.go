@@ -46,6 +46,7 @@ type thread struct {
 
 	threadClient  *imthread.ThreadClient
 	contactClient *imcontact.Client
+	channels      ThreadChannelResolver
 }
 
 func (t *thread) prepareCreateDirectConfig(ctx context.Context, req *gtwthread.ThreadManagementCreateRequest, session auth.Identifier) (*threadv1.ThreadManagementCreateRequest, error) {
@@ -362,12 +363,23 @@ func (t *thread) fetchContacts(ctx context.Context, ids []string, domainID int32
 	return contacts, nil
 }
 
-func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client) *thread {
+func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client, channels ThreadChannelResolver) *thread {
 	o := new(thread)
 	o.logger = logger
 	o.threadClient = threadClient
 	o.contactClient = contactClient
+	o.channels = channels
 	return o
+}
+
+// withChannel converts an internal thread and attaches the channel it came in through.
+func (t *thread) withChannel(ctx context.Context, domainID int64, thr *threadv1.Thread, contacts map[string]*contact.Contact) *gtwthread.Thread {
+	converted := convertToThread(thr, contacts)
+	if t.channels != nil {
+		converted.Channel = t.channels.Resolve(ctx, domainID, thr, contacts)
+	}
+
+	return converted
 }
 
 func gtwThreadKindToInternal(kinds []gtwthread.ThreadKind) []threadv1.ThreadKind {
@@ -471,8 +483,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 
 	res := []*gtwthread.Thread{}
 	for _, thr := range internalThreads.GetItems() {
-		converted := convertToThread(thr, contacts)
-		res = append(res, converted)
+		res = append(res, t.withChannel(ctx, identity.GetDomainID(), thr, contacts))
 	}
 
 	return &gtwthread.SearchThreadResponse{
@@ -523,7 +534,7 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 
 	res := make([]*gtwthread.Thread, 0, len(threads.GetItems()))
 	for _, thr := range threads.GetItems() {
-		res = append(res, convertToThread(thr, contacts))
+		res = append(res, t.withChannel(ctx, identity.GetDomainID(), thr, contacts))
 	}
 
 	return res, threads.Next, nil
@@ -556,7 +567,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		return nil, err
 	}
 
-	thr := convertToThread(internalThread, contacts)
+	thr := t.withChannel(ctx, identity.GetDomainID(), internalThread, contacts)
 	thr.UpdatesCursor = internalThread.GetUpdatesCursor()
 
 	return thr, nil
@@ -945,6 +956,7 @@ func convertToContact(c *contact.Contact) *gtwthread.Contact {
 		Name:     cmp.Or(c.GetName(), c.GetUsername(), NoNameRecipient),
 		IsBot:    c.GetIsBot(),
 		Username: c.GetUsername(),
+		Phone:    c.GetPhone(),
 	}
 }
 
