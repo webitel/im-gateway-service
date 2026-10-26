@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"maps"
 	"slices"
+	"strconv"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -153,24 +155,23 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 	if err != nil {
 		return nil, err
 	}
-	addMemberRequest := &threadv1.AddMemberRequest{
-		ThreadId:           req.GetThreadId(),
-		NewMemberContactId: target.GetId(),
-		Role:               threadv1.ThreadRole(req.Role),
-		DomainId:           int32(identity.GetDomainID()),
-	}
-
 	// Always record who acted as the message sender. Trusted service
 	// orchestrators (schema — flow_manager/call_center — or engine) also set
 	// system_call so im-thread skips membership/permission checks while still
 	// attributing the system message to the schema/engine contact. Regular user
 	// calls leave system_call false so those checks are enforced.
 	initiatorContactId := identity.GetContactID()
-	addMemberRequest.InitiatorContactId = &initiatorContactId
 	systemCall := auth.IsSystemCall(ctx)
-	addMemberRequest.SystemCall = &systemCall
 
-	response, err := t.threadClient.AddMember(ctx, addMemberRequest)
+	response, err := t.threadClient.AddMember(ctx, &threadv1.AddMemberRequest{
+		ThreadId:           req.GetThreadId(),
+		NewMemberContactId: target.GetId(),
+		Role:               threadv1.ThreadRole(req.Role),
+		DomainId:           int32(identity.GetDomainID()),
+		InitiatorContactId: &initiatorContactId,
+		SystemCall:         &systemCall,
+		Queue:              queueFromContext(ctx, t.logger),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -222,6 +223,7 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 		Role:               threadv1.ThreadRole(req.Role),
 		InitiatorContactId: initiatorContactId,
 		TargetIsBot:        target.GetIsBot(),
+		Queue:              queueFromContext(ctx, t.logger),
 	}
 
 	response, err := t.threadClient.Transfer(ctx, transferRequest)
@@ -448,7 +450,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
-		Fields:       searchQuery.Fields,
+		Fields:       toInternalThreadFields(searchQuery.Fields),
 		Ids:          searchQuery.Ids,
 		DomainIds:    []int32{int32(identity.GetDomainID())},
 		Q:            searchQuery.Q,
@@ -456,7 +458,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		MemberIds:    searchQuery.ContactIds,
 		Participants: participantsToInternal(searchQuery.GetParticipants()),
 		Size:         searchQuery.Size,
-		Sort:         searchQuery.Sort,
+		Sort:         toInternalThreadSort(searchQuery.Sort),
 		Page:         searchQuery.Page,
 		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
 		Unread:       searchQuery.GetUnread(),
@@ -508,12 +510,12 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 	}
 
 	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{
-		Fields:   request.Fields,
+		Fields:   toInternalThreadFields(request.Fields),
 		MemberId: identity.GetContactID(),
 		DomainId: int32(identity.GetDomainID()),
 		Kinds:    gtwThreadKindToInternal(request.Types),
 		Size:     request.Size,
-		Sort:     request.Sort,
+		Sort:     toInternalThreadSort(request.Sort),
 		Page:     request.Page,
 	})
 	if err != nil {
@@ -552,7 +554,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 	internalThread, err := t.threadClient.Get(ctx, &threadv1.GetThreadRequest{
 		Id:       req.GetId(),
 		DomainId: int32(identity.GetDomainID()),
-		Fields:   req.GetFields(),
+		Fields:   toInternalThreadFields(req.GetFields()),
 		CallerId: readCallerID(ctx, identity),
 	})
 	if err != nil {
@@ -792,7 +794,73 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contact.Conta
 		ReadStates:   convertThreadMemberReadStates(thr.GetReadStates()),
 		CrmContactId: thr.GetCrmContactId(),
 		Tags:         convertThreadTags(thr.GetTags()),
+		Queue:        convertThreadQueue(thr.GetQueue()),
 	}
+}
+
+// queueFromContext reads the optional call_center queue a member/preview call carries in the
+// x-webitel-queue-id / x-webitel-queue-name-bin headers. No id header -> nil. An id that is not
+// a positive integer (im-thread's "no queue") is logged and dropped: the queue is display-only,
+// so it never fails the call.
+func queueFromContext(ctx context.Context, logger *slog.Logger) *threadv1.ThreadQueue {
+	md, _ := metadata.FromIncomingContext(ctx)
+
+	ids := md.Get(auth.QueueIDIdentificationHeader)
+	if len(ids) == 0 || ids[0] == "" {
+		return nil
+	}
+
+	id, err := strconv.ParseInt(ids[0], 10, 64)
+	if err != nil || id <= 0 {
+		logger.WarnContext(ctx, "QUEUE_HEADER_INVALID", slog.String("queue_id", ids[0]))
+
+		return nil
+	}
+
+	return &threadv1.ThreadQueue{Id: id, Name: auth.BinaryHeader(md, auth.QueueNameIdentificationHeader)}
+}
+
+// The gateway exposes the thread's gate as "channel"; im-thread calls it "source".
+const (
+	channelField         = "channel"
+	channelNameSortKey   = "channel_name"
+	internalSourceField  = "source"
+	internalSourceSortBy = "source_name"
+)
+
+// toInternalThreadFields renames the gateway "channel" field to im-thread's "source",
+// which carries the gate the channel is resolved from.
+func toInternalThreadFields(fields []string) []string {
+	if !slices.Contains(fields, channelField) {
+		return fields
+	}
+
+	out := slices.Clone(fields)
+	for i, f := range out {
+		if f == channelField {
+			out[i] = internalSourceField
+		}
+	}
+
+	return out
+}
+
+// toInternalThreadSort maps the gateway "±channel_name" sort key to im-thread's "±source_name".
+func toInternalThreadSort(sort string) string {
+	if len(sort) > 1 && sort[1:] == channelNameSortKey {
+		return sort[:1] + internalSourceSortBy
+	}
+
+	return sort
+}
+
+// convertThreadQueue maps the queue through which the caller received the thread; nil stays nil.
+func convertThreadQueue(q *threadv1.ThreadQueue) *gtwthread.ThreadQueue {
+	if q == nil {
+		return nil
+	}
+
+	return &gtwthread.ThreadQueue{Id: q.GetId(), Name: q.GetName()}
 }
 
 func convertThreadTags(tags []*threadv1.ChatTag) []*gtwthread.ChatTag {

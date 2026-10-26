@@ -2,8 +2,10 @@ package auth
 
 import (
 	"context"
+	"strings"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
+	"google.golang.org/grpc/metadata"
 )
 
 var (
@@ -23,7 +25,29 @@ const (
 	ProviderIdentificationHeader = "x-webitel-provider"
 	XWebitelTypeHeader           = "x-webitel-type"
 	ViaIdentificationHeader      = "x-webitel-via"
+	// ViaTypeIdentificationHeader carries the provider type of the gate (facebook | whatsapp | telegram_bot | ...).
+	ViaTypeIdentificationHeader = "x-webitel-via-type"
+	// ViaNameIdentificationHeader carries the gate display name. Binary (-bin) metadata:
+	// gRPC base64-encodes it on the wire, so the value read here is already the raw bytes.
+	ViaNameIdentificationHeader = "x-webitel-via-name-bin"
+	// QueueIDIdentificationHeader carries the call_center queue id (int64) on member/preview calls.
+	QueueIDIdentificationHeader = "x-webitel-queue-id"
+	// QueueNameIdentificationHeader carries the call_center queue display name. Binary (-bin) metadata,
+	// like ViaNameIdentificationHeader.
+	QueueNameIdentificationHeader = "x-webitel-queue-name-bin"
 )
+
+// BinaryHeader returns the first value of a binary (-bin) header. The value may hold
+// arbitrary bytes, so it is coerced to valid UTF-8: proto3 string fields reject invalid
+// UTF-8 on marshal.
+func BinaryHeader(md metadata.MD, key string) string {
+	vals := md.Get(key)
+	if len(vals) == 0 {
+		return ""
+	}
+
+	return strings.ToValidUTF8(vals[0], "\uFFFD")
+}
 
 type XWebitelType string
 
@@ -46,6 +70,8 @@ type Identifier interface {
 	GetApplicationID() string
 	GetVia() string
 	GetViaPtr() *string
+	GetViaName() string
+	GetViaType() string
 }
 
 func GetIdentityFromContext(ctx context.Context) (Identifier, bool) {

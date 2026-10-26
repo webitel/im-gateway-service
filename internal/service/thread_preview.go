@@ -117,6 +117,7 @@ func (s *ThreadPreviewService) UpgradePreviewToFullMember(ctx context.Context, r
 		InitiatorContactId: identity.GetContactID(),
 		DomainId:           domainID,
 		Role:               threadv1.ThreadRole(req.GetRole()),
+		Queue:              queueFromContext(ctx, s.logger),
 	})
 	if err != nil {
 		return nil, err

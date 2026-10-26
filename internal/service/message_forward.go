@@ -29,8 +29,9 @@ func (m *MessageService) ForwardMessages(ctx context.Context, in *api.ForwardMes
 		From: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
-				Name: identity.GetName(),
-				Via:  identity.GetViaPtr(),
+				Name:   identity.GetName(),
+				Via:    identity.GetViaPtr(), //nolint:staticcheck // legacy field kept until every im-thread-service reads via_ref
+				ViaRef: callerViaRef(identity),
 			},
 		},
 		To:         to,

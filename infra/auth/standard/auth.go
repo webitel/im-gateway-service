@@ -47,6 +47,8 @@ type Identity struct {
 	Name      string
 	ChatName  string
 	Via       string
+	ViaName   string
+	ViaType   string
 	AppID     string
 }
 
@@ -85,6 +87,14 @@ func (i *Identity) GetViaPtr() *string {
 	}
 
 	return via
+}
+
+func (i *Identity) GetViaName() string {
+	return i.ViaName
+}
+
+func (i *Identity) GetViaType() string {
+	return i.ViaType
 }
 
 type Authorizer struct {
@@ -180,6 +190,8 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 		return nil, errors.Forbidden("provider identification header required")
 	}
 
+	viaID := getHeader(md, interfaces.ViaIdentificationHeader)
+
 	domainID, sub, err := splitDomainAndSub(rawProvider)
 	if err != nil {
 		return nil, err
@@ -190,7 +202,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 	}
 
 	res, err := da.contacter.SearchContact(ctx, &contactv1pb.SearchContactRequest{
-		Via:      getHeader(md, interfaces.ViaIdentificationHeader),
+		Via:      viaID,
 		Subjects: []string{sub},
 		DomainId: int32(domainID),
 		Size:     1,
@@ -205,7 +217,9 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 		ContactID: contact.GetId(),
 		DomainID:  domainID,
 		Name:      cmp.Or(contact.GetName(), contact.GetUsername(), "Provider"),
-		Via:       getHeader(md, interfaces.ViaIdentificationHeader),
+		Via:       viaID,
+		ViaName:   interfaces.BinaryHeader(md, interfaces.ViaNameIdentificationHeader),
+		ViaType:   getHeader(md, interfaces.ViaTypeIdentificationHeader),
 	}, nil
 }
 
