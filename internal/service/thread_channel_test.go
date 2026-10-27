@@ -153,7 +153,11 @@ func TestThreadChannelService_Gate(t *testing.T) {
 		{providerv1.ProviderType_PROVIDER_TYPE_FACEBOOK, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_FACEBOOK},
 		{providerv1.ProviderType_PROVIDER_TYPE_VIBER_BM, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_VIBER_BM},
 		{providerv1.ProviderType_PROVIDER_TYPE_CUSTOM, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_CUSTOM},
-		{providerv1.ProviderType_PROVIDER_TYPE_TELEGRAM_BOT, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_UNSPECIFIED},
+		{providerv1.ProviderType_PROVIDER_TYPE_TELEGRAM_BOT, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_TELEGRAM_BOT},
+		{providerv1.ProviderType_PROVIDER_TYPE_TELEGRAM_APP, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_TELEGRAM_APP},
+		{providerv1.ProviderType_PROVIDER_TYPE_VIBER, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_VIBER},
+		{providerv1.ProviderType_PROVIDER_TYPE_INSTAGRAM, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_INSTAGRAM},
+		{providerv1.ProviderType_PROVIDER_TYPE_META_APP, gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_UNSPECIFIED},
 	}
 
 	for _, tt := range tests {
