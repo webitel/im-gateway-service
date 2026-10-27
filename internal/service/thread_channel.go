@@ -194,12 +194,16 @@ func channelSourceOf(thr *threadv1.Thread, contacts map[string]*contact.Contact)
 }
 
 // gateChannelTypes maps the provider types that have a channel logo; any other
-// provider type is reported as unspecified.
+// provider type (META_APP) is reported as unspecified.
 var gateChannelTypes = map[providerv1.ProviderType]gtwthread.ThreadChannelType{
-	providerv1.ProviderType_PROVIDER_TYPE_WHATSAPP: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_WHATSAPP,
-	providerv1.ProviderType_PROVIDER_TYPE_FACEBOOK: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_FACEBOOK,
-	providerv1.ProviderType_PROVIDER_TYPE_VIBER_BM: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_VIBER_BM,
-	providerv1.ProviderType_PROVIDER_TYPE_CUSTOM:   gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_CUSTOM,
+	providerv1.ProviderType_PROVIDER_TYPE_WHATSAPP:     gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_WHATSAPP,
+	providerv1.ProviderType_PROVIDER_TYPE_FACEBOOK:     gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_FACEBOOK,
+	providerv1.ProviderType_PROVIDER_TYPE_VIBER_BM:     gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_VIBER_BM,
+	providerv1.ProviderType_PROVIDER_TYPE_CUSTOM:       gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_CUSTOM,
+	providerv1.ProviderType_PROVIDER_TYPE_TELEGRAM_BOT: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_TELEGRAM_BOT,
+	providerv1.ProviderType_PROVIDER_TYPE_TELEGRAM_APP: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_TELEGRAM_APP,
+	providerv1.ProviderType_PROVIDER_TYPE_VIBER:        gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_VIBER,
+	providerv1.ProviderType_PROVIDER_TYPE_INSTAGRAM:    gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_INSTAGRAM,
 }
 
 func gateChannelType(t providerv1.ProviderType) gtwthread.ThreadChannelType {
