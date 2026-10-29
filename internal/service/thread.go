@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"math"
 	"slices"
 	"strconv"
 
@@ -498,16 +499,25 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 // newSearchLeftRequest builds the im-thread SearchLeft request for the caller. The gateway
 // exposes the thread gate as "channel" (sort key "channel_name"); im-thread calls it
 // "source" ("source_name"). "queue" / "queue_name" have the same name on both sides.
-func newSearchLeftRequest(req *gtwthread.SearchLeftRequest, identity auth.Identifier) *threadv1.SearchLeftRequest {
+// It fails when the caller's domain id does not fit the int32 im-thread contract.
+func newSearchLeftRequest(req *gtwthread.SearchLeftRequest, identity auth.Identifier) (*threadv1.SearchLeftRequest, error) {
+	domainID := identity.GetDomainID()
+	if domainID < math.MinInt32 || domainID > math.MaxInt32 {
+		return nil, errors.InvalidArgument(
+			fmt.Sprintf("domain id %d is out of int32 range", domainID),
+			errors.WithID("service.thread.domain_id"),
+		)
+	}
+
 	return &threadv1.SearchLeftRequest{
 		Fields:   toInternalThreadFields(req.GetFields()),
 		MemberId: identity.GetContactID(),
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: int32(domainID),
 		Kinds:    gtwThreadKindToInternal(req.GetTypes()),
 		Size:     req.GetSize(),
 		Sort:     toInternalThreadSort(req.GetSort()),
 		Page:     req.GetPage(),
-	}
+	}, nil
 }
 
 func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error) {
@@ -524,14 +534,22 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 		return nil, false, errors.Wrap(auth.ForbiddenIssuerErr, errors.WithID("service.thread.issuer"))
 	}
 
-	threads, err := t.threadClient.SearchLeft(ctx, newSearchLeftRequest(request, identity))
+	internalReq, err := newSearchLeftRequest(request, identity)
+	if err != nil {
+		log.ErrorContext(ctx, "invalid search left request", slog.Any("error", err))
+
+		return nil, false, err
+	}
+
+	threads, err := t.threadClient.SearchLeft(ctx, internalReq)
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
 		return nil, false, err
 	}
 
 	uniqueContactIds := t.collectUniqueContactsFromThread(threads.GetItems())
-	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
+
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, internalReq.GetDomainId())
 	if err != nil {
 		log.Error(
 			"failed to fetch internal contact information for enrichment",

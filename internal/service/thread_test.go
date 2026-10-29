@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"math"
 	"reflect"
 	"slices"
 	"testing"
@@ -636,7 +637,10 @@ func Test_newSearchLeftRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newSearchLeftRequest(tt.req, identity)
+			got, err := newSearchLeftRequest(tt.req, identity)
+			if err != nil {
+				t.Fatalf("newSearchLeftRequest() error = %v", err)
+			}
 			if !proto.Equal(got, tt.want) {
 				t.Errorf("newSearchLeftRequest() = %v, want %v", got, tt.want)
 			}
@@ -647,10 +651,53 @@ func Test_newSearchLeftRequest(t *testing.T) {
 func Test_newSearchLeftRequest_doesNotMutateRequest(t *testing.T) {
 	req := &gtwthread.SearchLeftRequest{Fields: []string{"id", "channel"}}
 
-	_ = newSearchLeftRequest(req, readCallerIdentity{contactID: "agent-1"})
+	_, _ = newSearchLeftRequest(req, readCallerIdentity{contactID: "agent-1"})
 
 	if !slices.Equal(req.GetFields(), []string{"id", "channel"}) {
 		t.Errorf("newSearchLeftRequest() mutated request fields: %v", req.GetFields())
+	}
+}
+
+type domainCallerIdentity struct {
+	readCallerIdentity
+
+	domainID int64
+}
+
+func (i domainCallerIdentity) GetDomainID() int64 { return i.domainID }
+
+func Test_newSearchLeftRequest_domainIDRange(t *testing.T) {
+	tests := []struct {
+		name     string
+		domainID int64
+		wantErr  bool
+	}{
+		{name: "max int32 fits", domainID: math.MaxInt32},
+		{name: "min int32 fits", domainID: math.MinInt32},
+		{name: "above int32 overflows", domainID: math.MaxInt32 + 1, wantErr: true},
+		{name: "below int32 overflows", domainID: math.MinInt32 - 1, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			identity := domainCallerIdentity{readCallerIdentity: readCallerIdentity{contactID: "agent-1"}, domainID: tt.domainID}
+
+			got, err := newSearchLeftRequest(&gtwthread.SearchLeftRequest{}, identity)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("newSearchLeftRequest() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr {
+				if got != nil {
+					t.Errorf("newSearchLeftRequest() = %v, want nil on error", got)
+				}
+
+				return
+			}
+
+			if int64(got.GetDomainId()) != tt.domainID {
+				t.Errorf("newSearchLeftRequest().DomainId = %d, want %d", got.GetDomainId(), tt.domainID)
+			}
+		})
 	}
 }
 
