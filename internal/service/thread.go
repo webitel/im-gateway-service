@@ -495,6 +495,21 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}, nil
 }
 
+// newSearchLeftRequest builds the im-thread SearchLeft request for the caller. The gateway
+// exposes the thread gate as "channel" (sort key "channel_name"); im-thread calls it
+// "source" ("source_name"). "queue" / "queue_name" have the same name on both sides.
+func newSearchLeftRequest(req *gtwthread.SearchLeftRequest, identity auth.Identifier) *threadv1.SearchLeftRequest {
+	return &threadv1.SearchLeftRequest{
+		Fields:   toInternalThreadFields(req.GetFields()),
+		MemberId: identity.GetContactID(),
+		DomainId: int32(identity.GetDomainID()),
+		Kinds:    gtwThreadKindToInternal(req.GetTypes()),
+		Size:     req.GetSize(),
+		Sort:     toInternalThreadSort(req.GetSort()),
+		Page:     req.GetPage(),
+	}
+}
+
 func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error) {
 	log := t.logger.With(slog.String("op", "thread.SearchLeft"))
 
@@ -509,15 +524,7 @@ func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRe
 		return nil, false, errors.Wrap(auth.ForbiddenIssuerErr, errors.WithID("service.thread.issuer"))
 	}
 
-	threads, err := t.threadClient.SearchLeft(ctx, &threadv1.SearchLeftRequest{
-		Fields:   toInternalThreadFields(request.Fields),
-		MemberId: identity.GetContactID(),
-		DomainId: int32(identity.GetDomainID()),
-		Kinds:    gtwThreadKindToInternal(request.Types),
-		Size:     request.Size,
-		Sort:     toInternalThreadSort(request.Sort),
-		Page:     request.Page,
-	})
+	threads, err := t.threadClient.SearchLeft(ctx, newSearchLeftRequest(request, identity))
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
 		return nil, false, err

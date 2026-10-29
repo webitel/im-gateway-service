@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
@@ -580,4 +581,144 @@ func Test_toInternalThreadSort(t *testing.T) {
 			t.Errorf("toInternalThreadSort(%q) = %q, want %q", in, got, want)
 		}
 	}
+}
+
+func Test_newSearchLeftRequest(t *testing.T) {
+	identity := readCallerIdentity{contactID: "agent-1"}
+
+	tests := []struct {
+		name string
+		req  *gtwthread.SearchLeftRequest
+		want *threadv1.SearchLeftRequest
+	}{
+		{
+			name: "channel field and channel_name sort map to source",
+			req: &gtwthread.SearchLeftRequest{
+				Fields: []string{"id", "channel", "queue"},
+				Sort:   "+channel_name",
+				Types:  []gtwthread.ThreadKind{gtwthread.ThreadKind_DIRECT},
+				Size:   20,
+				Page:   2,
+			},
+			want: &threadv1.SearchLeftRequest{
+				Fields:   []string{"id", "source", "queue"},
+				MemberId: "agent-1",
+				DomainId: 1,
+				Kinds:    []threadv1.ThreadKind{threadv1.ThreadKind_DIRECT},
+				Size:     20,
+				Sort:     "+source_name",
+				Page:     2,
+			},
+		},
+		{
+			name: "descending channel_name sort maps to source_name",
+			req:  &gtwthread.SearchLeftRequest{Sort: "-channel_name"},
+			want: &threadv1.SearchLeftRequest{MemberId: "agent-1", DomainId: 1, Sort: "-source_name"},
+		},
+		{
+			name: "queue_name sort and queue field pass through",
+			req: &gtwthread.SearchLeftRequest{
+				Fields: []string{"queue"},
+				Sort:   "-queue_name",
+			},
+			want: &threadv1.SearchLeftRequest{
+				Fields:   []string{"queue"},
+				MemberId: "agent-1",
+				DomainId: 1,
+				Sort:     "-queue_name",
+			},
+		},
+		{
+			name: "nil fields and empty sort stay unset",
+			req:  &gtwthread.SearchLeftRequest{},
+			want: &threadv1.SearchLeftRequest{MemberId: "agent-1", DomainId: 1},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := newSearchLeftRequest(tt.req, identity)
+			if !proto.Equal(got, tt.want) {
+				t.Errorf("newSearchLeftRequest() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_newSearchLeftRequest_doesNotMutateRequest(t *testing.T) {
+	req := &gtwthread.SearchLeftRequest{Fields: []string{"id", "channel"}}
+
+	_ = newSearchLeftRequest(req, readCallerIdentity{contactID: "agent-1"})
+
+	if !slices.Equal(req.GetFields(), []string{"id", "channel"}) {
+		t.Errorf("newSearchLeftRequest() mutated request fields: %v", req.GetFields())
+	}
+}
+
+type fakeChannelResolver struct {
+	got *threadv1.Thread
+	ch  *gtwthread.ThreadChannel
+}
+
+func (f *fakeChannelResolver) Resolve(_ context.Context, _ int64, thr *threadv1.Thread, _ map[string]*contactv1.Contact) *gtwthread.ThreadChannel {
+	f.got = thr
+
+	return f.ch
+}
+
+func Test_thread_withChannel_leftItem(t *testing.T) {
+	gate := &gtwthread.ThreadChannel{
+		Id:   "gate-1",
+		Name: "Support",
+		Type: gtwthread.ThreadChannelType_THREAD_CHANNEL_TYPE_TELEGRAM_BOT,
+	}
+
+	t.Run("queue and channel resolved from source", func(t *testing.T) {
+		res := &fakeChannelResolver{ch: gate}
+		th := &thread{channels: res}
+		item := &threadv1.Thread{
+			Id:     "dlg-1",
+			Source: &threadv1.ThreadSource{Id: "gate-1", Name: "Support", Type: "telegram_bot"},
+			Queue:  &threadv1.ThreadQueue{Id: 7, Name: "Sales"},
+		}
+
+		got := th.withChannel(context.Background(), 1, item, nil)
+
+		if !proto.Equal(got.GetQueue(), &gtwthread.ThreadQueue{Id: 7, Name: "Sales"}) {
+			t.Errorf("withChannel().Queue = %v, want {7 Sales}", got.GetQueue())
+		}
+		if !proto.Equal(got.GetChannel(), gate) {
+			t.Errorf("withChannel().Channel = %v, want %v", got.GetChannel(), gate)
+		}
+		if res.got != item {
+			t.Errorf("resolver got thread %p, want %p", res.got, item)
+		}
+	})
+
+	t.Run("nil queue and nil resolver result", func(t *testing.T) {
+		res := &fakeChannelResolver{}
+		th := &thread{channels: res}
+
+		got := th.withChannel(context.Background(), 1, &threadv1.Thread{Id: "dlg-2"}, nil)
+
+		if got.GetQueue() != nil {
+			t.Errorf("withChannel().Queue = %v, want nil", got.GetQueue())
+		}
+		if got.GetChannel() != nil {
+			t.Errorf("withChannel().Channel = %v, want nil", got.GetChannel())
+		}
+	})
+
+	t.Run("nil resolver keeps queue", func(t *testing.T) {
+		th := &thread{}
+		item := &threadv1.Thread{Id: "dlg-3", Queue: &threadv1.ThreadQueue{Id: 9, Name: "Queue"}}
+
+		got := th.withChannel(context.Background(), 1, item, nil)
+
+		if got.GetChannel() != nil {
+			t.Errorf("withChannel().Channel = %v, want nil", got.GetChannel())
+		}
+		if !proto.Equal(got.GetQueue(), &gtwthread.ThreadQueue{Id: 9, Name: "Queue"}) {
+			t.Errorf("withChannel().Queue = %v, want {9 Queue}", got.GetQueue())
+		}
+	})
 }

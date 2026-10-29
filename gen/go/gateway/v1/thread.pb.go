@@ -367,11 +367,12 @@ type Thread struct {
 	// Channel the external participant reaches the thread through: a provider
 	// gate (WhatsApp, Facebook, Viber BM, custom) or a portal / widget
 	// application. Unset when it cannot be resolved (e.g. an internal thread).
-	// Search sorts by channel.name with the sort-only key "channel_name"
+	// Search and SearchLeft sort by channel.name with the sort-only key "channel_name"
 	// (+channel_name / -channel_name); threads without a gate name sort last.
 	Channel *ThreadChannel `protobuf:"bytes,20,opt,name=channel,proto3" json:"channel,omitempty"`
-	// Queue through which the calling participant received the thread. Set by Search; unset when unknown.
-	// Search sorts by queue.name with the sort-only key "queue_name".
+	// Queue through which the calling participant received the thread. Set by Search and SearchLeft
+	// (in SearchLeft: the queue of that left membership period); unset when unknown.
+	// Search and SearchLeft sort by queue.name with the sort-only key "queue_name".
 	Queue *ThreadQueue `protobuf:"bytes,21,opt,name=queue,proto3" json:"queue,omitempty"`
 }
 
@@ -1175,12 +1176,14 @@ type SearchLeftRequest struct {
 	// List of fields that should be returned in the response.
 	// If empty, a default set of fields is returned.
 	// Used for response optimization.
+	// The default set includes "channel" and "queue".
 	Fields []string `protobuf:"bytes,1,rep,name=fields,proto3" json:"fields,omitempty"`
 	// Filter threads by their kinds
 	Types []ThreadKind `protobuf:"varint,2,rep,packed,name=types,proto3,enum=webitel.im.api.gateway.v1.ThreadKind" json:"types,omitempty"`
 	// Sorting field.
 	// Optional "+" or "-" prefix indicates ascending or descending order.
 	// Example: "-created_at", "subject"
+	// Sort-only keys: "channel_name", "queue_name" (threads without a value sort last).
 	Sort string `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
 	// Maximum number of threads to return per page.
 	// Must be greater than 0 and less than or equal to 100.
