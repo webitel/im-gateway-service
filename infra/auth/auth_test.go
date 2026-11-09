@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"slices"
 	"testing"
 )
 
@@ -59,4 +60,58 @@ func TestAuthTypeFromContext(t *testing.T) {
 			t.Errorf("AuthTypeFromContext() = %q, want %q", got, XWebitelTypeEngine)
 		}
 	})
+}
+
+type permissionTestIdentity struct{ permissions []string }
+
+func (i permissionTestIdentity) GetContactID() string     { return "" }
+func (i permissionTestIdentity) GetDomainID() int64       { return 1 }
+func (i permissionTestIdentity) GetIssuer() string        { return "" }
+func (i permissionTestIdentity) GetName() string          { return "" }
+func (i permissionTestIdentity) GetChatName() string      { return "" }
+func (i permissionTestIdentity) GetApplicationID() string { return "" }
+func (i permissionTestIdentity) GetVia() string           { return "" }
+func (i permissionTestIdentity) GetViaPtr() *string       { return nil }
+func (i permissionTestIdentity) GetViaName() string       { return "" }
+func (i permissionTestIdentity) GetViaType() string       { return "" }
+func (i permissionTestIdentity) HasPermission(id string) bool {
+	return slices.Contains(i.permissions, id)
+}
+
+func TestHasPermission(t *testing.T) {
+	tests := []struct {
+		name        string
+		noIdentity  bool
+		permissions []string
+		want        bool
+	}{
+		{
+			name:       "no identity in context",
+			noIdentity: true,
+			want:       false,
+		},
+		{
+			name:        "identity without the permission",
+			permissions: []string{"read"},
+			want:        false,
+		},
+		{
+			name:        "identity granted the permission",
+			permissions: []string{"read", PermissionIMReadAll},
+			want:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if !tt.noIdentity {
+				ctx = context.WithValue(ctx, AuthContextKey, Identifier(permissionTestIdentity{permissions: tt.permissions}))
+			}
+
+			if got := HasPermission(ctx, PermissionIMReadAll); got != tt.want {
+				t.Errorf("HasPermission() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

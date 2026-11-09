@@ -74,6 +74,7 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 
 	searchQuery.DomainID = int32(identity.GetDomainID())
 	searchQuery.CallerID = identity.GetContactID()
+	searchQuery.SystemCall = auth.HasPermission(ctx, auth.PermissionIMReadAll)
 	searchQuery.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
