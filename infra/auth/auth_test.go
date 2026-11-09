@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"slices"
 	"testing"
 )
 
@@ -74,44 +75,41 @@ func (i permissionTestIdentity) GetViaPtr() *string       { return nil }
 func (i permissionTestIdentity) GetViaName() string       { return "" }
 func (i permissionTestIdentity) GetViaType() string       { return "" }
 func (i permissionTestIdentity) HasPermission(id string) bool {
-	for _, p := range i.permissions {
-		if p == id {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(i.permissions, id)
 }
 
 func TestHasPermission(t *testing.T) {
-	withIdentity := func(permissions ...string) context.Context {
-		return context.WithValue(context.Background(), AuthContextKey, Identifier(permissionTestIdentity{permissions: permissions}))
-	}
-
 	tests := []struct {
-		name string
-		ctx  context.Context
-		want bool
+		name        string
+		noIdentity  bool
+		permissions []string
+		want        bool
 	}{
 		{
-			name: "no identity in context",
-			ctx:  context.Background(),
-			want: false,
+			name:       "no identity in context",
+			noIdentity: true,
+			want:       false,
 		},
 		{
-			name: "identity without the permission",
-			ctx:  withIdentity("read"),
-			want: false,
+			name:        "identity without the permission",
+			permissions: []string{"read"},
+			want:        false,
 		},
 		{
-			name: "identity granted the permission",
-			ctx:  withIdentity("read", PermissionIMReadAll),
-			want: true,
+			name:        "identity granted the permission",
+			permissions: []string{"read", PermissionIMReadAll},
+			want:        true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := HasPermission(tt.ctx, PermissionIMReadAll); got != tt.want {
+			ctx := context.Background()
+			if !tt.noIdentity {
+				ctx = context.WithValue(ctx, AuthContextKey, Identifier(permissionTestIdentity{permissions: tt.permissions}))
+			}
+
+			if got := HasPermission(ctx, PermissionIMReadAll); got != tt.want {
 				t.Errorf("HasPermission() = %v, want %v", got, tt.want)
 			}
 		})

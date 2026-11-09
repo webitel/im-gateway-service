@@ -116,5 +116,6 @@ func IsSystemCall(ctx context.Context) bool {
 // authorized by a Webitel token carry permissions.
 func HasPermission(ctx context.Context, id string) bool {
 	identity, ok := GetIdentityFromContext(ctx)
+
 	return ok && identity.HasPermission(id)
 }
