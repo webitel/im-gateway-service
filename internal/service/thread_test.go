@@ -216,3 +216,43 @@ func Test_thread_collectUniqueContactsFromThread(t *testing.T) {
 		})
 	}
 }
+
+type searchCallerIdentity struct {
+	contactID string
+}
+
+func (i searchCallerIdentity) GetContactID() string      { return i.contactID }
+func (i searchCallerIdentity) GetDomainID() int64        { return 1 }
+func (i searchCallerIdentity) GetIssuer() string         { return "" }
+func (i searchCallerIdentity) GetName() string           { return "" }
+func (i searchCallerIdentity) GetApplicationID() string  { return "" }
+func (i searchCallerIdentity) GetVia() string            { return "" }
+func (i searchCallerIdentity) GetViaPtr() *string        { return nil }
+func (i searchCallerIdentity) HasPermission(string) bool { return false }
+
+func Test_newSearchRequest_systemCall(t *testing.T) {
+	tests := []struct {
+		name       string
+		systemCall bool
+	}{
+		{name: "caller without im_read_all searches own threads", systemCall: false},
+		{name: "caller with im_read_all searches every domain thread", systemCall: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := newSearchRequest(&gtwthread.ThreadSearchRequest{Size: 10}, searchCallerIdentity{contactID: "agent-1"}, tt.systemCall)
+
+			if got.SystemCall == nil || got.GetSystemCall() != tt.systemCall {
+				t.Errorf("newSearchRequest().SystemCall = %v, want %v", got.SystemCall, tt.systemCall)
+			}
+
+			if got.GetSelfId() != "agent-1" {
+				t.Errorf("newSearchRequest().SelfId = %q, want %q", got.GetSelfId(), "agent-1")
+			}
+
+			if !slices.Equal(got.GetDomainIds(), []int32{1}) {
+				t.Errorf("newSearchRequest().DomainIds = %v, want [1]", got.GetDomainIds())
+			}
+		})
+	}
+}
