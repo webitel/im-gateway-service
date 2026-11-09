@@ -85,6 +85,12 @@ func (c *InMapperImpl) ToAuthorization(source *v1.Authorization) (*dto.Authoriza
 		}
 		dtoAuthorization.Token = pDtoAccessToken
 		dtoAuthorization.Current = (*source).Current
+		if (*source).Permissions != nil {
+			dtoAuthorization.Permissions = make([]string, len((*source).Permissions))
+			for i := 0; i < len((*source).Permissions); i++ {
+				dtoAuthorization.Permissions[i] = (*source).Permissions[i]
+			}
+		}
 		pDtoAuthorization = &dtoAuthorization
 	}
 	return pDtoAuthorization, nil

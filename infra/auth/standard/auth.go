@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"log/slog"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -50,6 +51,12 @@ type Identity struct {
 	ViaName   string
 	ViaType   string
 	AppID     string
+
+	Permissions []string
+}
+
+func (i *Identity) HasPermission(id string) bool {
+	return slices.Contains(i.Permissions, id)
 }
 
 func (i *Identity) GetContactID() string {
@@ -301,6 +308,8 @@ func (da *Authorizer) resolveUserIdentity(ctx context.Context) (context.Context,
 		Name:      cmp.Or(contact.Name, contact.GivenName, contact.Username, "Unknown"),
 		ChatName:  contact.ChatName,
 		AppID:     auth.AppId,
+
+		Permissions: auth.Permissions,
 	}
 
 	return ctx, identity, nil

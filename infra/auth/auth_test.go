@@ -60,3 +60,60 @@ func TestAuthTypeFromContext(t *testing.T) {
 		}
 	})
 }
+
+type permissionTestIdentity struct{ permissions []string }
+
+func (i permissionTestIdentity) GetContactID() string     { return "" }
+func (i permissionTestIdentity) GetDomainID() int64       { return 1 }
+func (i permissionTestIdentity) GetIssuer() string        { return "" }
+func (i permissionTestIdentity) GetName() string          { return "" }
+func (i permissionTestIdentity) GetChatName() string      { return "" }
+func (i permissionTestIdentity) GetApplicationID() string { return "" }
+func (i permissionTestIdentity) GetVia() string           { return "" }
+func (i permissionTestIdentity) GetViaPtr() *string       { return nil }
+func (i permissionTestIdentity) GetViaName() string       { return "" }
+func (i permissionTestIdentity) GetViaType() string       { return "" }
+func (i permissionTestIdentity) HasPermission(id string) bool {
+	for _, p := range i.permissions {
+		if p == id {
+			return true
+		}
+	}
+	return false
+}
+
+func TestHasPermission(t *testing.T) {
+	withIdentity := func(permissions ...string) context.Context {
+		return context.WithValue(context.Background(), AuthContextKey, Identifier(permissionTestIdentity{permissions: permissions}))
+	}
+
+	tests := []struct {
+		name string
+		ctx  context.Context
+		want bool
+	}{
+		{
+			name: "no identity in context",
+			ctx:  context.Background(),
+			want: false,
+		},
+		{
+			name: "identity without the permission",
+			ctx:  withIdentity("read"),
+			want: false,
+		},
+		{
+			name: "identity granted the permission",
+			ctx:  withIdentity("read", PermissionIMReadAll),
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := HasPermission(tt.ctx, PermissionIMReadAll); got != tt.want {
+				t.Errorf("HasPermission() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

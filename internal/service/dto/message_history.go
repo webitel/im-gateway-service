@@ -31,6 +31,7 @@ type SearchMessageHistoryRequest struct {
 	Cursor                 *HistoryMessageCursor `json:"cursor,omitempty"`
 	Size                   uint32                `json:"size"`
 	CallerID               string
+	SystemCall             bool
 	SystemMessageAllowList *SystemMessageAllowList
 }
 

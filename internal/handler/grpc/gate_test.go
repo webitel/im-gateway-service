@@ -10,16 +10,17 @@ import (
 
 type gateTestIdentity struct{ domainID int64 }
 
-func (i gateTestIdentity) GetContactID() string     { return "" }
-func (i gateTestIdentity) GetDomainID() int64       { return i.domainID }
-func (i gateTestIdentity) GetIssuer() string        { return "" }
-func (i gateTestIdentity) GetName() string          { return "" }
-func (i gateTestIdentity) GetChatName() string      { return "" }
-func (i gateTestIdentity) GetApplicationID() string { return "" }
-func (i gateTestIdentity) GetVia() string           { return "" }
-func (i gateTestIdentity) GetViaPtr() *string       { return nil }
-func (i gateTestIdentity) GetViaName() string       { return "" }
-func (i gateTestIdentity) GetViaType() string       { return "" }
+func (i gateTestIdentity) GetContactID() string      { return "" }
+func (i gateTestIdentity) GetDomainID() int64        { return i.domainID }
+func (i gateTestIdentity) GetIssuer() string         { return "" }
+func (i gateTestIdentity) GetName() string           { return "" }
+func (i gateTestIdentity) GetChatName() string       { return "" }
+func (i gateTestIdentity) GetApplicationID() string  { return "" }
+func (i gateTestIdentity) GetVia() string            { return "" }
+func (i gateTestIdentity) GetViaPtr() *string        { return nil }
+func (i gateTestIdentity) GetViaName() string        { return "" }
+func (i gateTestIdentity) GetViaType() string        { return "" }
+func (i gateTestIdentity) HasPermission(string) bool { return false }
 
 func TestScopeListGatesRequest(t *testing.T) {
 	ctx := context.WithValue(context.Background(), auth.AuthContextKey, gateTestIdentity{domainID: 3})
