@@ -450,22 +450,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
-		Fields:       toInternalThreadFields(searchQuery.Fields),
-		Ids:          searchQuery.Ids,
-		DomainIds:    []int32{int32(identity.GetDomainID())},
-		Q:            searchQuery.Q,
-		SelfId:       identity.GetContactID(),
-		MemberIds:    searchQuery.ContactIds,
-		Participants: participantsToInternal(searchQuery.GetParticipants()),
-		Size:         searchQuery.Size,
-		Sort:         toInternalThreadSort(searchQuery.Sort),
-		Page:         searchQuery.Page,
-		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
-		Unread:       searchQuery.GetUnread(),
-		Tags:         searchQuery.GetTags(),
-		ExcludeTags:  searchQuery.GetExcludeTags(),
-	})
+	internalThreads, err := t.threadClient.Search(ctx, newSearchRequest(searchQuery, identity, auth.HasPermission(ctx, auth.PermissionIMReadAll)))
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
 
@@ -494,6 +479,28 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		Next:          internalThreads.GetNext(),
 		UpdatesCursor: internalThreads.GetUpdatesCursor(),
 	}, nil
+}
+
+// newSearchRequest builds the im-thread Search request for the caller. Callers granted
+// im_read_all search every thread of their domain, not only the ones they are a member of.
+func newSearchRequest(searchQuery *gtwthread.ThreadSearchRequest, identity auth.Identifier, systemCall bool) *threadv1.ThreadSearchRequest {
+	return &threadv1.ThreadSearchRequest{
+		Fields:       toInternalThreadFields(searchQuery.GetFields()),
+		Ids:          searchQuery.GetIds(),
+		DomainIds:    []int32{int32(identity.GetDomainID())},
+		Q:            searchQuery.GetQ(),
+		SelfId:       identity.GetContactID(),
+		MemberIds:    searchQuery.GetContactIds(),
+		Participants: participantsToInternal(searchQuery.GetParticipants()),
+		Size:         searchQuery.GetSize(),
+		Sort:         toInternalThreadSort(searchQuery.GetSort()),
+		Page:         searchQuery.GetPage(),
+		Kinds:        gtwThreadKindToInternal(searchQuery.GetTypes()),
+		Unread:       searchQuery.GetUnread(),
+		Tags:         searchQuery.GetTags(),
+		ExcludeTags:  searchQuery.GetExcludeTags(),
+		SystemCall:   &systemCall,
+	}
 }
 
 // newSearchLeftRequest builds the im-thread SearchLeft request for the caller. The gateway
