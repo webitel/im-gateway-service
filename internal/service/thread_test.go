@@ -425,16 +425,17 @@ type readCallerIdentity struct {
 	contactID string
 }
 
-func (i readCallerIdentity) GetContactID() string     { return i.contactID }
-func (i readCallerIdentity) GetDomainID() int64       { return 1 }
-func (i readCallerIdentity) GetIssuer() string        { return "" }
-func (i readCallerIdentity) GetName() string          { return "" }
-func (i readCallerIdentity) GetChatName() string      { return "" }
-func (i readCallerIdentity) GetApplicationID() string { return "" }
-func (i readCallerIdentity) GetVia() string           { return "" }
-func (i readCallerIdentity) GetViaPtr() *string       { return nil }
-func (i readCallerIdentity) GetViaName() string       { return "" }
-func (i readCallerIdentity) GetViaType() string       { return "" }
+func (i readCallerIdentity) GetContactID() string      { return i.contactID }
+func (i readCallerIdentity) GetDomainID() int64        { return 1 }
+func (i readCallerIdentity) GetIssuer() string         { return "" }
+func (i readCallerIdentity) GetName() string           { return "" }
+func (i readCallerIdentity) GetChatName() string       { return "" }
+func (i readCallerIdentity) GetApplicationID() string  { return "" }
+func (i readCallerIdentity) GetVia() string            { return "" }
+func (i readCallerIdentity) GetViaPtr() *string        { return nil }
+func (i readCallerIdentity) GetViaName() string        { return "" }
+func (i readCallerIdentity) GetViaType() string        { return "" }
+func (i readCallerIdentity) HasPermission(string) bool { return false }
 
 func Test_readCallerID(t *testing.T) {
 	identity := readCallerIdentity{contactID: "contact-1"}

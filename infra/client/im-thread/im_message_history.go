@@ -54,23 +54,14 @@ func NewMessageHistoryClient(logger *slog.Logger, discovery discovery.DiscoveryP
 	return &MessageHistoryClient{logger: log, rpc: c}, err
 }
 
-// Search performs a search for messages in the message history given a search query.
+// toSearchMessageHistoryRequest builds the im-thread history request from the search query.
 //
 // Args:
-//   - ctx: context of the request
 //   - searchQuery: search query for the message history
 //
 // Returns:
-//   - *dto.SearchMessageHistoryResponse: search result
-//   - error: any error encountered during the search operation
-func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
-	log := c.logger.With(
-		slog.Int("domain_id", int(searchQuery.DomainID)),
-		slog.Uint64("size", uint64(searchQuery.Size)),
-		slog.Any("thread_ids", searchQuery.ThreadIDs),
-		slog.Any("cursor", searchQuery.Cursor),
-	)
-
+//   - *threadv1.SearchMessageHistoryRequest: request for im-thread
+func toSearchMessageHistoryRequest(searchQuery *dto.SearchMessageHistoryRequest) *threadv1.SearchMessageHistoryRequest {
 	var cursor *threadv1.HistoryMessageCursorRequest
 	if searchQuery.Cursor != nil {
 		cursor = &threadv1.HistoryMessageCursorRequest{
@@ -92,6 +83,33 @@ func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.Sear
 		CallerId:               searchQuery.CallerID,
 		SystemMessageAllowList: toSystemMessageAllowList(searchQuery.SystemMessageAllowList),
 	}
+
+	if searchQuery.SystemCall {
+		systemCall := true
+		req.SystemCall = &systemCall
+	}
+
+	return req
+}
+
+// Search performs a search for messages in the message history given a search query.
+//
+// Args:
+//   - ctx: context of the request
+//   - searchQuery: search query for the message history
+//
+// Returns:
+//   - *dto.SearchMessageHistoryResponse: search result
+//   - error: any error encountered during the search operation
+func (c *MessageHistoryClient) Search(ctx context.Context, searchQuery *dto.SearchMessageHistoryRequest) (*dto.SearchMessageHistoryResponse, []*threadv1.ThreadMember, error) {
+	log := c.logger.With(
+		slog.Int("domain_id", int(searchQuery.DomainID)),
+		slog.Uint64("size", uint64(searchQuery.Size)),
+		slog.Any("thread_ids", searchQuery.ThreadIDs),
+		slog.Any("cursor", searchQuery.Cursor),
+	)
+
+	req := toSearchMessageHistoryRequest(searchQuery)
 
 	var (
 		response *threadv1.SearchMessageHistoryResponse

@@ -62,6 +62,8 @@ type Authorization struct {
 	Contact *AuthContact
 	Token   *AccessToken
 	Current bool
+
+	Permissions []string
 }
 
 type Device struct {
