@@ -32,9 +32,11 @@ func TestToSearchMessageHistoryRequest_SystemCall(t *testing.T) {
 			if got := req.SystemCall != nil; got != tt.wantSet {
 				t.Fatalf("system_call set = %v, want %v", got, tt.wantSet)
 			}
+
 			if req.GetSystemCall() != tt.systemCall {
 				t.Fatalf("system_call = %v, want %v", req.GetSystemCall(), tt.systemCall)
 			}
+
 			if req.GetDomainId() != 1 || req.GetCallerId() != "caller" || req.GetThreadId() != "thread" {
 				t.Fatalf("unexpected request: %+v", req)
 			}
