@@ -25,6 +25,8 @@ const (
 	ViaIdentificationHeader      = "x-webitel-via"
 )
 
+const PermissionIMReadAll = "im_read_all"
+
 type XWebitelType string
 
 const (
@@ -45,6 +47,7 @@ type Identifier interface {
 	GetApplicationID() string
 	GetVia() string
 	GetViaPtr() *string
+	HasPermission(id string) bool
 }
 
 func GetIdentityFromContext(ctx context.Context) (Identifier, bool) {
@@ -78,4 +81,12 @@ func AuthTypeFromContext(ctx context.Context) (XWebitelType, bool) {
 func IsSystemCall(ctx context.Context) bool {
 	t, ok := AuthTypeFromContext(ctx)
 	return ok && (t == XWebitelTypeSchema || t == XWebitelTypeEngine)
+}
+
+// HasPermission reports whether the authenticated identity in ctx was granted
+// the Webitel permission id (e.g. PermissionIMReadAll). Only end-user calls
+// authorized by a Webitel token carry permissions.
+func HasPermission(ctx context.Context, id string) bool {
+	identity, ok := GetIdentityFromContext(ctx)
+	return ok && identity.HasPermission(id)
 }
