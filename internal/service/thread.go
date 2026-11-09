@@ -322,19 +322,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		return nil, false, auth.IdentityNotFoundErr
 	}
 
-	internalThreads, err := t.threadClient.Search(ctx, &threadv1.ThreadSearchRequest{
-		Fields:       searchQuery.Fields,
-		Ids:          searchQuery.Ids,
-		DomainIds:    []int32{int32(identity.GetDomainID())},
-		Q:            searchQuery.Q,
-		SelfId:       identity.GetContactID(),
-		MemberIds:    searchQuery.ContactIds,
-		Participants: participantsToInternal(searchQuery.GetParticipants()),
-		Size:         searchQuery.Size,
-		Sort:         searchQuery.Sort,
-		Page:         searchQuery.Page,
-		Kinds:        gtwThreadKindToInternal(searchQuery.Types),
-	})
+	internalThreads, err := t.threadClient.Search(ctx, newSearchRequest(searchQuery, identity, auth.HasPermission(ctx, auth.PermissionIMReadAll)))
 
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
@@ -360,6 +348,25 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 	}
 
 	return res, internalThreads.Next, nil
+}
+
+// newSearchRequest builds the im-thread Search request for the caller. Callers granted
+// im_read_all search every thread of their domain, not only the ones they are a member of.
+func newSearchRequest(searchQuery *gtwthread.ThreadSearchRequest, identity auth.Identifier, systemCall bool) *threadv1.ThreadSearchRequest {
+	return &threadv1.ThreadSearchRequest{
+		Fields:       searchQuery.GetFields(),
+		Ids:          searchQuery.GetIds(),
+		DomainIds:    []int32{int32(identity.GetDomainID())},
+		Q:            searchQuery.GetQ(),
+		SelfId:       identity.GetContactID(),
+		MemberIds:    searchQuery.GetContactIds(),
+		Participants: participantsToInternal(searchQuery.GetParticipants()),
+		Size:         searchQuery.GetSize(),
+		Sort:         searchQuery.GetSort(),
+		Page:         searchQuery.GetPage(),
+		Kinds:        gtwThreadKindToInternal(searchQuery.GetTypes()),
+		SystemCall:   &systemCall,
+	}
 }
 
 func (t *thread) SearchLeft(ctx context.Context, request *gtwthread.SearchLeftRequest) ([]*gtwthread.Thread, bool, error) {
