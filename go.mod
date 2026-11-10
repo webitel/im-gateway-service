@@ -16,7 +16,7 @@ require (
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/webitel/storage v0.0.0-20260322080719-33a0a6cb8495
-	github.com/webitel/webitel-go-kit/appconfig v0.0.0-20260602143553-df89d5e34680
+	github.com/webitel/webitel-go-kit/appconfig v0.1.1-0.20261110114623-1cd41cd688ca
 	github.com/webitel/webitel-go-kit/infra/otel v0.1.0
 	github.com/webitel/webitel-go-kit/infra/profiler v0.1.0
 	github.com/webitel/webitel-go-kit/infra/transport v0.0.0-20260406211014-f7c4f5d66ae8
