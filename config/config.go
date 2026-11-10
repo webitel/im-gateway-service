@@ -1,12 +1,14 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/pflag"
+
 	"github.com/webitel/webitel-go-kit/appconfig"
 )
 
@@ -52,6 +54,8 @@ func LoadConfig() (*Config, error) {
 	})
 	loader.RegisterFlags(pflag.CommandLine)
 	registerServiceFlags()
+	// postgres, redis and pubsub secrets are marked by NewLoader.
+	loader.MarkSecretPath(append(appconfig.GRPCConnSecretPaths("service.conn"), "service.http.tls.key")...)
 	pflag.Parse()
 
 	cfg := &Config{}
@@ -115,7 +119,7 @@ func (c *Config) validate() error {
 		c.Log.Level = "info"
 	}
 	if c.Postgres.DSN == "" {
-		return fmt.Errorf("config: postgres.dsn is required (use --postgres.dsn or POSTGRES_DSN env)")
+		return errors.New("config: postgres.dsn is required (use --postgres.dsn, POSTGRES_DSN, POSTGRES_DSN_FILE or a postgres.dsn systemd credential)")
 	}
 	if c.Redis.Addr == "" {
 		return fmt.Errorf("config: redis.addr is required")
@@ -124,7 +128,7 @@ func (c *Config) validate() error {
 		return fmt.Errorf("config: consul.addr is required")
 	}
 	if c.Pubsub.URL == "" {
-		return fmt.Errorf("config: pubsub.url is required (use --pubsub.url or PUBSUB_URL env)")
+		return errors.New("config: pubsub.url is required (use --pubsub.url, PUBSUB_URL, PUBSUB_URL_FILE or a pubsub.url systemd credential)")
 	}
 	if !strings.HasPrefix(c.Pubsub.URL, "amqp://") && !strings.HasPrefix(c.Pubsub.URL, "amqps://") {
 		return fmt.Errorf("config: pubsub.url must start with amqp:// or amqps://")
