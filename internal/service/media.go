@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
-	"github.com/gabriel-vasile/mimetype"
 	storagev1 "github.com/webitel/im-gateway-service/gen/go/storage/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
@@ -279,6 +279,8 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 			if sendErr := sess.stream.Send(&storagev1.SafeUploadFileRequest{
 				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
 			}); sendErr != nil {
+				sendErr = uploadStreamErr(sess.stream, sendErr)
+
 				log.Debug("append content: failed to send chunk to storage",
 					slog.Int("chunk_bytes", n), slog.String("error", sendErr.Error()))
 
@@ -364,6 +366,8 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 			},
 		},
 	}); err != nil {
+		err = uploadStreamErr(stream, err)
+
 		cancelFn()
 		releaseFn()
 

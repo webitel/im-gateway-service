@@ -125,3 +125,27 @@ func TestMapToGetUpdatesProto_Tags(t *testing.T) {
 		t.Errorf("untouched: tags = %v, want absent", tags)
 	}
 }
+
+// replaced_by reaches the client only for a deletion caused by a retry.
+func TestMapToGetUpdatesProto_DeletedMessageReplacedBy(t *testing.T) {
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{{
+		ThreadID: "t1",
+		DeletedMessages: []*dto.DeletedMessage{
+			{ID: "failed", DeletedAt: 1800, ReplacedBy: "retry"},
+			{ID: "plain", DeletedAt: 1900},
+		},
+	}}})
+
+	deleted := got.GetThreads()[0].GetDeletedMessages()
+	if len(deleted) != 2 {
+		t.Fatalf("deleted messages = %+v", deleted)
+	}
+
+	if r := deleted[0].GetReplacedBy(); r != "retry" {
+		t.Errorf("retry: replaced_by = %q, want retry", r)
+	}
+
+	if r := deleted[1].GetReplacedBy(); r != "" {
+		t.Errorf("plain delete: replaced_by = %q, want empty", r)
+	}
+}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"io"
 	"strconv"
 	"sync"
 	"time"
@@ -162,7 +163,7 @@ func (s *uploadSession) finalize() (*dto.FileMetadata, error) {
 	if err := s.stream.Send(&storagev1.SafeUploadFileRequest{
 		Data: &storagev1.SafeUploadFileRequest_Chunk{},
 	}); err != nil {
-		return nil, err
+		return nil, uploadStreamErr(s.stream, err)
 	}
 
 	msg, err := s.stream.Recv()
@@ -182,4 +183,24 @@ func (s *uploadSession) finalize() (*dto.FileMetadata, error) {
 		Size:     meta.GetSize(),
 		Hash:     meta.GetSha256Sum(),
 	}, nil
+}
+
+// uploadStreamErr resolves a Send failure to the status storage ended the
+// stream with. grpc-go's Send returns io.EOF once the server has finished the
+// stream (e.g. a file policy rejection mid-upload); the real status is only
+// observable through Recv. Must be called before the stream context is canceled.
+func uploadStreamErr(stream storagev1.FileService_SafeUploadFileClient, sendErr error) error {
+	if !errors.Is(sendErr, io.EOF) {
+		return sendErr
+	}
+
+	for {
+		if _, err := stream.Recv(); err != nil {
+			if errors.Is(err, io.EOF) {
+				return sendErr
+			}
+
+			return err
+		}
+	}
 }

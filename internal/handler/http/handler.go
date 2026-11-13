@@ -5,7 +5,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -67,6 +69,7 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 	var (
 		httpCode int
 		id       string
+		detail   = err.Error()
 	)
 
 	var maxBytesErr *http.MaxBytesError
@@ -105,6 +108,13 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 			case codes.AlreadyExists:
 				httpCode = http.StatusConflict
 				id = "api.conflict"
+			case codes.FailedPrecondition:
+				if rejection, ok := filePolicyRejection(st); ok {
+					httpCode, id, detail = rejection.httpCode, rejection.id, rejection.detail
+				} else {
+					httpCode = http.StatusInternalServerError
+					id = "api.internal"
+				}
 			default:
 				httpCode = http.StatusInternalServerError
 				id = "api.internal"
@@ -115,5 +125,65 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 		}
 	}
 
-	renderError(w, httpCode, id, err.Error())
+	renderError(w, httpCode, id, detail)
+}
+
+// storageFilePolicyID is the id im-storage reports when an upload breaks the
+// domain's file policy (size limit, file type, channel).
+const storageFilePolicyID = "policy.file.allow"
+
+// storageMaxSizeReason is the reason im-storage gives for a size-limit rejection.
+const storageMaxSizeReason = "max size"
+
+type policyRejection struct {
+	httpCode int
+	id       string
+	detail   string
+}
+
+var (
+	fileTooLarge = policyRejection{
+		httpCode: http.StatusRequestEntityTooLarge,
+		id:       "api.file_too_large",
+		detail:   "File exceeds the maximum upload size allowed for this domain",
+	}
+	fileRejected = policyRejection{
+		httpCode: http.StatusUnprocessableEntity,
+		id:       "api.file_rejected",
+		detail:   "File is not allowed by the domain's file policy",
+	}
+)
+
+// filePolicyRejection recognizes a storage file policy FailedPrecondition.
+// im-storage today sends only the bare id ("policy.file.allow") as the message,
+// so the reason is lost and every rejection maps to 422. A size rejection is
+// recognized when the reason ("max size") reaches the gateway, either appended
+// to the message or carried in ErrorInfo / PreconditionFailure details.
+func filePolicyRejection(st *status.Status) (policyRejection, bool) {
+	texts := []string{st.Message()}
+
+	for _, d := range st.Details() {
+		switch d := d.(type) {
+		case *errdetails.ErrorInfo:
+			texts = append(texts, d.GetReason())
+			for _, v := range d.GetMetadata() {
+				texts = append(texts, v)
+			}
+		case *errdetails.PreconditionFailure:
+			for _, v := range d.GetViolations() {
+				texts = append(texts, v.GetType(), v.GetSubject(), v.GetDescription())
+			}
+		}
+	}
+
+	all := strings.Join(texts, "\n")
+	if !strings.Contains(all, storageFilePolicyID) {
+		return policyRejection{}, false
+	}
+
+	if strings.Contains(all, storageMaxSizeReason) {
+		return fileTooLarge, true
+	}
+
+	return fileRejected, true
 }

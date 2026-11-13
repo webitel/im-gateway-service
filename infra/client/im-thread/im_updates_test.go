@@ -82,3 +82,21 @@ func TestToUpdatesResponseDTO_DeletedMessages(t *testing.T) {
 		t.Fatalf("deleted messages = %+v", got)
 	}
 }
+
+// A retry's replacement id passes through so clients drop the failed bubble instead of tombstoning it.
+func TestToUpdatesResponseDTO_DeletedMessageReplacedBy(t *testing.T) {
+	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{
+		Threads: []*threadv1.ThreadUpdates{{
+			ThreadId: "t1",
+			DeletedMessages: []*threadv1.DeletedMessage{
+				{Id: "failed", DeletedAt: 1800, ReplacedBy: "retry"},
+				{Id: "plain", DeletedAt: 1900},
+			},
+		}},
+	})
+
+	got := out.Threads[0].DeletedMessages
+	if len(got) != 2 || got[0].ReplacedBy != "retry" || got[1].ReplacedBy != "" {
+		t.Fatalf("deleted messages = %+v", got)
+	}
+}
