@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/google/uuid"
+
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
 )
@@ -35,6 +36,9 @@ type SendDocumentRequest struct {
 
 	// Variables are seeded onto the thread when this message creates it.
 	Variables map[string]string `json:"variables,omitempty"`
+
+	// RetryOf is the caller's failed message this send replaces.
+	RetryOf *string `json:"retry_of,omitempty"`
 }
 
 type SendDocumentResponse struct {

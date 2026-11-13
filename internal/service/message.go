@@ -50,7 +50,7 @@ type Messenger interface {
 
 type MessageService struct {
 	logger    *slog.Logger
-	threader  *imthread.Client
+	threader  threadv1.MessageClient
 	contacter recipientContacts
 	vias      recipientVias
 }
@@ -88,6 +88,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 
 		ExternalId:        in.GetExternalId(),
 		ReplyToExternalId: in.GetReplyToExternalId(),
+		RetryOf:           in.RetryOf,
 	})
 	if err != nil {
 		return nil, err
@@ -199,6 +200,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 
 		ExternalId:        in.GetExternalId(),
 		ReplyToExternalId: in.GetReplyToExternalId(),
+		RetryOf:           in.RetryOf,
 	})
 	if err != nil {
 		return nil, err
@@ -261,6 +263,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
 		Entities:          toThreadEntities(entities),
 		Variables:         in.Variables,
+		RetryOf:           in.RetryOf,
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
@@ -313,6 +316,7 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 		ForwardOrigin:     toThreadForwardOrigin(in.ForwardOrigin),
 		Entities:          toThreadEntities(entities),
 		Variables:         in.Variables,
+		RetryOf:           in.RetryOf,
 	})
 	if err != nil {
 		return nil, err

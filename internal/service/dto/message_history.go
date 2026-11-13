@@ -191,6 +191,8 @@ type DeletedMessage struct {
 	DeletedAt   int64          `json:"deleted_at"`
 	DeletedByID string         `json:"-"`
 	DeletedBy   *MessageSender `json:"deleted_by,omitempty"`
+	// ReplacedBy is the retry that replaced this failed message; empty for a plain delete.
+	ReplacedBy string `json:"replaced_by,omitempty"`
 }
 
 // ThreadMemberChange is a join/leave; Action is a gateway/v1 ThreadMemberChangeAction.

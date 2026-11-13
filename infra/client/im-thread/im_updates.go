@@ -184,6 +184,7 @@ func mapDeletedMessages(in []*threadv1.DeletedMessage) []*dto.DeletedMessage {
 			ID:          d.GetId(),
 			DeletedAt:   d.GetDeletedAt(),
 			DeletedByID: d.GetDeletedBy().GetContactId(),
+			ReplacedBy:  d.GetReplacedBy(),
 		})
 	}
 

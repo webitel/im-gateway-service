@@ -1,9 +1,10 @@
 package mapper
 
 import (
+	"google.golang.org/protobuf/types/known/structpb"
+
 	pb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // MapSearchMessageHistoryRequestToDTO maps a SearchMessageHistoryRequest to a SearchMessageHistoryRequestDTO.
@@ -210,9 +211,10 @@ func toProtoDeletedMessages(in []*dto.DeletedMessage) []*pb.DeletedMessage {
 	out := make([]*pb.DeletedMessage, 0, len(in))
 	for _, d := range in {
 		out = append(out, &pb.DeletedMessage{
-			Id:        d.ID,
-			DeletedAt: d.DeletedAt,
-			DeletedBy: toProtoMessageSender(d.DeletedBy),
+			Id:         d.ID,
+			DeletedAt:  d.DeletedAt,
+			DeletedBy:  toProtoMessageSender(d.DeletedBy),
+			ReplacedBy: d.ReplacedBy,
 		})
 	}
 
