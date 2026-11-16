@@ -5,9 +5,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 
 	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
@@ -53,6 +55,7 @@ type MessageService struct {
 	threader  threadv1.MessageClient
 	contacter recipientContacts
 	vias      recipientVias
+	appConfig AppConfigProvider
 }
 
 // SendContact implements Messenger.
@@ -62,7 +65,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.To), in.SendAs, identity)
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +82,8 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		Name:             in.Name,
 		Email:            in.Email,
 		PhoneNumber:      in.PhoneNumber,
-		Metadata:         in.Metadata,
-		SendId:           in.SendId,
+		Metadata:         in.GetMetadata(),
+		SendId:           in.GetSendId(),
 		DomainId:         int32(identity.GetDomainID()),
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
@@ -95,8 +98,8 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 	}
 
 	return &api.SendMessageResponse{
-		To: in.To,
-		Id: resp.Id,
+		To: in.GetTo(),
+		Id: resp.GetId(),
 	}, nil
 }
 
@@ -107,7 +110,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.To), in.SendAs, identity)
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +134,8 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 	}
 
 	return &api.SendMessageResponse{
-		To: in.To,
-		Id: resp.Id,
+		To: in.GetTo(),
+		Id: resp.GetId(),
 	}, nil
 }
 
@@ -151,19 +154,19 @@ func (m *MessageService) SendInteractiveCallback(ctx context.Context, in *api.In
 				ChatName: identity.GetChatName(),
 			},
 		},
-		InReplyTo:    in.InReplyTo,
-		ButtonCode:   in.ButtonCode,
-		CallbackData: in.CallbackData,
+		InReplyTo:    in.GetInReplyTo(),
+		ButtonCode:   in.GetButtonCode(),
+		CallbackData: in.GetCallbackData(),
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.InteractiveCallbackResponse{
-		InReplyTo:    resp.InReplyTo,
-		ButtonCode:   resp.ButtonCode,
-		CallbackData: resp.CallbackData,
-		ReactedAt:    resp.ReactedAt,
+		InReplyTo:    resp.GetInReplyTo(),
+		ButtonCode:   resp.GetButtonCode(),
+		CallbackData: resp.GetCallbackData(),
+		ReactedAt:    resp.GetReactedAt(),
 	}, nil
 }
 
@@ -173,7 +176,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.To), in.SendAs, identity)
+	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
 	if err != nil {
 		return nil, err
 	}
@@ -187,12 +190,12 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 			},
 		},
 		To:               to,
-		Latitude:         in.Latitude,
-		Longitude:        in.Longitude,
+		Latitude:         in.GetLatitude(),
+		Longitude:        in.GetLongitude(),
 		Name:             in.Name,
 		Address:          in.Address,
-		Metadata:         in.Metadata,
-		SendId:           in.SendId,
+		Metadata:         in.GetMetadata(),
+		SendId:           in.GetSendId(),
 		DomainId:         int32(identity.GetDomainID()),
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
@@ -207,17 +210,18 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 	}
 
 	return &api.SendMessageResponse{
-		To: in.To,
-		Id: resp.Id,
+		To: in.GetTo(),
+		Id: resp.GetId(),
 	}, nil
 }
 
-func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client, vias *imcontact.ViaClient) *MessageService {
+func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client, vias *imcontact.ViaClient, appConfig AppConfigProvider) *MessageService {
 	return &MessageService{
 		logger:    logger,
 		threader:  threadClient,
 		contacter: contacter,
 		vias:      vias,
+		appConfig: appConfig,
 	}
 }
 
@@ -228,17 +232,16 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	// Parse the body before resolving send metadata (a gRPC round-trip to
-	// im-contact-service): a malformed body is rejected for free, without
-	// paying for backend calls that would be discarded anyway.
 	plainText, entities, err := markdown.Parse(in.Body)
 	if err != nil {
 		if errors.Is(err, markdown.ErrEntityBoundsCorrupted) {
 			m.logger.Error("SendText: markdown parser produced invalid entity bounds", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+
 			return nil, errors.Internal("internal markdown parser error", errors.WithCause(err), errors.WithID("service.message.send_text.parse_body"))
 		}
 
 		m.logger.Warn("SendText: message body rejected by markdown parser", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+
 		return nil, errors.InvalidArgument("invalid message formatting", errors.WithCause(err), errors.WithID("service.message.send_text.parse_body"))
 	}
 
@@ -267,6 +270,7 @@ func (m *MessageService) SendText(ctx context.Context, in *dto.SendTextRequest) 
 	})
 	if err != nil {
 		m.logger.Error("SendText", "err", err, "to", to, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+
 		return nil, err
 	}
 
@@ -287,10 +291,12 @@ func (m *MessageService) SendDocument(ctx context.Context, in *dto.SendDocumentR
 	if err != nil {
 		if errors.Is(err, markdown.ErrEntityBoundsCorrupted) {
 			m.logger.Error("SendDocument: markdown parser produced invalid entity bounds", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+
 			return nil, errors.Internal("internal markdown parser error", errors.WithCause(err), errors.WithID("service.message.send_document.parse_body"))
 		}
 
 		m.logger.Warn("SendDocument: message body rejected by markdown parser", "err", err, "from_name", identity.GetName(), "from_contact_id", identity.GetContactID())
+
 		return nil, errors.InvalidArgument("invalid message formatting", errors.WithCause(err), errors.WithID("service.message.send_document.parse_body"))
 	}
 
@@ -410,6 +416,7 @@ func (m *MessageService) Read(ctx context.Context, in *dto.ReadMessageRequest) e
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -588,11 +595,100 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 			Kind: &threadv1.Peer_ThreadId{ThreadId: p.ID},
 		}, nil
 	default:
-		return nil, errors.New("unknown receiver peer type")
+		return nil, errors.InvalidArgument("unknown receiver peer type", errors.WithID("service.message.resolve_recipient.unknown_peer_type"))
 	}
 }
 
+// resolveSendRecipient: a restricted application may still send to a thread_id — a thread can only
+// have been created with an allowed contact (Create/AddMember/Transfer enforce the same policy).
+func (m *MessageService) resolveSendRecipient(ctx context.Context, toPeer shared.Peer, session auth.Identifier) (*threadv1.Peer, error) {
+	domainID := int32(session.GetDomainID())
+
+	policy, err := resolveContactPolicy(ctx, m.appConfig, session)
+	if err != nil {
+		return nil, err
+	}
+
+	// mapper.MapPeerFromProto returns PeerUnspecified for an absent `to` and for a `to` with no kind set.
+	if toPeer.Type == shared.PeerUnspecified {
+		if id, ok := policy.DefaultContactID(); ok {
+			return m.resolveDefaultContact(ctx, id, domainID)
+		}
+
+		return nil, errors.InvalidArgument(
+			"recipient (to) is required: the application has no default contact",
+			errors.WithID("service.message.resolve_send_recipient.missing_to"),
+		)
+	}
+
+	if !policy.Restricted() {
+		return m.resolveRecipient(ctx, toPeer, domainID)
+	}
+
+	switch toPeer.Type {
+	case shared.PeerThread:
+		return m.resolveRecipient(ctx, toPeer, domainID)
+
+	case shared.PeerContact:
+		// No implicit creation: a new contact cannot be in the allow-list.
+		to, err := m.resolveContactWith(ctx, toPeer.ID, toPeer.Issuer, toPeer.Via, domainID, false)
+		if err != nil && errors.Code(err) != codes.NotFound {
+			return nil, err
+		}
+
+		// On NotFound to is nil and its contact id is empty.
+		if err := checkContactAllowed(policy, to.GetContactId()); err != nil {
+			m.logger.DebugContext(ctx, "recipient denied by application contacts policy",
+				slog.String("app_id", session.GetApplicationID()),
+				slog.String("contact_id", to.GetContactId()),
+			)
+
+			return nil, err
+		}
+
+		return to, nil
+
+	default:
+		return nil, errors.Forbidden(
+			"recipient type is not allowed for this application",
+			errors.WithID("service.message.resolve_send_recipient.peer_type_not_allowed"),
+		)
+	}
+}
+
+func (m *MessageService) resolveDefaultContact(ctx context.Context, contactID string, domainID int32) (*threadv1.Peer, error) {
+	res, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
+		Ids:      []string{contactID},
+		DomainId: domainID,
+		Size:     1,
+		Page:     1,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("resolve default recipient: %w", err)
+	}
+
+	contacts := res.GetContacts()
+
+	idx := slices.IndexFunc(contacts, func(c *impb.Contact) bool { return c.GetId() == contactID })
+	if idx < 0 {
+		return nil, errors.NotFound("default recipient contact not found", errors.WithID("service.message.resolve_default_contact.not_found"))
+	}
+
+	contact := contacts[idx]
+
+	return &threadv1.Peer{
+		Kind: &threadv1.Peer_ContactId{ContactId: contact.GetId()},
+		Identity: &threadv1.Identity{
+			Name: cmp.Or(contact.GetName(), contact.GetUsername(), NoNameRecipient),
+		},
+	}, nil
+}
+
 func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, via *string, domainID int32) (*threadv1.Peer, error) {
+	return m.resolveContactWith(ctx, sub, iss, via, domainID, true)
+}
+
+func (m *MessageService) resolveContactWith(ctx context.Context, sub, iss string, via *string, domainID int32, allowCreate bool) (*threadv1.Peer, error) {
 	normalize, implicit := implicitContactIssuers[iss]
 	if implicit {
 		sub = normalize(sub)
@@ -603,7 +699,7 @@ func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, vi
 		return nil, err
 	}
 
-	if len(contacts) == 0 && implicit && via != nil && *via != "" {
+	if len(contacts) == 0 && allowCreate && implicit && via != nil && *via != "" {
 		contacts, err = m.createRecipient(ctx, sub, iss, *via, domainID)
 		if err != nil {
 			return nil, err
@@ -649,6 +745,7 @@ func (m *MessageService) mapDocuments(src []*dto.Document) []*threadv1.DocumentI
 		if doc == nil {
 			continue
 		}
+
 		size := doc.Size
 		res = append(res, &threadv1.DocumentInput{
 			Id:        fmt.Sprintf("%d", doc.ID),
@@ -658,6 +755,7 @@ func (m *MessageService) mapDocuments(src []*dto.Document) []*threadv1.DocumentI
 			SizeBytes: &size,
 		})
 	}
+
 	return res
 }
 
@@ -665,8 +763,10 @@ func (m *MessageService) parseUUID(id string) uuid.UUID {
 	res, err := uuid.Parse(id)
 	if err != nil {
 		m.logger.Warn("invalid uuid in response", slog.String("raw_id", id))
+
 		return uuid.Nil
 	}
+
 	return res
 }
 
@@ -686,8 +786,8 @@ func (m *MessageService) guardSendAsAction(ctx context.Context, sendAs *api.Peer
 
 	contacts, err := m.contacter.SearchContact(ctx, &impb.SearchContactRequest{
 		Size:     1,
-		IssId:    []string{sendAs.Iss},
-		Subjects: []string{sendAs.Sub},
+		IssId:    []string{sendAs.GetIss()},
+		Subjects: []string{sendAs.GetSub()},
 		OnlyBots: &searchOnlyBot,
 	})
 	if err != nil {
@@ -719,13 +819,17 @@ func (m *MessageService) resolveSendMetadata(ctx context.Context, toPeer shared.
 
 	egroup.Go(func() error {
 		var err error
-		to, err = m.resolveRecipient(ectx, toPeer, int32(session.GetDomainID()))
+
+		to, err = m.resolveSendRecipient(ectx, toPeer, session)
+
 		return err
 	})
 
 	egroup.Go(func() error {
 		var err error
+
 		sendAs, err = m.guardSendAsAction(ectx, sendAsPeer, session)
+
 		return err
 	})
 

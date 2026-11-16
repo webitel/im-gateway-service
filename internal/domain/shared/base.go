@@ -13,7 +13,9 @@ type PeerType int16
 
 //go:generate stringer -type=PeerType
 const (
-	PeerContact PeerType = iota + 1
+	// PeerUnspecified is the zero value: the request carried no recipient.
+	PeerUnspecified PeerType = iota
+	PeerContact
 	PeerGroup
 	PeerChannel
 	PeerThread

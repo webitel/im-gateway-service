@@ -339,6 +339,7 @@ func (s *MediaService) startStorageStream(ctx context.Context, sess *uploadSessi
 	mimeType, _, err := mime.ParseMediaType(mtype.String())
 	if err != nil {
 		log.Debug("start storage stream: failed to parse mime type", slog.String("error", err.Error()))
+
 		return err
 	}
 

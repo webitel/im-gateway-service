@@ -3,8 +3,9 @@ package service
 import (
 	"context"
 
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"google.golang.org/grpc/metadata"
+
+	"github.com/webitel/webitel-go-kit/pkg/errors"
 
 	"github.com/webitel/im-gateway-service/gen/go/auth/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
@@ -22,15 +23,19 @@ func withForwardedUserAgent(headers metadata.MD) metadata.MD {
 	if headers == nil {
 		return headers
 	}
+
 	if len(headers.Get(forwardedUserAgentHeader)) > 0 {
 		return headers // already forwarded by an upstream hop
 	}
+
 	ua := headers.Get("user-agent")
 	if len(ua) == 0 {
 		return headers
 	}
+
 	headers = headers.Copy()
 	headers.Set(forwardedUserAgentHeader, ua[len(ua)-1])
+
 	return headers
 }
 
@@ -87,7 +92,9 @@ func (s *AccountService) Inspect(ctx context.Context, headers metadata.MD) (*dto
 	if err != nil {
 		return nil, err
 	}
+
 	s.enrichContactType(ctx, auth)
+
 	return auth, nil
 }
 
@@ -95,12 +102,16 @@ func (s *AccountService) Token(ctx context.Context, request *dto.TokenRequest) (
 	if len(request.Headers) == 0 {
 		return nil, errors.New("headers required for token")
 	}
+
 	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(request.Headers))
+
 	auth, err := s.client.Token(outCtx, request)
 	if err != nil {
 		return nil, err
 	}
+
 	s.enrichContactType(ctx, auth)
+
 	return auth, nil
 }
 
@@ -110,6 +121,7 @@ func (s *AccountService) enrichContactType(ctx context.Context, auth *dto.Author
 	if auth == nil || auth.Contact == nil || auth.Contact.Id == "" {
 		return
 	}
+
 	res, err := s.contactClient.SearchContact(ctx, &contactv1.SearchContactRequest{
 		Ids:      []string{auth.Contact.Id},
 		Fields:   []string{"id", "type"},
@@ -119,6 +131,7 @@ func (s *AccountService) enrichContactType(ctx context.Context, auth *dto.Author
 	if err != nil || len(res.GetContacts()) == 0 {
 		return
 	}
+
 	auth.Contact.Type = res.GetContacts()[0].GetType()
 }
 
@@ -136,7 +149,9 @@ func (s *AccountService) RegisterDevice(ctx context.Context, headers metadata.MD
 	if headers == nil {
 		return errors.New("headers required for register device")
 	}
+
 	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(headers))
+
 	return s.client.RegisterDevice(outCtx, request)
 }
 
@@ -144,6 +159,8 @@ func (s *AccountService) UnregisterDevice(ctx context.Context, headers metadata.
 	if headers == nil {
 		return errors.New("headers required for unregister device")
 	}
+
 	outCtx := metadata.NewOutgoingContext(ctx, withForwardedUserAgent(headers))
+
 	return s.client.UnregisterDevice(outCtx, request)
 }
