@@ -54,7 +54,6 @@ type MessageService struct {
 	logger    *slog.Logger
 	threader  threadv1.MessageClient
 	contacter recipientContacts
-	vias      recipientVias
 	appConfig AppConfigProvider
 }
 
@@ -215,12 +214,11 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 	}, nil
 }
 
-func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client, vias *imcontact.ViaClient, appConfig AppConfigProvider) *MessageService {
+func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client, appConfig AppConfigProvider) *MessageService {
 	return &MessageService{
 		logger:    logger,
 		threader:  threadClient,
 		contacter: contacter,
-		vias:      vias,
 		appConfig: appConfig,
 	}
 }
@@ -630,8 +628,7 @@ func (m *MessageService) resolveSendRecipient(ctx context.Context, toPeer shared
 		return m.resolveRecipient(ctx, toPeer, domainID)
 
 	case shared.PeerContact:
-		// No implicit creation: a new contact cannot be in the allow-list.
-		to, err := m.resolveContactWith(ctx, toPeer.ID, toPeer.Issuer, toPeer.Via, domainID, false)
+		to, err := m.resolveContact(ctx, toPeer.ID, toPeer.Issuer, toPeer.Via, domainID)
 		if err != nil && errors.Code(err) != codes.NotFound {
 			return nil, err
 		}
@@ -685,25 +682,13 @@ func (m *MessageService) resolveDefaultContact(ctx context.Context, contactID st
 }
 
 func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, via *string, domainID int32) (*threadv1.Peer, error) {
-	return m.resolveContactWith(ctx, sub, iss, via, domainID, true)
-}
-
-func (m *MessageService) resolveContactWith(ctx context.Context, sub, iss string, via *string, domainID int32, allowCreate bool) (*threadv1.Peer, error) {
-	normalize, implicit := implicitContactIssuers[iss]
-	if implicit {
+	if normalize, ok := recipientSubjectNormalizers[iss]; ok {
 		sub = normalize(sub)
 	}
 
 	contacts, err := m.searchRecipient(ctx, sub, iss, domainID)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(contacts) == 0 && allowCreate && implicit && via != nil && *via != "" {
-		contacts, err = m.createRecipient(ctx, sub, iss, *via, domainID)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if len(contacts) == 0 {

@@ -78,7 +78,6 @@ func newPolicyTestService(contacts *fakePolicyContacts, appCfg AppConfigProvider
 	return &MessageService{
 		logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
 		contacter: contacts,
-		vias:      &fakeRecipientVias{},
 		appConfig: appCfg,
 	}
 }
