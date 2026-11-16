@@ -52,7 +52,6 @@ type MessageService struct {
 	logger    *slog.Logger
 	threader  threadv1.MessageClient
 	contacter recipientContacts
-	vias      recipientVias
 }
 
 // SendContact implements Messenger.
@@ -212,12 +211,11 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 	}, nil
 }
 
-func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client, vias *imcontact.ViaClient) *MessageService {
+func NewMessageService(logger *slog.Logger, threadClient *imthread.Client, contacter *imcontact.Client) *MessageService {
 	return &MessageService{
 		logger:    logger,
 		threader:  threadClient,
 		contacter: contacter,
-		vias:      vias,
 	}
 }
 
@@ -593,21 +591,13 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 }
 
 func (m *MessageService) resolveContact(ctx context.Context, sub, iss string, via *string, domainID int32) (*threadv1.Peer, error) {
-	normalize, implicit := implicitContactIssuers[iss]
-	if implicit {
+	if normalize, ok := recipientSubjectNormalizers[iss]; ok {
 		sub = normalize(sub)
 	}
 
 	contacts, err := m.searchRecipient(ctx, sub, iss, domainID)
 	if err != nil {
 		return nil, err
-	}
-
-	if len(contacts) == 0 && implicit && via != nil && *via != "" {
-		contacts, err = m.createRecipient(ctx, sub, iss, *via, domainID)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if len(contacts) == 0 {
