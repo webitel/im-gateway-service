@@ -7,8 +7,9 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"google.golang.org/grpc/codes"
+
+	"github.com/webitel/webitel-go-kit/pkg/errors"
 
 	adminv1 "github.com/webitel/im-gateway-service/gen/go/admin/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"

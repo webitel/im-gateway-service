@@ -15,6 +15,7 @@ var _ providerv1.GateServiceServer = (*GateServiceHandler)(nil)
 
 type GateServiceHandler struct {
 	providerv1.UnimplementedGateServiceServer
+
 	logger *slog.Logger
 	client *improviders.GateClient
 }

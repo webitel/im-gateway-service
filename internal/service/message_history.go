@@ -317,7 +317,7 @@ func historyExtraContactIDs(messages []*dto.HistoryMessage) []string {
 // If there is an error while fetching the participants, it returns an error.
 func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32, internal []*threadv1.ThreadMember, internalContactIDs ...string) (map[string]*dto.MessageSender, error) {
 	if len(internal) == 0 && len(internalContactIDs) == 0 {
-		return nil, nil
+		return make(map[string]*dto.MessageSender), nil
 	}
 
 	uniqunesMap := make(map[string]*threadv1.ThreadMember)

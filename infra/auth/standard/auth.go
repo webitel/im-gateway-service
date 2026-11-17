@@ -114,9 +114,11 @@ func New(logger *slog.Logger, auther *authclient.Client, contacter *contactclien
 	if auther == nil {
 		return nil, errors.New("no auth client provided")
 	}
+
 	if contacter == nil {
 		return nil, errors.New("no contact client provided")
 	}
+
 	return &Authorizer{
 		logger:    logger,
 		auther:    auther,
@@ -158,6 +160,7 @@ func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (context.Conte
 	if !ok {
 		return ctx, nil, errors.Forbidden("metadata required for internal identity resolve")
 	}
+
 	authType := getHeader(md, interfaces.XWebitelTypeHeader)
 	switch authType {
 	case string(interfaces.XWebitelTypeSchema):
@@ -185,6 +188,7 @@ func (da *Authorizer) resolveServiceIdentity(ctx context.Context) (context.Conte
 		return ctx, id, nil
 	case string(interfaces.XWebitelTypeProvider):
 		id, err := da.resolveProviderIdentity(ctx, md)
+
 		return ctx, id, err
 	default:
 		return ctx, nil, errors.Forbidden("unsupported auth type")
@@ -220,6 +224,7 @@ func (da *Authorizer) resolveProviderIdentity(ctx context.Context, md metadata.M
 	}
 
 	contact := res.GetContacts()[0]
+
 	return &Identity{
 		ContactID: contact.GetId(),
 		DomainID:  domainID,
@@ -266,6 +271,7 @@ func (da *Authorizer) propogateDeviceToOutgoingContext(ctx context.Context, md m
 	if devicePayload := md.Get(XDeviceHeader); len(devicePayload) != 0 {
 		device := devicePayload[0]
 		newCtx := metadata.AppendToOutgoingContext(ctx, XDeviceHeader, device)
+
 		return newCtx
 	}
 
@@ -323,6 +329,7 @@ func splitDomainAndSub(raw string) (int64, string, error) {
 	}
 
 	parts := strings.SplitN(raw, ".", 2)
+
 	domainID, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
 		return 0, "", err
@@ -331,6 +338,7 @@ func splitDomainAndSub(raw string) (int64, string, error) {
 	if len(parts) < 2 {
 		return domainID, "", nil
 	}
+
 	return domainID, parts[1], nil
 }
 

@@ -6,14 +6,17 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-var m = protojson.MarshalOptions{EmitUnpopulated: false}
-var u = protojson.UnmarshalOptions{DiscardUnknown: true}
+var (
+	m = protojson.MarshalOptions{EmitUnpopulated: false}
+	u = protojson.UnmarshalOptions{DiscardUnknown: true}
+)
 
 func Convert[T proto.Message](src proto.Message, dst T) (T, error) {
 	b, err := m.Marshal(src)
 	if err != nil {
 		return dst, err
 	}
+
 	return dst, u.Unmarshal(b, dst)
 }
 
@@ -29,11 +32,12 @@ func ConvertByProtoReflect(src, dst protoreflect.Message) {
 		}
 
 		if fd.Kind() == protoreflect.MessageKind && dstFd.Kind() == protoreflect.MessageKind {
-			if fd.IsList() {
+			switch {
+			case fd.IsList():
 				copyListMessages(v.List(), dst.Mutable(dstFd).List(), dstFd)
-			} else if fd.IsMap() {
+			case fd.IsMap():
 				copyMapMessages(v.Map(), dst.Mutable(dstFd).Map(), dstFd)
-			} else {
+			default:
 				newDstVal := dst.NewField(dstFd)
 				newDstMsg := newDstVal.Message()
 
@@ -41,6 +45,7 @@ func ConvertByProtoReflect(src, dst protoreflect.Message) {
 
 				dst.Set(dstFd, newDstVal)
 			}
+
 			return true
 		}
 
@@ -53,7 +58,7 @@ func ConvertByProtoReflect(src, dst protoreflect.Message) {
 }
 
 func copyListMessages(srcList, dstList protoreflect.List, _ protoreflect.FieldDescriptor) {
-	for i := 0; i < srcList.Len(); i++ {
+	for i := range srcList.Len() {
 		srcItem := srcList.Get(i).Message()
 
 		newDstItem := dstList.NewElement().Message()
@@ -71,6 +76,7 @@ func copyMapMessages(srcMap, dstMap protoreflect.Map, _ protoreflect.FieldDescri
 		ConvertByProtoReflect(srcValueMsg, newDstValue)
 
 		dstMap.Set(k, protoreflect.ValueOfMessage(newDstValue))
+
 		return true
 	})
 }

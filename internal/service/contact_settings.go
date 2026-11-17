@@ -8,7 +8,6 @@ import (
 
 	contactpb "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwpb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
-	gtwperm "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 )
@@ -55,7 +54,7 @@ func (s *ContactSettingsService) Get(ctx context.Context, req *gtwpb.GetContactS
 
 func (s *ContactSettingsService) convertToContactSettings(settings *contactpb.Settings) (*gtwpb.ContactSettings, error) {
 	if settings == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // absent settings map to an absent response
 	}
 
 	return &gtwpb.ContactSettings{
@@ -65,7 +64,7 @@ func (s *ContactSettingsService) convertToContactSettings(settings *contactpb.Se
 	}, nil
 }
 
-func (s *ContactSettingsService) Update(ctx context.Context, req *gtwperm.UpdateContactSettingsRequest) (*gtwperm.ContactSettings, error) {
+func (s *ContactSettingsService) Update(ctx context.Context, req *gtwpb.UpdateContactSettingsRequest) (*gtwpb.ContactSettings, error) {
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}

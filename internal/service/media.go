@@ -298,15 +298,17 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 			sess.addOffset(n)
 		}
 
-		if readErr != nil {
-			if errors.Is(readErr, io.EOF) {
-				return nil
-			}
-
-			log.Debug("append content: read error", slog.String("error", readErr.Error()))
-
-			return readErr
+		if readErr == nil {
+			continue
 		}
+
+		if errors.Is(readErr, io.EOF) {
+			return nil
+		}
+
+		log.Debug("append content: read error", slog.String("error", readErr.Error()))
+
+		return readErr
 	}
 }
 

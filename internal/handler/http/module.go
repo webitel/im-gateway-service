@@ -6,16 +6,13 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/webitel/im-gateway-service/config"
-	"github.com/webitel/im-gateway-service/infra/auth"
 	httpmw "github.com/webitel/im-gateway-service/infra/server/http/middleware"
 )
 
 var Module = fx.Module("http_handler",
 	fx.Provide(
-		func() *http.ServeMux { return http.NewServeMux() },
-		func(authorizer auth.Authorizer) func(http.Handler) http.Handler {
-			return httpmw.NewAuthMiddleware(authorizer)
-		},
+		http.NewServeMux,
+		httpmw.NewAuthMiddleware,
 		fx.Annotate(
 			func(cfg *config.Config) func(http.Handler) http.Handler {
 				return httpmw.WithBodyLimit(cfg.Service.MaxUploadSize)

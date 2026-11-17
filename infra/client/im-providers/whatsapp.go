@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	providerv1 "github.com/webitel/im-gateway-service/gen/go/provider/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type WhatsAppClient struct {
@@ -36,7 +38,9 @@ func (c *WhatsAppClient) CreateWhatsAppGate(ctx context.Context, in *providerv1.
 
 	err := c.rpc.Execute(ctx, func(api providerv1.WhatsAppServiceClient) error {
 		var err error
+
 		resp, err = api.CreateWhatsAppGate(ctx, in, opts...)
+
 		return err
 	})
 
@@ -48,7 +52,9 @@ func (c *WhatsAppClient) GetWhatsAppGate(ctx context.Context, in *providerv1.Pro
 
 	err := c.rpc.Execute(ctx, func(api providerv1.WhatsAppServiceClient) error {
 		var err error
+
 		resp, err = api.GetWhatsAppGate(ctx, in, opts...)
+
 		return err
 	})
 
@@ -60,7 +66,9 @@ func (c *WhatsAppClient) UpdateWhatsAppGate(ctx context.Context, in *providerv1.
 
 	err := c.rpc.Execute(ctx, func(api providerv1.WhatsAppServiceClient) error {
 		var err error
+
 		resp, err = api.UpdateWhatsAppGate(ctx, in, opts...)
+
 		return err
 	})
 
@@ -72,7 +80,9 @@ func (c *WhatsAppClient) DeleteWhatsAppGate(ctx context.Context, in *providerv1.
 
 	err := c.rpc.Execute(ctx, func(api providerv1.WhatsAppServiceClient) error {
 		var err error
+
 		resp, err = api.DeleteWhatsAppGate(ctx, in, opts...)
+
 		return err
 	})
 
@@ -83,5 +93,6 @@ func (c *WhatsAppClient) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }

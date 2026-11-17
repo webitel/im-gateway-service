@@ -3,12 +3,13 @@ package webiteldi
 import (
 	"context"
 
+	"go.uber.org/fx"
+
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	improviders "github.com/webitel/im-gateway-service/infra/client/im-providers"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
-	storage "github.com/webitel/im-gateway-service/infra/client/storage"
-	"go.uber.org/fx"
+	"github.com/webitel/im-gateway-service/infra/client/storage"
 )
 
 var Module = fx.Module(
@@ -44,7 +45,7 @@ var Module = fx.Module(
 	fx.Invoke(
 		func(lc fx.Lifecycle, client *imthread.Client) {
 			lc.Append(fx.Hook{
-				OnStop: func(ctx context.Context) error {
+				OnStop: func(_ context.Context) error {
 					return client.Close()
 				},
 			})
@@ -52,7 +53,7 @@ var Module = fx.Module(
 
 		func(lc fx.Lifecycle, client *imthread.MessageHistoryClient) {
 			lc.Append(fx.Hook{
-				OnStop: func(ctx context.Context) error {
+				OnStop: func(_ context.Context) error {
 					return client.Close()
 				},
 			})
@@ -68,7 +69,7 @@ var Module = fx.Module(
 
 		func(lc fx.Lifecycle, client *imthread.ThreadClient) {
 			lc.Append(fx.Hook{
-				OnStop: func(ctx context.Context) error {
+				OnStop: func(_ context.Context) error {
 					return client.Close()
 				},
 			})
@@ -77,7 +78,7 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imauth.Client) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
@@ -85,7 +86,7 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imauth.AdminClient) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
@@ -93,7 +94,7 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imcontact.Client) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
@@ -101,14 +102,14 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *storage.Client) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadPermissionClient) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
@@ -116,7 +117,7 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadTagClient) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
@@ -124,7 +125,7 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imthread.ThreadPreviewClient) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
@@ -132,34 +133,34 @@ var Module = fx.Module(
 
 	fx.Invoke(func(lc fx.Lifecycle, client *imcontact.ViaClient) {
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return client.Close()
 			},
 		})
 	}),
 
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.FacebookClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.InstagramClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.GateClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.WhatsAppClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.ViberClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.ViberBmClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.MetaAppClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 	fx.Invoke(func(lc fx.Lifecycle, client *improviders.MetaOAuthClient) {
-		lc.Append(fx.Hook{OnStop: func(ctx context.Context) error { return client.Close() }})
+		lc.Append(fx.Hook{OnStop: func(_ context.Context) error { return client.Close() }})
 	}),
 )

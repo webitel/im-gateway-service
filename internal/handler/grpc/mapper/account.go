@@ -55,6 +55,7 @@ func ParseGrantType(in *impb.TokenRequest) dto.GrantTyper {
 	if in == nil {
 		return nil
 	}
+
 	if i := in.GetIdentity(); i != nil {
 		return &dto.IdentityGrant{
 			Iss:                 i.GetIss(),
@@ -101,7 +102,7 @@ func ParsePUSHSubscription(in *impb.PUSHSubscription) *dto.PUSHSubscription {
 		Parameters: make(map[string]any),
 	}
 
-	switch t := in.Token.(type) {
+	switch t := in.GetToken().(type) {
 	case *impb.PUSHSubscription_Fcm:
 		res.Provider = "fcm"
 		res.Token = t.Fcm
@@ -110,17 +111,20 @@ func ParsePUSHSubscription(in *impb.PUSHSubscription) *dto.PUSHSubscription {
 		res.Token = t.Apn
 	case *impb.PUSHSubscription_Web:
 		res.Provider = "web"
-		if t.Web != nil {
-			res.Token = t.Web.Endpoint
-			if t.Web.Key != nil {
-				res.Parameters["auth"] = t.Web.Key.Auth
-				res.Parameters["p256dh"] = t.Web.Key.P256Dh
-			}
+
+		if t.Web == nil {
+			break
+		}
+
+		res.Token = t.Web.GetEndpoint()
+		if t.Web.GetKey() != nil {
+			res.Parameters["auth"] = t.Web.GetKey().GetAuth()
+			res.Parameters["p256dh"] = t.Web.GetKey().GetP256Dh()
 		}
 	}
 
-	if len(in.Secret) > 0 {
-		res.Parameters["secret"] = in.Secret
+	if len(in.GetSecret()) > 0 {
+		res.Parameters["secret"] = in.GetSecret()
 	}
 
 	return res
@@ -139,13 +143,15 @@ func PbStructToAny(in *structpb.Struct) any {
 	if in == nil {
 		return nil
 	}
+
 	return in.AsMap()
 }
 
 // AnyToPbStruct converts a Go map to a Protobuf Struct.
 func AnyToPbStruct(in map[string]any) (*structpb.Struct, error) {
 	if in == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil map maps to an absent struct
 	}
+
 	return structpb.NewStruct(in)
 }

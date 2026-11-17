@@ -7,25 +7,25 @@ import (
 
 // MediaDownloadRequest is the service-layer request to download a file.
 type MediaDownloadRequest struct {
-	FileID int64 `json:"fileId"`
+	FileID int64 `json:"fileId"` //nolint:tagliatelle // public HTTP API wire format
 	Offset int64 `json:"offset"`
 }
 
 // FileMetadata contains file information returned in the first stream message.
 type FileMetadata struct {
-	ID       string   `json:"fileId,omitempty"`
+	ID       string   `json:"fileId,omitempty"` //nolint:tagliatelle // public HTTP API wire format
 	Name     string   `json:"name,omitempty"`
-	MimeType string   `json:"mimeType,omitempty"`
+	MimeType string   `json:"mimeType,omitempty"` //nolint:tagliatelle // public HTTP API wire format
 	Size     int64    `json:"size,omitempty"`
 	Hash     string   `json:"hash,omitempty"`
-	Url      *url.URL `json:"url,omitempty"`
+	URL      *url.URL `json:"url,omitempty"`
 }
 
 // FileInfoResponse contains the file loading info status
 type FileInfoResponse struct {
-	UploadID string `json:"uploadId"`
+	UploadID string `json:"uploadId"` //nolint:tagliatelle // public HTTP API wire format
 	Size     int64  `json:"size"`
-	MimeType string `json:"mimeType,omitempty"`
+	MimeType string `json:"mimeType,omitempty"` //nolint:tagliatelle // public HTTP API wire format
 	Name     string `json:"name,omitempty"`
 	Hash     []byte `json:"hash,omitempty"`
 }
@@ -44,13 +44,13 @@ type CreateUploadSessionRequest struct {
 
 // CreateUploadSessionResponse is returned after a session is successfully created.
 type CreateUploadSessionResponse struct {
-	UploadID string `json:"uploadId,omitempty"`
+	UploadID string `json:"uploadId,omitempty"` //nolint:tagliatelle // public HTTP API wire format
 }
 
 type SuccessfullyUploadResponse struct {
-	FileID   string `json:"fileId,omitempty"`
+	FileID   string `json:"fileId,omitempty"` //nolint:tagliatelle // public HTTP API wire format
 	Name     string `json:"name,omitempty"`
-	MimeType string `json:"mimeType,omitempty"`
+	MimeType string `json:"mimeType,omitempty"` //nolint:tagliatelle // public HTTP API wire format
 	Size     int64  `json:"size,omitempty"`
 	Hash     string `json:"hash,omitempty"`
 }

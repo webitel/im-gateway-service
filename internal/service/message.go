@@ -417,6 +417,9 @@ func mapDeliveryStatus(in api.MessageDeliveryStatus) threadv1.MessageDeliverySta
 		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_READ
 	case api.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_FAILED:
 		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_FAILED
+	case api.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_UNSPECIFIED,
+		api.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_SENT:
+		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_UNSPECIFIED
 	default:
 		return threadv1.MessageDeliveryStatus_MESSAGE_DELIVERY_STATUS_UNSPECIFIED
 	}
@@ -627,6 +630,8 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 		return &threadv1.Peer{
 			Kind: &threadv1.Peer_ThreadId{ThreadId: p.ID},
 		}, nil
+	case shared.PeerUnspecified:
+		fallthrough
 	default:
 		return nil, errors.InvalidArgument("unknown receiver peer type", errors.WithID("service.message.resolve_recipient.unknown_peer_type"))
 	}
@@ -683,6 +688,8 @@ func (m *MessageService) resolveSendRecipient(ctx context.Context, toPeer shared
 
 		return to, nil
 
+	case shared.PeerUnspecified, shared.PeerGroup, shared.PeerChannel:
+		fallthrough
 	default:
 		return nil, errors.Forbidden(
 			"recipient type is not allowed for this application",
@@ -795,7 +802,7 @@ func (m *MessageService) parseUUID(id string) uuid.UUID {
 
 func (m *MessageService) guardSendAsAction(ctx context.Context, sendAs *api.PeerIdentity, session auth.Identifier) (*model.AuthContact, error) {
 	if sendAs == nil {
-		return nil, nil
+		return nil, nil //nolint:nilnil // no send_as means the caller sends as itself
 	}
 
 	if session.GetIssuer() != "webitel" {

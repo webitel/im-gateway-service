@@ -4,13 +4,13 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper/generated"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper"
+	"github.com/webitel/im-gateway-service/internal/handler/grpc/mapper/generated"
 	"github.com/webitel/im-gateway-service/internal/service"
 )
 
@@ -33,6 +33,7 @@ func (a *AccountService) Token(ctx context.Context, request *impb.TokenRequest) 
 	if !ok {
 		return nil, errors.New("headers required for token")
 	}
+
 	req.Headers = md
 
 	auth, err := a.accounter.Token(ctx, req)
@@ -43,17 +44,18 @@ func (a *AccountService) Token(ctx context.Context, request *impb.TokenRequest) 
 	return a.outMapper.ToAuthorization(auth)
 }
 
-func (a *AccountService) Logout(ctx context.Context, request *impb.LogoutRequest) (*impb.LogoutResponse, error) {
+func (a *AccountService) Logout(ctx context.Context, _ *impb.LogoutRequest) (*impb.LogoutResponse, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, errors.Forbidden("logout failed, headers required")
 	}
 
 	err := a.accounter.Logout(ctx, md)
+
 	return nil, err
 }
 
-func (a *AccountService) Inspect(ctx context.Context, request *impb.InspectRequest) (*impb.Authorization, error) {
+func (a *AccountService) Inspect(ctx context.Context, _ *impb.InspectRequest) (*impb.Authorization, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, errors.Forbidden("inspect failed, headers required")

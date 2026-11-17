@@ -3,8 +3,9 @@ package interceptors
 import (
 	"context"
 
-	"github.com/webitel/im-gateway-service/infra/auth"
 	"google.golang.org/grpc"
+
+	"github.com/webitel/im-gateway-service/infra/auth"
 )
 
 // NewUnaryAuthInterceptor provides identification for standard RPC calls

@@ -9,6 +9,7 @@ func MapPbToSystemMessageRequest(in *impb.SendSystemMessageRequest) *dto.SendSys
 	if in == nil {
 		return nil
 	}
+
 	return &dto.SendSystemMessageRequest{
 		To:       MapPeerFromProto(in.GetTo()),
 		Type:     in.GetType(),
@@ -22,6 +23,7 @@ func MapToSendSystemMessageResponse(out *dto.SendSystemMessageResponse) *impb.Se
 	if out == nil {
 		return nil
 	}
+
 	return &impb.SendMessageResponse{
 		To: MapPeerToProto(out.To),
 		Id: out.ID.String(),

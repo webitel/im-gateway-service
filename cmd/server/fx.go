@@ -3,10 +3,9 @@ package server
 import (
 	"go.uber.org/fx"
 
+	"github.com/webitel/webitel-go-kit/infra/discovery"
 	healthfx "github.com/webitel/webitel-go-kit/infra/health/fx"
 	"github.com/webitel/webitel-go-kit/infra/profiler"
-
-	"github.com/webitel/webitel-go-kit/infra/discovery"
 
 	"github.com/webitel/im-gateway-service/config"
 	defaultauth "github.com/webitel/im-gateway-service/infra/auth/standard"
@@ -29,7 +28,7 @@ func NewApp(cfg *config.Config) *fx.App {
 			ProvideProfile,
 		),
 		healthfx.Module(healthfx.Config{}),
-		fx.Invoke(func(discovery discovery.DiscoveryProvider) error { return nil }),
+		fx.Invoke(func(discovery.DiscoveryProvider) error { return nil }),
 		webiteldi.Module,
 		defaultauth.Module,
 		pubsub.Module,
