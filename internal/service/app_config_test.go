@@ -235,7 +235,7 @@ func TestSystemMessagePolicy_ToDTO_RestrictedEmpty_ReturnsNonNilEmpty(t *testing
 	dtoResult := policy.ToDTO()
 
 	if dtoResult == nil {
-		t.Error("restricted policy should return non-nil DTO")
+		t.Fatal("restricted policy should return non-nil DTO")
 	}
 
 	if len(dtoResult.Types) != 0 {
@@ -248,7 +248,7 @@ func TestSystemMessagePolicy_ToDTO_RestrictedWithTypes_ReturnsNonNilWithTypes(t 
 	dtoResult := policy.ToDTO()
 
 	if dtoResult == nil {
-		t.Error("restricted policy should return non-nil DTO")
+		t.Fatal("restricted policy should return non-nil DTO")
 	}
 
 	if len(dtoResult.Types) != 2 {

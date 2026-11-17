@@ -37,6 +37,10 @@ func Test_sizeInt32(t *testing.T) {
 		t.Errorf("sizeInt32(10) = %d, want 10", got)
 	}
 
+	if got := sizeInt32(-1); got != 0 {
+		t.Errorf("sizeInt32(-1) = %d, want 0", got)
+	}
+
 	if got := sizeInt32(math.MaxInt32 + 1); got != math.MaxInt32 {
 		t.Errorf("sizeInt32(MaxInt32+1) = %d, want %d", got, math.MaxInt32)
 	}

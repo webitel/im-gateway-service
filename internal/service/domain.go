@@ -26,6 +26,10 @@ func domainIDInt32(identity auth.Identifier) (int32, error) {
 // sizeInt32 converts a collection length to the int32 page size of the im-* contracts,
 // clamping instead of wrapping when the length does not fit.
 func sizeInt32(n int) int32 {
+	if n < 0 {
+		return 0
+	}
+
 	if n > math.MaxInt32 {
 		return math.MaxInt32
 	}
