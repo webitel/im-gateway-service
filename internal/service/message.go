@@ -64,6 +64,11 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
 	if err != nil {
 		return nil, err
@@ -83,7 +88,7 @@ func (m *MessageService) SendContact(ctx context.Context, in *api.SendContactReq
 		PhoneNumber:      in.PhoneNumber,
 		Metadata:         in.GetMetadata(),
 		SendId:           in.GetSendId(),
-		DomainId:         int32(identity.GetDomainID()),
+		DomainId:         domainID,
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
 		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
@@ -109,6 +114,11 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
 	if err != nil {
 		return nil, err
@@ -124,7 +134,7 @@ func (m *MessageService) SendInteractive(ctx context.Context, in *api.SendIntera
 		Kind:     &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 		Identity: senderIdentity(identity),
 	}
-	converted.DomainId = int32(identity.GetDomainID())
+	converted.DomainId = domainID
 	converted.SendAs = sendAs.GetContactIDPtr()
 
 	resp, err := m.threader.SendInteractive(ctx, converted)
@@ -175,6 +185,11 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	to, sendAs, err := m.resolveSendMetadata(ctx, mapper.MapPeerFromProto(in.GetTo()), in.GetSendAs(), identity)
 	if err != nil {
 		return nil, err
@@ -195,7 +210,7 @@ func (m *MessageService) SendLocation(ctx context.Context, in *api.SendLocationR
 		Address:          in.Address,
 		Metadata:         in.GetMetadata(),
 		SendId:           in.GetSendId(),
-		DomainId:         int32(identity.GetDomainID()),
+		DomainId:         domainID,
 		SendAs:           sendAs.GetContactIDPtr(),
 		ReplyToMessageId: in.ReplyToMessageId,
 		ForwardOrigin:    toThreadForwardOrigin(in.GetForwardOrigin()),
@@ -335,6 +350,11 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSyst
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	to, sendAs, err := m.resolveSendMetadata(ctx, in.To, in.SendAs, identity)
 	if err != nil {
 		return nil, err
@@ -353,7 +373,7 @@ func (m *MessageService) SendSystemMessage(ctx context.Context, in *dto.SendSyst
 		Body:     in.Body,
 		Metadata: in.Metadata,
 		SendId:   in.SendID,
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: domainID,
 		SendAs:   sendAs.GetContactIDPtr(),
 	})
 	if err != nil {
@@ -372,13 +392,18 @@ func (m *MessageService) UpdateMessageDelivery(ctx context.Context, in *api.Upda
 		return auth.IdentityNotFoundErr
 	}
 
-	_, err := m.threader.UpdateMessageDelivery(ctx, &threadv1.UpdateMessageDeliveryRequest{
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.threader.UpdateMessageDelivery(ctx, &threadv1.UpdateMessageDeliveryRequest{
 		GateId:            in.GetGateId(),
 		ExternalMessageId: in.GetExternalMessageId(),
 		Status:            mapDeliveryStatus(in.GetStatus()),
 		Reason:            in.GetReason(),
 		At:                in.GetAt(),
-		DomainId:          int32(identity.GetDomainID()),
+		DomainId:          domainID,
 	})
 
 	return err
@@ -404,11 +429,16 @@ func (m *MessageService) Read(ctx context.Context, in *dto.ReadMessageRequest) e
 		return auth.IdentityNotFoundErr
 	}
 
-	_, err := m.threader.Read(ctx, &threadv1.ReadMessageRequest{
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.threader.Read(ctx, &threadv1.ReadMessageRequest{
 		Id:       in.MessageID,
 		ThreadId: in.ThreadID,
 		UserId:   identity.GetContactID(),
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: domainID,
 		UpToSeq:  in.UpToSeq,
 	})
 	if err != nil {
@@ -454,9 +484,14 @@ func (m *MessageService) DeleteMessages(ctx context.Context, in *api.DeleteMessa
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := m.threader.DeleteMessages(ctx, &threadv1.DeleteMessagesRequest{
 		Ids:      in.GetIds(),
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: domainID,
 		DeletedBy: &threadv1.Peer{
 			Kind: &threadv1.Peer_ContactId{ContactId: identity.GetContactID()},
 			Identity: &threadv1.Identity{
@@ -600,7 +635,10 @@ func (m *MessageService) resolveRecipient(ctx context.Context, p shared.Peer, do
 // resolveSendRecipient: a restricted application may still send to a thread_id — a thread can only
 // have been created with an allowed contact (Create/AddMember/Transfer enforce the same policy).
 func (m *MessageService) resolveSendRecipient(ctx context.Context, toPeer shared.Peer, session auth.Identifier) (*threadv1.Peer, error) {
-	domainID := int32(session.GetDomainID())
+	domainID, err := domainIDInt32(session)
+	if err != nil {
+		return nil, err
+	}
 
 	policy, err := resolveContactPolicy(ctx, m.appConfig, session)
 	if err != nil {

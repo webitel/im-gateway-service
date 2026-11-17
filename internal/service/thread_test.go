@@ -795,7 +795,10 @@ func Test_newSearchRequest_systemCall(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newSearchRequest(&gtwthread.ThreadSearchRequest{Size: 10}, readCallerIdentity{contactID: "agent-1"}, tt.systemCall)
+			got, err := newSearchRequest(&gtwthread.ThreadSearchRequest{Size: 10}, readCallerIdentity{contactID: "agent-1"}, tt.systemCall)
+			if err != nil {
+				t.Fatalf("newSearchRequest() error = %v", err)
+			}
 
 			if got.SystemCall == nil || got.GetSystemCall() != tt.systemCall {
 				t.Errorf("newSearchRequest().SystemCall = %v, want %v", got.SystemCall, tt.systemCall)

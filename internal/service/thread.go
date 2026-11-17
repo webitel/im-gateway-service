@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
-	"math"
 	"slices"
 	"strconv"
 
@@ -96,6 +95,11 @@ func (t *thread) Create(ctx context.Context, req *gtwthread.ThreadManagementCrea
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(session)
+	if err != nil {
+		return nil, err
+	}
+
 	var internalRequest *threadv1.ThreadManagementCreateRequest
 
 	switch req.GetType().(type) {
@@ -118,7 +122,7 @@ func (t *thread) Create(ctx context.Context, req *gtwthread.ThreadManagementCrea
 	// TODO: fetch in other routine when thread creation is in progress
 	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalResponse.GetThread()})
 
-	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(session.GetDomainID()))
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, domainID)
 	if err != nil {
 		t.logger.Error("failed to fetch contact information for enrichment", slog.Any("error", err))
 
@@ -164,6 +168,11 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	target, err := t.fetchAllowedMember(ctx, identity, req.GetContact().GetSub(), req.GetContact().GetIss())
 	if err != nil {
 		return nil, err
@@ -180,7 +189,7 @@ func (t *thread) AddMember(ctx context.Context, req *gtwthread.AddMemberRequest)
 		ThreadId:           req.GetThreadId(),
 		NewMemberContactId: target.GetId(),
 		Role:               threadv1.ThreadRole(req.GetRole()),
-		DomainId:           int32(identity.GetDomainID()),
+		DomainId:           domainID,
 		InitiatorContactId: &initiatorContactId,
 		SystemCall:         &systemCall,
 		Queue:              queueFromContext(ctx, t.logger),
@@ -216,6 +225,11 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	target, err := t.fetchAllowedMember(ctx, identity, req.GetContact().GetSub(), req.GetContact().GetIss())
 	if err != nil {
 		return nil, err
@@ -228,7 +242,7 @@ func (t *thread) Transfer(ctx context.Context, req *gtwthread.TransferRequest) (
 			return nil, errors.New("initiator is required for service-initiated transfer")
 		}
 
-		from, err := t.fetchContact(ctx, req.GetInitiator().GetSub(), req.GetInitiator().GetIss(), int32(identity.GetDomainID()))
+		from, err := t.fetchContact(ctx, req.GetInitiator().GetSub(), req.GetInitiator().GetIss(), domainID)
 		if err != nil {
 			return nil, err
 		}
@@ -295,10 +309,15 @@ func (t *thread) HandBackToBot(ctx context.Context, req *gtwthread.HandBackToBot
 		return auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return err
+	}
+
 	return t.threadClient.HandBackToBot(ctx, &threadv1.HandBackToBotRequest{
 		ThreadId:           req.GetThreadId(),
 		InitiatorContactId: identity.GetContactID(),
-		DomainId:           int32(identity.GetDomainID()),
+		DomainId:           domainID,
 	})
 }
 
@@ -312,10 +331,15 @@ func (t *thread) TakeOverFromBot(ctx context.Context, req *gtwthread.TakeOverFro
 		return auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return err
+	}
+
 	return t.threadClient.TakeOverFromBot(ctx, &threadv1.TakeOverFromBotRequest{
 		ThreadId:           req.GetThreadId(),
 		InitiatorContactId: identity.GetContactID(),
-		DomainId:           int32(identity.GetDomainID()),
+		DomainId:           domainID,
 	})
 }
 
@@ -339,11 +363,16 @@ func (t *thread) SetCrmContact(ctx context.Context, req *gtwthread.SetCrmContact
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := t.threadClient.SetCrmContact(ctx, &threadv1.SetCrmContactRequest{
 		ThreadId:           req.GetThreadId(),
 		CrmContactId:       req.GetCrmContactId(),
 		InitiatorContactId: identity.GetContactID(),
-		DomainId:           int32(identity.GetDomainID()),
+		DomainId:           domainID,
 	})
 	if err != nil {
 		return nil, err
@@ -393,12 +422,17 @@ func errNoContactFound() error {
 // same PermissionDenied for an unknown contact as for a forbidden one and cannot probe which
 // identities exist in the domain.
 func (t *thread) fetchAllowedMember(ctx context.Context, session auth.Identifier, sub, iss string) (*contact.Contact, error) {
+	domainID, err := domainIDInt32(session)
+	if err != nil {
+		return nil, err
+	}
+
 	policy, err := resolveContactPolicy(ctx, t.appConfig, session)
 	if err != nil {
 		return nil, err
 	}
 
-	member, err := t.lookupContact(ctx, sub, iss, int32(session.GetDomainID()))
+	member, err := t.lookupContact(ctx, sub, iss, domainID)
 	if err != nil {
 		return nil, err
 	}
@@ -416,7 +450,7 @@ func (t *thread) fetchAllowedMember(ctx context.Context, session auth.Identifier
 
 func (t *thread) fetchContacts(ctx context.Context, ids []string, domainID int32) (map[string]*contact.Contact, error) {
 	contactInfo, err := t.contactClient.SearchContact(ctx, &contact.SearchContactRequest{
-		Size:     int32(len(ids)),
+		Size:     sizeInt32(len(ids)),
 		Ids:      ids,
 		DomainId: domainID,
 	})
@@ -491,9 +525,14 @@ func (t *thread) GetCounters(ctx context.Context, req *gtwthread.GetCountersRequ
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	resp, err := t.threadClient.GetCounters(ctx, &threadv1.GetCountersRequest{
 		SelfId:   identity.GetContactID(),
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: domainID,
 		Kinds:    gtwThreadKindToInternal(req.GetTypes()),
 	})
 	if err != nil {
@@ -521,7 +560,14 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 		return nil, auth.IdentityNotFoundErr
 	}
 
-	internalThreads, err := t.threadClient.Search(ctx, newSearchRequest(searchQuery, identity, auth.HasPermission(ctx, auth.PermissionIMReadAll)))
+	searchReq, err := newSearchRequest(searchQuery, identity, auth.HasPermission(ctx, auth.PermissionIMReadAll))
+	if err != nil {
+		return nil, err
+	}
+
+	domainID := searchReq.GetDomainIds()[0]
+
+	internalThreads, err := t.threadClient.Search(ctx, searchReq)
 	if err != nil {
 		log.Error("failed to fetch internal threads", slog.Any("error", err))
 
@@ -530,7 +576,7 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 
 	uniqueContactIds := t.collectUniqueContactsFromThread(internalThreads.GetItems())
 
-	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, domainID)
 	if err != nil {
 		log.Error(
 			"failed to fetch internal contact information for enrichment",
@@ -555,11 +601,17 @@ func (t *thread) Search(ctx context.Context, searchQuery *gtwthread.ThreadSearch
 
 // newSearchRequest builds the im-thread Search request for the caller. Callers granted
 // im_read_all search every thread of their domain, not only the ones they are a member of.
-func newSearchRequest(searchQuery *gtwthread.ThreadSearchRequest, identity auth.Identifier, systemCall bool) *threadv1.ThreadSearchRequest {
+// It fails when the caller's domain id does not fit the int32 im-thread contract.
+func newSearchRequest(searchQuery *gtwthread.ThreadSearchRequest, identity auth.Identifier, systemCall bool) (*threadv1.ThreadSearchRequest, error) {
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	return &threadv1.ThreadSearchRequest{
 		Fields:       toInternalThreadFields(searchQuery.GetFields()),
 		Ids:          searchQuery.GetIds(),
-		DomainIds:    []int32{int32(identity.GetDomainID())},
+		DomainIds:    []int32{domainID},
 		Q:            searchQuery.GetQ(),
 		SelfId:       identity.GetContactID(),
 		MemberIds:    searchQuery.GetContactIds(),
@@ -572,7 +624,7 @@ func newSearchRequest(searchQuery *gtwthread.ThreadSearchRequest, identity auth.
 		Tags:         searchQuery.GetTags(),
 		ExcludeTags:  searchQuery.GetExcludeTags(),
 		SystemCall:   &systemCall,
-	}
+	}, nil
 }
 
 // newSearchLeftRequest builds the im-thread SearchLeft request for the caller. The gateway
@@ -580,18 +632,15 @@ func newSearchRequest(searchQuery *gtwthread.ThreadSearchRequest, identity auth.
 // "source" ("source_name"). "queue" / "queue_name" have the same name on both sides.
 // It fails when the caller's domain id does not fit the int32 im-thread contract.
 func newSearchLeftRequest(req *gtwthread.SearchLeftRequest, identity auth.Identifier) (*threadv1.SearchLeftRequest, error) {
-	domainID := identity.GetDomainID()
-	if domainID < math.MinInt32 || domainID > math.MaxInt32 {
-		return nil, errors.InvalidArgument(
-			fmt.Sprintf("domain id %d is out of int32 range", domainID),
-			errors.WithID("service.thread.domain_id"),
-		)
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
 	}
 
 	return &threadv1.SearchLeftRequest{
 		Fields:   toInternalThreadFields(req.GetFields()),
 		MemberId: identity.GetContactID(),
-		DomainId: int32(domainID),
+		DomainId: domainID,
 		Kinds:    gtwThreadKindToInternal(req.GetTypes()),
 		Size:     req.GetSize(),
 		Sort:     toInternalThreadSort(req.GetSort()),
@@ -660,9 +709,14 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	internalThread, err := t.threadClient.Get(ctx, &threadv1.GetThreadRequest{
 		Id:       req.GetId(),
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: domainID,
 		Fields:   toInternalThreadFields(req.GetFields()),
 		CallerId: readCallerID(ctx, identity),
 	})
@@ -674,7 +728,7 @@ func (t *thread) Get(ctx context.Context, req *gtwthread.GetThreadRequest) (*gtw
 
 	uniqueContactIds := t.collectUniqueContactsFromThread([]*threadv1.Thread{internalThread})
 
-	contacts, err := t.fetchContacts(ctx, uniqueContactIds, int32(identity.GetDomainID()))
+	contacts, err := t.fetchContacts(ctx, uniqueContactIds, domainID)
 	if err != nil {
 		log.Error("failed to fetch contact information for enrichment", slog.Any("error", err))
 
@@ -697,6 +751,11 @@ func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRe
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	response, err := t.threadClient.SetVariables(ctx, &threadv1.SetVariablesRequest{
 		MemberId:  identity.GetContactID(),
 		ThreadId:  req.GetThreadId(),
@@ -708,7 +767,7 @@ func (t *thread) SetVariables(ctx context.Context, req *gtwthread.SetVariablesRe
 		return nil, err
 	}
 
-	threadVars, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
+	threadVars, err := t.convertToThreadVariables(ctx, response, domainID)
 	if err != nil {
 		log.Error("convert to thread variables", "err", err, "thread_id", req.GetThreadId(), "contact_id", identity.GetContactID())
 
@@ -728,13 +787,18 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	response, err := t.threadClient.SearchVariables(ctx, &threadv1.SearchVariablesRequest{
 		Size:      req.GetSize(),
 		Page:      req.GetPage(),
 		Fields:    req.GetFields(),
 		ThreadIds: req.GetThreadIds(),
 		CallerId:  readCallerID(ctx, identity),
-		DomainId:  int32(identity.GetDomainID()),
+		DomainId:  domainID,
 	})
 	if err != nil {
 		log.Error("search variables", "err", err)
@@ -745,7 +809,7 @@ func (t *thread) SearchVariables(ctx context.Context, req *gtwthread.SearchVaria
 	var vars []*gtwthread.ThreadVariables
 
 	for _, item := range response.GetItems() {
-		v, err := t.convertToThreadVariables(ctx, item, int32(identity.GetDomainID()))
+		v, err := t.convertToThreadVariables(ctx, item, domainID)
 		if err != nil {
 			log.Error("convert to thread variables", "err", err)
 
@@ -771,10 +835,15 @@ func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVaria
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	response, err := t.threadClient.LocateVariables(ctx, &threadv1.LocateVariablesRequest{
 		ThreadId: req.GetThreadId(),
 		CallerId: readCallerID(ctx, identity),
-		DomainId: int32(identity.GetDomainID()),
+		DomainId: domainID,
 	})
 	if err != nil {
 		log.Error("locate variables", "err", err)
@@ -782,7 +851,7 @@ func (t *thread) LocateVariables(ctx context.Context, req *gtwthread.LocateVaria
 		return nil, err
 	}
 
-	v, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
+	v, err := t.convertToThreadVariables(ctx, response, domainID)
 	if err != nil {
 		log.Error("convert to thread variables", "err", err)
 
@@ -802,6 +871,11 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 		return nil, auth.IdentityNotFoundErr
 	}
 
+	domainID, err := domainIDInt32(identity)
+	if err != nil {
+		return nil, err
+	}
+
 	response, err := t.threadClient.FlushVariables(ctx, &threadv1.FlushVariablesRequest{
 		MemberId: identity.GetContactID(),
 		ThreadId: req.GetThreadId(),
@@ -813,7 +887,7 @@ func (t *thread) FlushVariables(ctx context.Context, req *gtwthread.FlushVariabl
 		return nil, err
 	}
 
-	v, err := t.convertToThreadVariables(ctx, response, int32(identity.GetDomainID()))
+	v, err := t.convertToThreadVariables(ctx, response, domainID)
 	if err != nil {
 		log.Error("convert to thread variables", "err", err)
 
@@ -1175,7 +1249,7 @@ func (t *thread) convertToThreadVariables(ctx context.Context, response *threadv
 	uniqueSettersIDs := slices.Collect(maps.Keys(uniqueSettersSet))
 
 	contacts, err := t.contactClient.SearchContact(ctx, &contactv1.SearchContactRequest{
-		Size:     int32(len(uniqueSettersIDs)),
+		Size:     sizeInt32(len(uniqueSettersIDs)),
 		Fields:   []string{"id", "issuer_id", "type", "subject_id", "username", "name", "is_bot"},
 		DomainId: domainID,
 		Ids:      uniqueSettersIDs,
