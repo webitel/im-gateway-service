@@ -30,6 +30,7 @@ func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider,
 	c, err := webitel.New(log, discovery, ServiceName, tls, factory)
 	if err != nil {
 		log.Error("initialization failed", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -41,8 +42,8 @@ func NewThreadClient(logger *slog.Logger, discovery discovery.DiscoveryProvider,
 
 func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadSearchRequest) (*threadv1.SearchThreadResponse, error) {
 	log := c.logger.With(
-		slog.Any("domain_ids", searchQuery.DomainIds),
-		slog.Any("member_ids", searchQuery.MemberIds),
+		slog.Any("domain_ids", searchQuery.GetDomainIds()),
+		slog.Any("member_ids", searchQuery.GetMemberIds()),
 	)
 
 	var (
@@ -52,10 +53,12 @@ func (c *ThreadClient) Search(ctx context.Context, searchQuery *threadv1.ThreadS
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.Search(ctx, searchQuery)
+
 		return err
 	})
 	if err != nil {
 		log.Error("failed to fetch thread information from provider", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -70,10 +73,12 @@ func (c *ThreadClient) GetCounters(ctx context.Context, req *threadv1.GetCounter
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.GetCounters(ctx, req)
+
 		return err
 	})
 	if err != nil {
 		c.logger.Error("failed to fetch thread counters", slog.Any("error", err), slog.Int("domain_id", int(req.GetDomainId())))
+
 		return nil, err
 	}
 
@@ -82,8 +87,8 @@ func (c *ThreadClient) GetCounters(ctx context.Context, req *threadv1.GetCounter
 
 func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftRequest) (*threadv1.SearchLeftResponse, error) {
 	log := c.logger.With(
-		slog.Any("domain_id", req.DomainId),
-		slog.Any("member_id", req.MemberId),
+		slog.Any("domain_id", req.GetDomainId()),
+		slog.Any("member_id", req.GetMemberId()),
 	)
 
 	var (
@@ -93,10 +98,12 @@ func (c *ThreadClient) SearchLeft(ctx context.Context, req *threadv1.SearchLeftR
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.SearchLeft(ctx, req)
+
 		return err
 	})
 	if err != nil {
 		log.Error("failed to fetch thread information from provider", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -111,6 +118,7 @@ func (c *ThreadClient) Get(ctx context.Context, req *threadv1.GetThreadRequest) 
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.Get(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -125,8 +133,10 @@ func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberReq
 		err  error
 		resp *threadv1.AddMemberResponse
 	)
+
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.AddMember(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -139,6 +149,7 @@ func (c *ThreadClient) AddMember(ctx context.Context, req *threadv1.AddMemberReq
 func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMemberRequest) error {
 	err := c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		_, err := tmc.RemoveMember(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -151,6 +162,7 @@ func (c *ThreadClient) RemoveMember(ctx context.Context, req *threadv1.RemoveMem
 func (c *ThreadClient) HandBackToBot(ctx context.Context, req *threadv1.HandBackToBotRequest) error {
 	return c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		_, err := tmc.HandBackToBot(ctx, req)
+
 		return err
 	})
 }
@@ -158,6 +170,7 @@ func (c *ThreadClient) HandBackToBot(ctx context.Context, req *threadv1.HandBack
 func (c *ThreadClient) TakeOverFromBot(ctx context.Context, req *threadv1.TakeOverFromBotRequest) error {
 	return c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		_, err := tmc.TakeOverFromBot(ctx, req)
+
 		return err
 	})
 }
@@ -185,8 +198,10 @@ func (c *ThreadClient) Transfer(ctx context.Context, req *threadv1.TransferReque
 		err  error
 		resp *threadv1.TransferResponse
 	)
+
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.Transfer(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -204,6 +219,7 @@ func (c *ThreadClient) SetVariables(ctx context.Context, req *threadv1.SetVariab
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.SetVariables(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -221,6 +237,7 @@ func (c *ThreadClient) SearchVariables(ctx context.Context, req *threadv1.Search
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.SearchVariables(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -238,6 +255,7 @@ func (c *ThreadClient) LocateVariables(ctx context.Context, req *threadv1.Locate
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.LocateVariables(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -255,6 +273,7 @@ func (c *ThreadClient) FlushVariables(ctx context.Context, req *threadv1.FlushVa
 
 	err = c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		resp, err = tmc.FlushVariables(ctx, req)
+
 		return err
 	})
 	if err != nil {
@@ -266,11 +285,13 @@ func (c *ThreadClient) FlushVariables(ctx context.Context, req *threadv1.FlushVa
 
 func (c *ThreadClient) Create(ctx context.Context, req *threadv1.ThreadManagementCreateRequest) (*threadv1.ThreadManagementCreateResponse, error) {
 	var response *threadv1.ThreadManagementCreateResponse
+
 	err := c.rpc.Execute(ctx, func(tmc threadv1.ThreadManagementClient) error {
 		var err error
 		if response, err = tmc.Create(ctx, req); err != nil {
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {

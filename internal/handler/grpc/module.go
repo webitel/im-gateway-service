@@ -87,6 +87,7 @@ func RegisterContactService(server *grpcsrv.Server, service *ContactService) {
 func RegisterBotService(server *grpcsrv.Server, service *BotService) {
 	impb.RegisterBotsServer(server, service)
 }
+
 func RegisterAccountService(server *grpcsrv.Server, service *AccountService) {
 	impb.RegisterAccountServer(server, service)
 }

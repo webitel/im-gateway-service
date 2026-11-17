@@ -5,9 +5,11 @@ import (
 	"crypto/x509"
 	"os"
 
-	"github.com/webitel/im-gateway-service/config"
-	"github.com/webitel/webitel-go-kit/appconfig"
 	"go.uber.org/fx"
+
+	"github.com/webitel/webitel-go-kit/appconfig"
+
+	"github.com/webitel/im-gateway-service/config"
 )
 
 var Module = fx.Module("tls",
@@ -30,6 +32,7 @@ func ProvideTLSConfig(cfg *config.Config) (*Config, error) {
 	if !connConfig.VerifyCerts {
 		conf.Server = nil
 		conf.Client = nil
+
 		return conf, nil
 	}
 
@@ -48,7 +51,7 @@ func ProvideTLSConfig(cfg *config.Config) (*Config, error) {
 
 func Load(connConfig appconfig.TLS, authType tls.ClientAuthType) (*tls.Config, error) {
 	if connConfig.Cert == "" || connConfig.Key == "" {
-		return nil, nil
+		return nil, nil //nolint:nilnil // nil config means TLS is disabled
 	}
 
 	cert, err := tls.LoadX509KeyPair(connConfig.Cert, connConfig.Key)
@@ -66,6 +69,7 @@ func Load(connConfig appconfig.TLS, authType tls.ClientAuthType) (*tls.Config, e
 		if err != nil {
 			return nil, err
 		}
+
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 

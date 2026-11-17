@@ -20,6 +20,7 @@ func WithCORS(allowedOrigins string, h http.Handler) http.Handler {
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
+
 			return
 		}
 

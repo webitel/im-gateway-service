@@ -28,7 +28,6 @@ func (server *ViaServer) Create(ctx context.Context, req *impb.ViasServiceCreate
 		Iss:           req.Iss,
 		Sub:           req.Sub,
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +59,6 @@ func (server *ViaServer) PartialUpdate(ctx context.Context, req *impb.ViasServic
 		},
 		FieldMask: req.GetFieldMask(),
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +84,6 @@ func (server *ViaServer) Search(ctx context.Context, req *impb.ViasServiceSearch
 		Disabled:   req.Disabled,
 		Vias:       req.GetVias(),
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +116,6 @@ func (server *ViaServer) Update(ctx context.Context, req *impb.ViasServiceUpdate
 		DisableReason: req.DisableReason,
 		Metadata:      req.GetMetadata(),
 	})
-
 	if err != nil {
 		return nil, err
 	}

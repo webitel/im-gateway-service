@@ -9,7 +9,7 @@ import (
 func TestIsSystemCall(t *testing.T) {
 	tests := []struct {
 		name string
-		ctx  context.Context
+		ctx  context.Context //nolint:containedctx // table-driven test input
 		want bool
 	}{
 		{
@@ -52,10 +52,12 @@ func TestAuthTypeFromContext(t *testing.T) {
 
 	t.Run("round-trips the stored type", func(t *testing.T) {
 		ctx := WithAuthType(context.Background(), XWebitelTypeEngine)
+
 		got, ok := AuthTypeFromContext(ctx)
 		if !ok {
 			t.Fatal("expected auth type to be present")
 		}
+
 		if got != XWebitelTypeEngine {
 			t.Errorf("AuthTypeFromContext() = %q, want %q", got, XWebitelTypeEngine)
 		}

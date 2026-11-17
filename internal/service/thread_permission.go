@@ -4,12 +4,13 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	gtwperm "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	imthread "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	permcli "github.com/webitel/im-gateway-service/infra/client/im-thread"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 type ThreadPermissioner interface {
@@ -32,14 +33,15 @@ func NewThreadPermissionService(logger *slog.Logger, thread *permcli.ThreadPermi
 }
 
 func (s *ThreadPermissionService) Get(ctx context.Context, req *gtwperm.GetThreadPermissionsRequest) (*gtwperm.GetThreadPermissionsResponse, error) {
-
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
 	initiatorID := identity.GetContactID()
 	internalReq := &imthread.GetThreadPermissionsRequest{
 		InitiatorContactId: &initiatorID,
@@ -51,31 +53,34 @@ func (s *ThreadPermissionService) Get(ctx context.Context, req *gtwperm.GetThrea
 	if err != nil {
 		return nil, err
 	}
-	if len(resp.Permissions) == 0 {
+
+	if len(resp.GetPermissions()) == 0 {
 		return nil, errors.NotFound("no permissions found for member")
 	}
-	perm := resp.Permissions[0]
+
+	perm := resp.GetPermissions()[0]
 
 	convertedPerm := s.convertToThreadPermission(perm)
 
 	return &gtwperm.GetThreadPermissionsResponse{
 		Permissions: convertedPerm,
 	}, nil
-
 }
 
 func (s *ThreadPermissionService) Update(ctx context.Context, req *gtwperm.UpdateThreadPermissionsRequest) (*gtwperm.UpdateThreadPermissionsResponse, error) {
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
 	initiatorID := identity.GetContactID()
 	internalReq := &imthread.UpdateThreadPermissionsRequest{
 		InitiatorContactId:          &initiatorID,
-		MemberId:                    req.MemberId,
+		MemberId:                    req.GetMemberId(),
 		CanSendMessages:             req.CanSendMessages,
 		CanAddMembers:               req.CanAddMembers,
 		CanRemoveMembers:            req.CanRemoveMembers,
@@ -100,16 +105,17 @@ func (s *ThreadPermissionService) convertToThreadPermission(perm *imthread.Threa
 	if perm == nil {
 		return nil
 	}
+
 	return &gtwperm.ThreadPermissions{
-		Id:                          perm.Id,
-		MemberId:                    perm.MemberId,
-		CreatedAt:                   perm.CreatedAt,
-		UpdatedAt:                   perm.UpdatedAt,
-		CanSendMessages:             perm.CanSendMessages,
-		CanAddMembers:               perm.CanAddMembers,
-		CanRemoveMembers:            perm.CanRemoveMembers,
-		CanChangeMembersPermissions: perm.CanChangeMembersPermissions,
-		CanChangeThreadInfo:         perm.CanChangeThreadInfo,
-		CanDeleteMessages:           perm.CanDeleteMessages,
+		Id:                          perm.GetId(),
+		MemberId:                    perm.GetMemberId(),
+		CreatedAt:                   perm.GetCreatedAt(),
+		UpdatedAt:                   perm.GetUpdatedAt(),
+		CanSendMessages:             perm.GetCanSendMessages(),
+		CanAddMembers:               perm.GetCanAddMembers(),
+		CanRemoveMembers:            perm.GetCanRemoveMembers(),
+		CanChangeMembersPermissions: perm.GetCanChangeMembersPermissions(),
+		CanChangeThreadInfo:         perm.GetCanChangeThreadInfo(),
+		CanDeleteMessages:           perm.GetCanDeleteMessages(),
 	}
 }

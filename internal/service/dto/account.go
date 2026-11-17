@@ -3,7 +3,7 @@ package dto
 import "google.golang.org/grpc/metadata"
 
 type GrantTyper interface {
-	isTokenRequest_GrantType()
+	isGrantType()
 }
 
 type TokenRequest struct {
@@ -35,23 +35,24 @@ type IdentityGrant struct {
 	Metadata            map[string]any
 }
 
-func (i *IdentityGrant) isTokenRequest_GrantType() {
+func (i *IdentityGrant) isGrantType() {
 }
 
 type Code struct {
 	Code string
 }
 
-func (i *Code) isTokenRequest_GrantType() {
+func (i *Code) isGrantType() {
 }
 
 type RefreshToken struct {
 	RefreshToken string
 }
 
-func (i *RefreshToken) isTokenRequest_GrantType() {
+func (i *RefreshToken) isGrantType() {
 }
 
+//nolint:revive // field names mirror the im-auth proto messages for goverter auto-mapping.
 type Authorization struct {
 	Dc      int64
 	Id      string
@@ -66,12 +67,14 @@ type Authorization struct {
 	Permissions []string
 }
 
+//nolint:revive // field names mirror the im-auth proto messages for goverter auto-mapping.
 type Device struct {
 	Id  string
 	Ip  string
 	App *UserAgent
 }
 
+//nolint:revive // field names mirror the im-auth proto messages for goverter auto-mapping.
 type UserAgent struct {
 	Name      string
 	Version   string
@@ -85,6 +88,7 @@ type UserAgent struct {
 	String_   string
 }
 
+//nolint:revive // field names mirror the im-auth proto messages for goverter auto-mapping.
 type AuthContact struct {
 	Dc                  int64
 	Id                  string

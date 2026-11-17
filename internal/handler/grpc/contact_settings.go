@@ -4,9 +4,10 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/service"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 type ContactSettingsServer struct {
@@ -27,10 +28,12 @@ func (t *ContactSettingsServer) Get(ctx context.Context, req *impb.GetContactSet
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	res, err := t.contactSettingsService.Get(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+
 	return &impb.GetContactSettingsResponse{
 		Settings: res,
 	}, nil
@@ -40,10 +43,12 @@ func (t *ContactSettingsServer) Update(ctx context.Context, req *impb.UpdateCont
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	res, err := t.contactSettingsService.Update(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+
 	return &impb.UpdateContactSettingsResponse{
 		Settings: res,
 	}, nil

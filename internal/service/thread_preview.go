@@ -38,10 +38,12 @@ func (s *ThreadPreviewService) GivePreview(ctx context.Context, req *gtwpreview.
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, err := previewCaller(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	domainID := int32(identity.GetDomainID())
 
 	target, err := s.resolveContact(ctx, req.GetContact(), domainID)
@@ -71,10 +73,12 @@ func (s *ThreadPreviewService) RemoveFromPreview(ctx context.Context, req *gtwpr
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, err := previewCaller(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	domainID := int32(identity.GetDomainID())
 
 	target, err := s.resolveContact(ctx, req.GetContact(), domainID)
@@ -83,6 +87,7 @@ func (s *ThreadPreviewService) RemoveFromPreview(ctx context.Context, req *gtwpr
 	}
 
 	initiatorID := identity.GetContactID()
+
 	_, err = s.previewClient.RemoveFromPreview(ctx, &threadv1.RemoveFromPreviewRequest{
 		ThreadId:           req.GetThreadId(),
 		ContactId:          target.GetId(),
@@ -100,10 +105,12 @@ func (s *ThreadPreviewService) UpgradePreviewToFullMember(ctx context.Context, r
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, err := previewCaller(ctx)
 	if err != nil {
 		return nil, err
 	}
+
 	domainID := int32(identity.GetDomainID())
 
 	target, err := s.resolveContact(ctx, req.GetContact(), domainID)
@@ -141,6 +148,7 @@ func previewCaller(ctx context.Context) (auth.Identifier, error) {
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
 	if !auth.IsSystemCall(ctx) {
 		return nil, errors.Forbidden("thread preview is available to inter-service callers only")
 	}
@@ -158,6 +166,7 @@ func (s *ThreadPreviewService) resolveContact(ctx context.Context, peer *gtwprev
 	if err != nil {
 		return nil, err
 	}
+
 	if len(list.GetContacts()) == 0 {
 		return nil, errors.NotFound("preview target contact not found")
 	}
@@ -177,8 +186,10 @@ func (s *ThreadPreviewService) lookupInitiator(ctx context.Context, contactID st
 			slog.String("contact_id", contactID),
 			slog.Any("error", err),
 		)
+
 		return nil
 	}
+
 	if len(list.GetContacts()) == 0 {
 		return nil
 	}
@@ -190,6 +201,7 @@ func convertToThreadPreview(p *threadv1.ThreadPreview, target, initiator *contac
 	if p == nil {
 		return nil
 	}
+
 	converted := &gtwpreview.ThreadPreview{
 		Id:        p.GetId(),
 		ThreadId:  p.GetThreadId(),
@@ -199,6 +211,7 @@ func convertToThreadPreview(p *threadv1.ThreadPreview, target, initiator *contac
 	if target != nil {
 		converted.Contact = convertToContact(target)
 	}
+
 	if initiator != nil {
 		converted.Initiator = convertToContact(initiator)
 	}

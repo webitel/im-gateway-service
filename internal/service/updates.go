@@ -48,7 +48,10 @@ func (s *updates) GetUpdates(ctx context.Context, query *dto.GetUpdatesRequest) 
 
 	query.DomainID = int32(identity.GetDomainID())
 	query.CallerID = identity.GetContactID()
-	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
+	// Fail open: with the application policy unknown, system messages are not filtered.
+	if appPolicy, err := s.appConfig.ResolveAppPolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()); err == nil {
+		query.SystemMessageAllowList = appPolicy.SystemMessages.ToDTO()
+	}
 
 	resp, err := s.client.GetUpdates(ctx, query)
 	if err != nil {

@@ -18,15 +18,23 @@ type Contacter interface {
 	Locate(ctx context.Context, in *contactv1.LocateContactRequest) (*contactv1.LocateContactResponse, error)
 }
 
-type ContactService struct {
-	logger        *slog.Logger
-	contactClient *imcontact.Client
+type contactBackend interface {
+	SearchContact(ctx context.Context, req *contactv1.SearchContactRequest) (*contactv1.ContactList, error)
+	CreateContact(ctx context.Context, req *contactv1.CreateContactRequest) (*contactv1.Contact, error)
+	LocateContact(ctx context.Context, req *contactv1.LocateContactRequest) (*contactv1.LocateContactResponse, error)
 }
 
-func NewContactService(logger *slog.Logger, contactClient *imcontact.Client) *ContactService {
+type ContactService struct {
+	logger        *slog.Logger
+	contactClient contactBackend
+	appConfig     AppConfigProvider
+}
+
+func NewContactService(logger *slog.Logger, contactClient *imcontact.Client, appConfig AppConfigProvider) *ContactService {
 	return &ContactService{
 		logger:        logger,
 		contactClient: contactClient,
+		appConfig:     appConfig,
 	}
 }
 
@@ -35,7 +43,22 @@ func (m *ContactService) SearchContact(ctx context.Context, in *contactv1.Search
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
 	in.DomainId = int32(identity.GetDomainID())
+
+	policy, err := resolveContactPolicy(ctx, m.appConfig, identity)
+	if err != nil {
+		return nil, err
+	}
+
+	if policy.Restricted() {
+		// im-contact treats empty Ids as "no filter", so an empty intersection must not reach it.
+		in.Ids = policy.AllowedIDs(in.GetIds())
+		if len(in.GetIds()) == 0 {
+			return &contactv1.ContactList{Page: in.GetPage()}, nil
+		}
+	}
+
 	return m.contactClient.SearchContact(ctx, in)
 }
 
@@ -44,13 +67,27 @@ func (m *ContactService) CreateContact(ctx context.Context, in *contactv1.Create
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
 	}
+
 	in.DomainId = int32(identity.GetDomainID())
+
 	return m.contactClient.CreateContact(ctx, in)
 }
 
 func (m *ContactService) Locate(ctx context.Context, in *contactv1.LocateContactRequest) (*contactv1.LocateContactResponse, error) {
-	if _, ok := auth.GetIdentityFromContext(ctx); !ok {
+	identity, ok := auth.GetIdentityFromContext(ctx)
+	if !ok {
 		return nil, auth.IdentityNotFoundErr
+	}
+
+	policy, err := resolveContactPolicy(ctx, m.appConfig, identity)
+	if err != nil {
+		return nil, err
+	}
+
+	if policy.Restricted() {
+		if err := checkContactAllowed(policy, in.GetId()); err != nil {
+			return nil, err
+		}
 	}
 
 	contact, err := m.contactClient.LocateContact(ctx, in)

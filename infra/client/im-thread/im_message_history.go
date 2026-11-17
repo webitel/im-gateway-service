@@ -11,7 +11,6 @@ import (
 	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
 
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
-	"github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
@@ -196,7 +195,7 @@ func (c *MessageHistoryClient) SearchMessages(ctx context.Context, query *dto.Se
 }
 
 // SearchLeftThreads retrieves message history covering the user's closed
-// membership periods within a thread.
+// membership periods within a threadv1.
 //
 // Args:
 //   - ctx: context of the request
@@ -341,7 +340,7 @@ func ToSearchHistoryResponseDTO(resp *threadv1.SearchMessageHistoryResponse) *dt
 //   - A slice of HistoryMessages with the given IDs, thread IDs, sender IDs, receiver IDs, types, bodies, metadata, created at times, updated at times, documents, and images.
 func mapMessages(pbMsgs []*threadv1.HistoryMessage) []*dto.HistoryMessage {
 	if len(pbMsgs) == 0 {
-		return []*dto.HistoryMessage{}
+		return make([]*dto.HistoryMessage, 0)
 	}
 
 	res := make([]*dto.HistoryMessage, len(pbMsgs))
@@ -398,7 +397,7 @@ func mapDeliveryFailures(failures []*threadv1.DeliveryFailure) []*dto.MessageFai
 // preserving the oldest-first order im-thread-service returns.
 func MapRevisions(revisions []*threadv1.MessageRevision) []*dto.MessageRevision {
 	if len(revisions) == 0 {
-		return []*dto.MessageRevision{}
+		return make([]*dto.MessageRevision, 0)
 	}
 
 	res := make([]*dto.MessageRevision, 0, len(revisions))
@@ -486,12 +485,12 @@ func MapReactions(reactions []*threadv1.MessageReaction) []*api.MessageReaction 
 	return res
 }
 
-func MapInteractiveCallback(callback *threadv1.InteractiveCallback) *dto.ApiInteractiveCallbackWrapper {
+func MapInteractiveCallback(callback *threadv1.InteractiveCallback) *dto.APIInteractiveCallbackWrapper {
 	if callback == nil {
 		return nil
 	}
 
-	return &dto.ApiInteractiveCallbackWrapper{
+	return &dto.APIInteractiveCallbackWrapper{
 		InteractiveCallback: &api.InteractiveCallback{
 			ReactedBy:    &api.ThreadMember{},
 			InReplyTo:    callback.GetInReplyTo(),
@@ -538,7 +537,7 @@ func MapLocation(location *threadv1.Location) *api.MessageLocation {
 	}
 }
 
-func MapContact(contact *thread.Contact) *api.MessageContact {
+func MapContact(contact *threadv1.Contact) *api.MessageContact {
 	if contact == nil {
 		return nil
 	}

@@ -2,9 +2,10 @@ package dto
 
 import (
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/structpb"
+
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/domain/shared"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 type SendSystemMessageRequest struct {

@@ -57,6 +57,7 @@ func SetTokenGrant(in *authv1.TokenRequest, typer dto.GrantTyper) error {
 		if err != nil {
 			return err
 		}
+
 		in.GrantType = &authv1.TokenRequest_Identity{
 			Identity: &authv1.Identity{
 				Iss:                 grant.Iss,
@@ -87,6 +88,7 @@ func SetTokenGrant(in *authv1.TokenRequest, typer dto.GrantTyper) error {
 			RefreshToken: grant.RefreshToken,
 		}
 	}
+
 	return nil
 }
 
@@ -117,17 +119,21 @@ func ToPbPUSHSubscription(in *dto.PUSHSubscription) *authv1.PUSHSubscription {
 		}
 		// If we stored keys in parameters, map them back
 		if auth, ok := in.Parameters["auth"].([]byte); ok {
-			if webSub.Key == nil {
+			if webSub.GetKey() == nil {
 				webSub.Key = &authv1.WebPushSubscription_Key{}
 			}
+
 			webSub.Key.Auth = auth
 		}
+
 		if p256dh, ok := in.Parameters["p256dh"].([]byte); ok {
-			if webSub.Key == nil {
+			if webSub.GetKey() == nil {
 				webSub.Key = &authv1.WebPushSubscription_Key{}
 			}
+
 			webSub.Key.P256Dh = p256dh
 		}
+
 		res.Token = &authv1.PUSHSubscription_Web{Web: webSub}
 	}
 
@@ -139,5 +145,6 @@ func ParsePbStructToMap(in *structpb.Struct) map[string]any {
 	if in == nil {
 		return nil
 	}
+
 	return in.AsMap()
 }

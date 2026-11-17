@@ -10,11 +10,12 @@ func MapToSendTextRequest(in *impb.SendTextRequest) *dto.SendTextRequest {
 	if in == nil {
 		return nil
 	}
+
 	return &dto.SendTextRequest{
 		To:                MapPeerFromProto(in.GetTo()),
 		Body:              in.GetBody(),
 		SendID:            in.GetSendId(),
-		SendAs:            in.SendAs,
+		SendAs:            in.GetSendAs(),
 		ReplyToMessageID:  in.ReplyToMessageId,
 		ExternalID:        in.GetExternalId(),
 		ReplyToExternalID: in.GetReplyToExternalId(),
@@ -30,10 +31,11 @@ func MapPeerFromProto(pb *impb.Peer) shared.Peer {
 	}
 
 	var p shared.Peer
-	switch kind := pb.Kind.(type) {
+
+	switch kind := pb.GetKind().(type) {
 	case *impb.Peer_Contact:
-		p.ID = kind.Contact.Sub
-		p.Issuer = kind.Contact.Iss
+		p.ID = kind.Contact.GetSub()
+		p.Issuer = kind.Contact.GetIss()
 		p.Type = shared.PeerContact
 		p.Via = kind.Contact.Via
 
@@ -48,6 +50,7 @@ func MapPeerFromProto(pb *impb.Peer) shared.Peer {
 		p.ID = kind.ThreadId
 		p.Type = shared.PeerThread
 	}
+
 	return p
 }
 
@@ -55,6 +58,7 @@ func MapToSendTextResponse(out *dto.SendTextResponse) *impb.SendTextResponse {
 	if out == nil {
 		return nil
 	}
+
 	return &impb.SendTextResponse{
 		Id: out.ID.String(),
 		To: MapPeerToProto(out.To),
@@ -63,6 +67,7 @@ func MapToSendTextResponse(out *dto.SendTextResponse) *impb.SendTextResponse {
 
 func MapPeerToProto(p shared.Peer) *impb.Peer {
 	res := &impb.Peer{}
+
 	switch p.Type {
 	case shared.PeerContact:
 		res.Kind = &impb.Peer_Contact{
@@ -77,6 +82,9 @@ func MapPeerToProto(p shared.Peer) *impb.Peer {
 		res.Kind = &impb.Peer_ChannelId{ChannelId: p.ID}
 	case shared.PeerThread:
 		res.Kind = &impb.Peer_ThreadId{ThreadId: p.ID}
+	case shared.PeerUnspecified:
+		// Leave Kind unset.
 	}
+
 	return res
 }

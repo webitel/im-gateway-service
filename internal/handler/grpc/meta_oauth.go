@@ -12,6 +12,7 @@ var _ providerv1.MetaOAuthServiceServer = (*MetaOAuthServiceHandler)(nil)
 
 type MetaOAuthServiceHandler struct {
 	providerv1.UnimplementedMetaOAuthServiceServer
+
 	logger *slog.Logger
 	client *improviders.MetaOAuthClient
 }

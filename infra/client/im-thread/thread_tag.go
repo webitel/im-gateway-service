@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type ThreadTagClient struct {
 	logger *slog.Logger
 	// [GENERIC_RPC] Underlying go-kit RPC client using the generated ThreadTagManagementClient stub
 	rpc *rpc.Client[threadv1.ThreadTagManagementClient]
-	tls *infratls.Config
 }
 
 func NewThreadTagClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*ThreadTagClient, error) {
@@ -38,9 +39,12 @@ func NewThreadTagClient(logger *slog.Logger, discovery discovery.DiscoveryProvid
 
 func (c *ThreadTagClient) AddTag(ctx context.Context, in *threadv1.AddThreadTagRequest, opts ...grpc.CallOption) (*threadv1.ChatTag, error) {
 	var resp *threadv1.ChatTag
+
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
 		var err error
+
 		resp, err = api.AddTag(ctx, in, opts...)
+
 		return err
 	})
 
@@ -49,9 +53,12 @@ func (c *ThreadTagClient) AddTag(ctx context.Context, in *threadv1.AddThreadTagR
 
 func (c *ThreadTagClient) RemoveTag(ctx context.Context, in *threadv1.RemoveThreadTagRequest, opts ...grpc.CallOption) (*threadv1.RemoveThreadTagResponse, error) {
 	var resp *threadv1.RemoveThreadTagResponse
+
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
 		var err error
+
 		resp, err = api.RemoveTag(ctx, in, opts...)
+
 		return err
 	})
 
@@ -60,9 +67,12 @@ func (c *ThreadTagClient) RemoveTag(ctx context.Context, in *threadv1.RemoveThre
 
 func (c *ThreadTagClient) RemoveTagByName(ctx context.Context, in *threadv1.RemoveThreadTagByNameRequest, opts ...grpc.CallOption) (*threadv1.RemoveThreadTagResponse, error) {
 	var resp *threadv1.RemoveThreadTagResponse
+
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
 		var err error
+
 		resp, err = api.RemoveTagByName(ctx, in, opts...)
+
 		return err
 	})
 
@@ -71,9 +81,12 @@ func (c *ThreadTagClient) RemoveTagByName(ctx context.Context, in *threadv1.Remo
 
 func (c *ThreadTagClient) Snooze(ctx context.Context, in *threadv1.SnoozeThreadRequest, opts ...grpc.CallOption) (*threadv1.ChatTag, error) {
 	var resp *threadv1.ChatTag
+
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
 		var err error
+
 		resp, err = api.Snooze(ctx, in, opts...)
+
 		return err
 	})
 
@@ -82,9 +95,12 @@ func (c *ThreadTagClient) Snooze(ctx context.Context, in *threadv1.SnoozeThreadR
 
 func (c *ThreadTagClient) Unsnooze(ctx context.Context, in *threadv1.UnsnoozeThreadRequest, opts ...grpc.CallOption) (*threadv1.RemoveThreadTagResponse, error) {
 	var resp *threadv1.RemoveThreadTagResponse
+
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
 		var err error
+
 		resp, err = api.Unsnooze(ctx, in, opts...)
+
 		return err
 	})
 
@@ -93,9 +109,12 @@ func (c *ThreadTagClient) Unsnooze(ctx context.Context, in *threadv1.UnsnoozeThr
 
 func (c *ThreadTagClient) Search(ctx context.Context, in *threadv1.SearchThreadTagsRequest, opts ...grpc.CallOption) (*threadv1.SearchThreadTagsResponse, error) {
 	var resp *threadv1.SearchThreadTagsResponse
+
 	err := c.rpc.Execute(ctx, func(api threadv1.ThreadTagManagementClient) error {
 		var err error
+
 		resp, err = api.Search(ctx, in, opts...)
+
 		return err
 	})
 

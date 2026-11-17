@@ -8,19 +8,20 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
+	_ = x[PeerUnspecified-0]
 	_ = x[PeerContact-1]
 	_ = x[PeerGroup-2]
 	_ = x[PeerChannel-3]
 	_ = x[PeerThread-4]
 }
 
-const _PeerType_name = "PeerContactPeerGroupPeerChannelPeerThread"
+const _PeerType_name = "PeerUnspecifiedPeerContactPeerGroupPeerChannelPeerThread"
 
-var _PeerType_index = [...]uint8{0, 11, 20, 31, 41}
+var _PeerType_index = [...]uint8{0, 15, 26, 35, 46, 56}
 
 func (i PeerType) String() string {
-	idx := int(i) - 1
-	if i < 1 || idx >= len(_PeerType_index)-1 {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_PeerType_index)-1 {
 		return "PeerType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
 	return _PeerType_name[_PeerType_index[idx]:_PeerType_index[idx+1]]

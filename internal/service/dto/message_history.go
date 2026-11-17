@@ -70,7 +70,7 @@ type HistoryImage struct {
 	URL       string `json:"url"`
 }
 
-type ApiInteractiveCallbackWrapper struct {
+type APIInteractiveCallbackWrapper struct {
 	*api.InteractiveCallback
 
 	ContactID string
@@ -110,7 +110,7 @@ type HistoryMessage struct {
 	Contact         *api.MessageContact  `json:"contact"`
 	Interactive     *api.Interactive     `json:"interactive"`
 	System          *api.System          `json:"system"`
-	ReactedMetadata *ApiInteractiveCallbackWrapper
+	ReactedMetadata *APIInteractiveCallbackWrapper
 	ReplyTo         *HistoryReplyTo `json:"reply_to,omitempty"`
 
 	// ForwardOrigin carries no enriched sender: the original author is usually

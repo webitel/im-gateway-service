@@ -8,9 +8,10 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.uber.org/fx"
+
+	"github.com/webitel/webitel-go-kit/pkg/errors"
 
 	"github.com/webitel/im-gateway-service/config"
 	"github.com/webitel/im-gateway-service/infra/server/http/middleware"
@@ -36,8 +37,10 @@ func ProvideServer(
 	lc fx.Lifecycle,
 ) (*Server, error) {
 	var tlsCfg *tls.Config
+
 	if cfg.Service.HTTP.VerifyCerts {
 		var err error
+
 		tlsCfg, err = apptls.Load(cfg.Service.HTTP.TLS, tls.NoClientCert)
 		if err != nil {
 			return nil, err
@@ -49,7 +52,7 @@ func ProvideServer(
 		wrapped = otelhttp.NewHandler(
 			handler,
 			model.ServiceName,
-			otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {
+			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
 				return fmt.Sprintf("%s %s", r.Method, r.URL.Path)
 			}),
 		)
@@ -86,20 +89,24 @@ func ProvideServer(
 
 			go func() {
 				logger.Info(fmt.Sprintf("listen http %s", cfg.Service.HTTP.Addr))
+
 				var err error
 				if tlsCfg != nil {
 					err = srv.ServeTLS(l, "", "")
 				} else {
 					err = srv.Serve(l)
 				}
+
 				if err != nil && !errors.Is(err, http.ErrServerClosed) {
 					logger.Error("http server error", "err", err)
 				}
 			}()
+
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			logger.Debug("receiving shutdown signal for http server")
+
 			return srv.Shutdown(ctx)
 		},
 	})

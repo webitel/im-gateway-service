@@ -48,6 +48,7 @@ func (m *MessageService) Read(ctx context.Context, in *impb.ReadMessageRequest) 
 	if err != nil {
 		return nil, err
 	}
+
 	return &impb.ReadMessageResponse{}, nil
 }
 
