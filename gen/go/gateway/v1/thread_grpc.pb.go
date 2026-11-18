@@ -19,22 +19,23 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ThreadManagement_Search_FullMethodName           = "/webitel.im.api.gateway.v1.ThreadManagement/Search"
-	ThreadManagement_SearchLeft_FullMethodName       = "/webitel.im.api.gateway.v1.ThreadManagement/SearchLeft"
-	ThreadManagement_GetUnreadSummary_FullMethodName = "/webitel.im.api.gateway.v1.ThreadManagement/GetUnreadSummary"
-	ThreadManagement_GetCounters_FullMethodName      = "/webitel.im.api.gateway.v1.ThreadManagement/GetCounters"
-	ThreadManagement_Create_FullMethodName           = "/webitel.im.api.gateway.v1.ThreadManagement/Create"
-	ThreadManagement_Get_FullMethodName              = "/webitel.im.api.gateway.v1.ThreadManagement/Get"
-	ThreadManagement_AddMember_FullMethodName        = "/webitel.im.api.gateway.v1.ThreadManagement/AddMember"
-	ThreadManagement_RemoveMember_FullMethodName     = "/webitel.im.api.gateway.v1.ThreadManagement/RemoveMember"
-	ThreadManagement_Transfer_FullMethodName         = "/webitel.im.api.gateway.v1.ThreadManagement/Transfer"
-	ThreadManagement_HandBackToBot_FullMethodName    = "/webitel.im.api.gateway.v1.ThreadManagement/HandBackToBot"
-	ThreadManagement_TakeOverFromBot_FullMethodName  = "/webitel.im.api.gateway.v1.ThreadManagement/TakeOverFromBot"
-	ThreadManagement_SetCrmContact_FullMethodName    = "/webitel.im.api.gateway.v1.ThreadManagement/SetCrmContact"
-	ThreadManagement_SetVariables_FullMethodName     = "/webitel.im.api.gateway.v1.ThreadManagement/SetVariables"
-	ThreadManagement_SearchVariables_FullMethodName  = "/webitel.im.api.gateway.v1.ThreadManagement/SearchVariables"
-	ThreadManagement_LocateVariables_FullMethodName  = "/webitel.im.api.gateway.v1.ThreadManagement/LocateVariables"
-	ThreadManagement_FlushVariables_FullMethodName   = "/webitel.im.api.gateway.v1.ThreadManagement/FlushVariables"
+	ThreadManagement_Search_FullMethodName                = "/webitel.im.api.gateway.v1.ThreadManagement/Search"
+	ThreadManagement_SearchLeft_FullMethodName            = "/webitel.im.api.gateway.v1.ThreadManagement/SearchLeft"
+	ThreadManagement_GetUnreadSummary_FullMethodName      = "/webitel.im.api.gateway.v1.ThreadManagement/GetUnreadSummary"
+	ThreadManagement_GetCounters_FullMethodName           = "/webitel.im.api.gateway.v1.ThreadManagement/GetCounters"
+	ThreadManagement_Create_FullMethodName                = "/webitel.im.api.gateway.v1.ThreadManagement/Create"
+	ThreadManagement_Get_FullMethodName                   = "/webitel.im.api.gateway.v1.ThreadManagement/Get"
+	ThreadManagement_AddMember_FullMethodName             = "/webitel.im.api.gateway.v1.ThreadManagement/AddMember"
+	ThreadManagement_RemoveMember_FullMethodName          = "/webitel.im.api.gateway.v1.ThreadManagement/RemoveMember"
+	ThreadManagement_Transfer_FullMethodName              = "/webitel.im.api.gateway.v1.ThreadManagement/Transfer"
+	ThreadManagement_HandBackToBot_FullMethodName         = "/webitel.im.api.gateway.v1.ThreadManagement/HandBackToBot"
+	ThreadManagement_TakeOverFromBot_FullMethodName       = "/webitel.im.api.gateway.v1.ThreadManagement/TakeOverFromBot"
+	ThreadManagement_SetCrmContact_FullMethodName         = "/webitel.im.api.gateway.v1.ThreadManagement/SetCrmContact"
+	ThreadManagement_ListContactCandidates_FullMethodName = "/webitel.im.api.gateway.v1.ThreadManagement/ListContactCandidates"
+	ThreadManagement_SetVariables_FullMethodName          = "/webitel.im.api.gateway.v1.ThreadManagement/SetVariables"
+	ThreadManagement_SearchVariables_FullMethodName       = "/webitel.im.api.gateway.v1.ThreadManagement/SearchVariables"
+	ThreadManagement_LocateVariables_FullMethodName       = "/webitel.im.api.gateway.v1.ThreadManagement/LocateVariables"
+	ThreadManagement_FlushVariables_FullMethodName        = "/webitel.im.api.gateway.v1.ThreadManagement/FlushVariables"
 )
 
 // ThreadManagementClient is the client API for ThreadManagement service.
@@ -69,8 +70,12 @@ type ThreadManagementClient interface {
 	// Takes the conversation from the thread's bot back to the operator.
 	TakeOverFromBot(ctx context.Context, in *TakeOverFromBotRequest, opts ...grpc.CallOption) (*TakeOverFromBotResponse, error)
 	// Sets (or clears) the CRM contact selected by the operator for the thread.
-	// Linking the IM contact to the CRM contact itself is done via the CRM API.
+	// Needs read access to the contact. With write access, the thread's IM
+	// contact is also linked to it, unless another CRM contact holds it.
 	SetCrmContact(ctx context.Context, in *SetCrmContactRequest, opts ...grpc.CallOption) (*SetCrmContactResponse, error)
+	// Lists the CRM contact candidates identified for the thread, verified
+	// first, filtered by the caller's access to CRM contacts.
+	ListContactCandidates(ctx context.Context, in *ListContactCandidatesRequest, opts ...grpc.CallOption) (*ListContactCandidatesResponse, error)
 	// Sets or updates variables for a specific thread.
 	// Existing variables with the same keys will be overwritten if were setted by the caller.
 	// New variables will be created if they do not exist.
@@ -214,6 +219,16 @@ func (c *threadManagementClient) SetCrmContact(ctx context.Context, in *SetCrmCo
 	return out, nil
 }
 
+func (c *threadManagementClient) ListContactCandidates(ctx context.Context, in *ListContactCandidatesRequest, opts ...grpc.CallOption) (*ListContactCandidatesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListContactCandidatesResponse)
+	err := c.cc.Invoke(ctx, ThreadManagement_ListContactCandidates_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *threadManagementClient) SetVariables(ctx context.Context, in *SetVariablesRequest, opts ...grpc.CallOption) (*ThreadVariables, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ThreadVariables)
@@ -286,8 +301,12 @@ type ThreadManagementServer interface {
 	// Takes the conversation from the thread's bot back to the operator.
 	TakeOverFromBot(context.Context, *TakeOverFromBotRequest) (*TakeOverFromBotResponse, error)
 	// Sets (or clears) the CRM contact selected by the operator for the thread.
-	// Linking the IM contact to the CRM contact itself is done via the CRM API.
+	// Needs read access to the contact. With write access, the thread's IM
+	// contact is also linked to it, unless another CRM contact holds it.
 	SetCrmContact(context.Context, *SetCrmContactRequest) (*SetCrmContactResponse, error)
+	// Lists the CRM contact candidates identified for the thread, verified
+	// first, filtered by the caller's access to CRM contacts.
+	ListContactCandidates(context.Context, *ListContactCandidatesRequest) (*ListContactCandidatesResponse, error)
 	// Sets or updates variables for a specific thread.
 	// Existing variables with the same keys will be overwritten if were setted by the caller.
 	// New variables will be created if they do not exist.
@@ -346,6 +365,9 @@ func (UnimplementedThreadManagementServer) TakeOverFromBot(context.Context, *Tak
 }
 func (UnimplementedThreadManagementServer) SetCrmContact(context.Context, *SetCrmContactRequest) (*SetCrmContactResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetCrmContact not implemented")
+}
+func (UnimplementedThreadManagementServer) ListContactCandidates(context.Context, *ListContactCandidatesRequest) (*ListContactCandidatesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListContactCandidates not implemented")
 }
 func (UnimplementedThreadManagementServer) SetVariables(context.Context, *SetVariablesRequest) (*ThreadVariables, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetVariables not implemented")
@@ -596,6 +618,24 @@ func _ThreadManagement_SetCrmContact_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ThreadManagement_ListContactCandidates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListContactCandidatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ThreadManagementServer).ListContactCandidates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ThreadManagement_ListContactCandidates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ThreadManagementServer).ListContactCandidates(ctx, req.(*ListContactCandidatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ThreadManagement_SetVariables_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVariablesRequest)
 	if err := dec(in); err != nil {
@@ -722,6 +762,10 @@ var ThreadManagement_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetCrmContact",
 			Handler:    _ThreadManagement_SetCrmContact_Handler,
+		},
+		{
+			MethodName: "ListContactCandidates",
+			Handler:    _ThreadManagement_ListContactCandidates_Handler,
 		},
 		{
 			MethodName: "SetVariables",

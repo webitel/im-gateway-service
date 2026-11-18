@@ -5,6 +5,7 @@ import (
 
 	"go.uber.org/fx"
 
+	crmcontacts "github.com/webitel/im-gateway-service/infra/client/crm-contacts"
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	improviders "github.com/webitel/im-gateway-service/infra/client/im-providers"
@@ -23,7 +24,9 @@ var Module = fx.Module(
 		imthread.NewThreadPermissionClient,
 		imthread.NewThreadTagClient,
 		imthread.NewThreadPreviewClient,
+		imthread.NewContactIdentificationClient,
 	),
+	fx.Provide(crmcontacts.New),
 	fx.Provide(imauth.New, imauth.NewAdmin),
 	fx.Provide(imcontact.NewContactClient),
 	fx.Provide(imcontact.NewPrivacyClient),
@@ -43,6 +46,22 @@ var Module = fx.Module(
 
 	// [LIFECYCLE] Ensures the gRPC connection pool is closed gracefully on app shutdown
 	fx.Invoke(
+		func(lc fx.Lifecycle, client *imthread.ContactIdentificationClient) {
+			lc.Append(fx.Hook{
+				OnStop: func(_ context.Context) error {
+					return client.Close()
+				},
+			})
+		},
+
+		func(lc fx.Lifecycle, client *crmcontacts.Client) {
+			lc.Append(fx.Hook{
+				OnStop: func(_ context.Context) error {
+					return client.Close()
+				},
+			})
+		},
+
 		func(lc fx.Lifecycle, client *imthread.Client) {
 			lc.Append(fx.Hook{
 				OnStop: func(_ context.Context) error {

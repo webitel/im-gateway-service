@@ -111,6 +111,8 @@ func toThreadUpdatesDTO(t *threadv1.ThreadUpdates) *dto.ThreadUpdates {
 		ReadStates:        mapMemberReadStates(t.GetReadStates()),
 		Tags:              mapThreadTags(t.GetTags()),
 		From:              t.GetMembers(),
+
+		ContactCandidatesChanged: t.GetContactCandidatesChanged(),
 	}
 
 	if t.GetTopMessage() != nil {

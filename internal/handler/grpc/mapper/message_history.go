@@ -190,6 +190,8 @@ func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
 		DeletedMessages:   toProtoDeletedMessages(t.DeletedMessages),
 		MemberChanges:     changes,
 		ReadStates:        readStates,
+
+		ContactCandidatesChanged: t.ContactCandidatesChanged,
 	}
 
 	if t.Tags != nil {
