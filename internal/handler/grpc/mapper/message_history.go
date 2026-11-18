@@ -246,6 +246,8 @@ func toProtoUpdatedMessages(messages []*dto.HistoryMessage) []*pb.UpdatedMessage
 			System:        h.GetSystem(),
 			Reactions:     h.GetReactions(),
 			Failures:      h.GetFailures(),
+
+			ReactedMetadata: h.GetReactedMetadata(),
 		})
 	}
 
