@@ -332,7 +332,7 @@ func Test_thread_Search(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			th := NewThread(tt.logger, tt.threadClient, tt.contactClient, nil)
+			th := NewThread(tt.logger, tt.threadClient, tt.contactClient, nil, nil)
 
 			got, gotErr := th.Search(context.Background(), tt.searchQuery)
 			if gotErr != nil {

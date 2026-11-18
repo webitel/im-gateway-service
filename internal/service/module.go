@@ -6,8 +6,10 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/webitel/im-gateway-service/config"
+	crmcontacts "github.com/webitel/im-gateway-service/infra/client/crm-contacts"
 	imauth "github.com/webitel/im-gateway-service/infra/client/im-auth"
 	improviders "github.com/webitel/im-gateway-service/infra/client/im-providers"
+	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	storageclient "github.com/webitel/im-gateway-service/infra/client/storage"
 )
 
@@ -87,6 +89,12 @@ var Module = fx.Module(
 			NewThreadChannelService,
 			fx.As(new(ThreadChannelResolver)),
 		),
+		NewContactCandidates,
+		func(c *contactCandidates) ContactCandidates { return c },
+		func(c *contactCandidates) CRMContactAccessChecker { return c },
+		func(c *imthread.ThreadClient) ThreadReader { return c },
+		func(c *imthread.ContactIdentificationClient) ContactCandidateLister { return c },
+		func(c *crmcontacts.Client) CRMContactVisibility { return c },
 		fx.Annotate(
 			func(c *improviders.GateClient) GateGetter { return c },
 			fx.As(new(GateGetter)),

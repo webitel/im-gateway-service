@@ -100,3 +100,15 @@ func TestToUpdatesResponseDTO_DeletedMessageReplacedBy(t *testing.T) {
 		t.Fatalf("deleted messages = %+v", got)
 	}
 }
+
+// The candidates flag survives the im-thread -> gateway mapping.
+func TestToUpdatesResponseDTO_ContactCandidatesChanged(t *testing.T) {
+	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{Threads: []*threadv1.ThreadUpdates{
+		{ThreadId: "changed", ContactCandidatesChanged: true},
+		{ThreadId: "untouched"},
+	}})
+
+	if !out.Threads[0].ContactCandidatesChanged || out.Threads[1].ContactCandidatesChanged {
+		t.Fatalf("flags = %v/%v, want true/false", out.Threads[0].ContactCandidatesChanged, out.Threads[1].ContactCandidatesChanged)
+	}
+}

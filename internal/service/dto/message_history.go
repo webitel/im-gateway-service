@@ -181,6 +181,9 @@ type ThreadUpdates struct {
 	ReadStates        []*MemberReadState
 	// Tags is nil when the caller's tags did not change since cursor.
 	Tags *ThreadTags
+	// ContactCandidatesChanged: the thread's CRM contact candidates changed
+	// since cursor, the client re-reads them.
+	ContactCandidatesChanged bool
 	// From are the thread members as im-thread returns them.
 	From []*threadv1.ThreadMember
 }

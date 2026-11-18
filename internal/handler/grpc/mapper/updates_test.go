@@ -149,3 +149,15 @@ func TestMapToGetUpdatesProto_DeletedMessageReplacedBy(t *testing.T) {
 		t.Errorf("plain delete: replaced_by = %q, want empty", r)
 	}
 }
+
+// The client learns that the thread's CRM contact candidates changed.
+func TestMapToGetUpdatesProto_ContactCandidatesChanged(t *testing.T) {
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{
+		{ThreadID: "changed", ContactCandidatesChanged: true},
+		{ThreadID: "untouched"},
+	}})
+
+	if !got.GetThreads()[0].GetContactCandidatesChanged() || got.GetThreads()[1].GetContactCandidatesChanged() {
+		t.Errorf("flags = %v/%v, want true/false", got.GetThreads()[0].GetContactCandidatesChanged(), got.GetThreads()[1].GetContactCandidatesChanged())
+	}
+}
