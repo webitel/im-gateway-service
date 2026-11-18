@@ -80,11 +80,16 @@ type Identifier interface {
 
 func GetIdentityFromContext(ctx context.Context) (Identifier, bool) {
 	id, ok := ctx.Value(AuthContextKey).(Identifier)
+
 	return id, ok
 }
 
 func GetViaFromContext(ctx context.Context) string {
-	v, _ := ctx.Value(ViaContextKey).(string)
+	v, ok := ctx.Value(ViaContextKey).(string)
+	if !ok {
+		return ""
+	}
+
 	return v
 }
 
@@ -98,6 +103,7 @@ func WithAuthType(ctx context.Context, t XWebitelType) context.Context {
 // authentication, if any. It is absent for regular end-user requests.
 func AuthTypeFromContext(ctx context.Context) (XWebitelType, bool) {
 	t, ok := ctx.Value(AuthTypeContextKey).(XWebitelType)
+
 	return t, ok
 }
 
@@ -108,6 +114,7 @@ func AuthTypeFromContext(ctx context.Context) (XWebitelType, bool) {
 // carry an initiator so membership/permission checks are enforced.
 func IsSystemCall(ctx context.Context) bool {
 	t, ok := AuthTypeFromContext(ctx)
+
 	return ok && (t == XWebitelTypeSchema || t == XWebitelTypeEngine)
 }
 

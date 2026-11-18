@@ -21,7 +21,6 @@ type Client struct {
 	logger *slog.Logger
 	// [GENERIC_RPC] Holds the go-kit RPC client for the contact service
 	rpc *rpc.Client[contactv1.ContactsClient]
-	tls *infratls.Config
 }
 
 func NewContactClient(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
@@ -51,7 +50,9 @@ func (c *Client) SearchContact(ctx context.Context, req *contactv1.SearchContact
 		c.logger.Debug("CONTACTS.SEARCH_CONTACT", slog.Any("req", req))
 
 		var err error
+
 		resp, err = api.SearchContact(ctx, req)
+
 		return err
 	})
 
@@ -108,6 +109,7 @@ func (c *Client) UpdateContact(ctx context.Context, req *contactv1.UpdateContact
 
 func (c *Client) PatchContact(ctx context.Context, req *contactv1.PatchContactRequest) (*contactv1.Contact, error) {
 	var resp *contactv1.Contact
+
 	err := c.rpc.Execute(ctx, func(api contactv1.ContactsClient) error {
 		c.logger.Debug("CONTACTS.SEARCH_CONTACT", slog.Any("req", req))
 
@@ -125,6 +127,7 @@ func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }
 

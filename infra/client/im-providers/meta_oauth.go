@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	providerv1 "github.com/webitel/im-gateway-service/gen/go/provider/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type MetaOAuthClient struct {
@@ -36,7 +38,9 @@ func (c *MetaOAuthClient) StartMetaOAuth(ctx context.Context, in *providerv1.Pro
 
 	err := c.rpc.Execute(ctx, func(api providerv1.MetaOAuthServiceClient) error {
 		var err error
+
 		resp, err = api.StartMetaOAuth(ctx, in, opts...)
+
 		return err
 	})
 
@@ -48,7 +52,9 @@ func (c *MetaOAuthClient) MetaOAuthCallback(ctx context.Context, in *providerv1.
 
 	err := c.rpc.Execute(ctx, func(api providerv1.MetaOAuthServiceClient) error {
 		var err error
+
 		resp, err = api.MetaOAuthCallback(ctx, in, opts...)
+
 		return err
 	})
 
@@ -59,5 +65,6 @@ func (c *MetaOAuthClient) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }

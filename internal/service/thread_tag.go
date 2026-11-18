@@ -4,11 +4,12 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	gtwtag "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	tagcli "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	"github.com/webitel/im-gateway-service/infra/client/im-thread"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 type ThreadTagger interface {
@@ -36,6 +37,7 @@ func (s *ThreadTagService) AddTag(ctx context.Context, req *gtwtag.AddThreadTagR
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
@@ -59,6 +61,7 @@ func (s *ThreadTagService) RemoveTag(ctx context.Context, req *gtwtag.RemoveThre
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
@@ -81,6 +84,7 @@ func (s *ThreadTagService) RemoveTagByName(ctx context.Context, req *gtwtag.Remo
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
@@ -103,6 +107,7 @@ func (s *ThreadTagService) Snooze(ctx context.Context, req *gtwtag.SnoozeThreadR
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
@@ -123,6 +128,7 @@ func (s *ThreadTagService) Unsnooze(ctx context.Context, req *gtwtag.UnsnoozeThr
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
@@ -142,6 +148,7 @@ func (s *ThreadTagService) Search(ctx context.Context, req *gtwtag.SearchThreadT
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		return nil, auth.IdentityNotFoundErr
@@ -168,6 +175,7 @@ func (s *ThreadTagService) convertToChatTag(tag *tagcli.ChatTag) *gtwtag.ChatTag
 	if tag == nil {
 		return nil
 	}
+
 	return &gtwtag.ChatTag{
 		Id:        tag.GetId(),
 		ThreadId:  tag.GetThreadId(),

@@ -28,6 +28,7 @@ func (h *FacebookServiceHandler) CreateFacebookGate(ctx context.Context, req *pr
 	resp, err := h.client.CreateFacebookGate(ctx, req)
 	if err != nil {
 		h.logger.Error("FacebookService.CreateFacebookGate", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -38,6 +39,7 @@ func (h *FacebookServiceHandler) GetFacebookGate(ctx context.Context, req *provi
 	resp, err := h.client.GetFacebookGate(ctx, req)
 	if err != nil {
 		h.logger.Error("FacebookService.GetFacebookGate", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -48,6 +50,7 @@ func (h *FacebookServiceHandler) UpdateFacebookGate(ctx context.Context, req *pr
 	resp, err := h.client.UpdateFacebookGate(ctx, req)
 	if err != nil {
 		h.logger.Error("FacebookService.UpdateFacebookGate", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -58,6 +61,7 @@ func (h *FacebookServiceHandler) DeleteFacebookGate(ctx context.Context, req *pr
 	resp, err := h.client.DeleteFacebookGate(ctx, req)
 	if err != nil {
 		h.logger.Error("FacebookService.DeleteFacebookGate", slog.Any("err", err))
+
 		return nil, err
 	}
 

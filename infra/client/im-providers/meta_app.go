@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 
+	"google.golang.org/grpc"
+
+	"github.com/webitel/webitel-go-kit/infra/discovery"
+	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
+
 	providerv1 "github.com/webitel/im-gateway-service/gen/go/provider/v1"
 	webitel "github.com/webitel/im-gateway-service/infra/client"
 	infratls "github.com/webitel/im-gateway-service/infra/tls"
-	"github.com/webitel/webitel-go-kit/infra/discovery"
-	rpc "github.com/webitel/webitel-go-kit/infra/transport/gRPC"
-	"google.golang.org/grpc"
 )
 
 type MetaAppClient struct {
@@ -36,7 +38,9 @@ func (c *MetaAppClient) CreateMetaApp(ctx context.Context, in *providerv1.Provid
 
 	err := c.rpc.Execute(ctx, func(api providerv1.MetaAppServiceClient) error {
 		var err error
+
 		resp, err = api.CreateMetaApp(ctx, in, opts...)
+
 		return err
 	})
 
@@ -48,7 +52,9 @@ func (c *MetaAppClient) GetMetaApp(ctx context.Context, in *providerv1.ProviderG
 
 	err := c.rpc.Execute(ctx, func(api providerv1.MetaAppServiceClient) error {
 		var err error
+
 		resp, err = api.GetMetaApp(ctx, in, opts...)
+
 		return err
 	})
 
@@ -60,7 +66,9 @@ func (c *MetaAppClient) UpdateMetaApp(ctx context.Context, in *providerv1.Provid
 
 	err := c.rpc.Execute(ctx, func(api providerv1.MetaAppServiceClient) error {
 		var err error
+
 		resp, err = api.UpdateMetaApp(ctx, in, opts...)
+
 		return err
 	})
 
@@ -72,7 +80,9 @@ func (c *MetaAppClient) DeleteMetaApp(ctx context.Context, in *providerv1.Provid
 
 	err := c.rpc.Execute(ctx, func(api providerv1.MetaAppServiceClient) error {
 		var err error
+
 		resp, err = api.DeleteMetaApp(ctx, in, opts...)
+
 		return err
 	})
 
@@ -83,5 +93,6 @@ func (c *MetaAppClient) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }

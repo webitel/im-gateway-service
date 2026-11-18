@@ -92,7 +92,7 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 		id = "api.bad_args"
 	default:
 		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
+			switch st.Code() { //nolint:exhaustive // the remaining codes map to 500 via default
 			case codes.NotFound:
 				httpCode = http.StatusNotFound
 				id = "api.not_found"

@@ -12,6 +12,7 @@ var _ providerv1.MetaAppServiceServer = (*MetaAppServiceHandler)(nil)
 
 type MetaAppServiceHandler struct {
 	providerv1.UnimplementedMetaAppServiceServer
+
 	logger *slog.Logger
 	client *improviders.MetaAppClient
 }

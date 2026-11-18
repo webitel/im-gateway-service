@@ -9,12 +9,10 @@ import (
 
 	"github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	api "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
-
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
-
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
@@ -71,23 +69,29 @@ func (s *messageHistory) Search(ctx context.Context, searchQuery *dto.SearchMess
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		log.ErrorContext(ctx, "identity not found")
+
 		return nil, auth.IdentityNotFoundErr
 	}
 
 	searchQuery.DomainID = int32(identity.GetDomainID())
 	searchQuery.CallerID = identity.GetContactID()
 	searchQuery.SystemCall = auth.HasPermission(ctx, auth.PermissionIMReadAll)
-	searchQuery.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
+	// Fail open: with the application policy unknown, system messages are not filtered.
+	if appPolicy, err := s.appConfig.ResolveAppPolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()); err == nil {
+		searchQuery.SystemMessageAllowList = appPolicy.SystemMessages.ToDTO()
+	}
 
 	response, fromInternal, err := s.historyClient.Search(ctx, searchQuery)
 	if err != nil {
 		log.Error("failed to fetch message history", slog.Any("err", err))
+
 		return nil, err
 	}
 
 	identityMap, err := s.fetchParticipantMap(ctx, searchQuery.DomainID, fromInternal, historyExtraContactIDs(response.Messages)...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -116,20 +120,26 @@ func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMe
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		log.ErrorContext(ctx, "identity not found")
+
 		return nil, auth.IdentityNotFoundErr
 	}
 
 	query.DomainID = int32(identity.GetDomainID())
 	query.CallerID = identity.GetContactID()
-	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
+	// Fail open: with the application policy unknown, system messages are not filtered.
+	if appPolicy, err := s.appConfig.ResolveAppPolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()); err == nil {
+		query.SystemMessageAllowList = appPolicy.SystemMessages.ToDTO()
+	}
 
 	response, fromInternal, err := s.historyClient.SearchMessages(ctx, query)
 	if err != nil {
 		log.Error("failed to search messages", slog.Any("err", err))
+
 		return nil, err
 	}
 
 	quotedSenders := make([]string, 0)
+
 	for _, m := range response.Messages {
 		if m.ReplyTo != nil {
 			quotedSenders = append(quotedSenders, m.ReplyTo.SenderID)
@@ -147,6 +157,7 @@ func (s *messageHistory) SearchMessages(ctx context.Context, query *dto.SearchMe
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -174,20 +185,26 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		log.ErrorContext(ctx, "identity not found")
+
 		return nil, auth.IdentityNotFoundErr
 	}
 
 	query.DomainID = int32(identity.GetDomainID())
 	query.CallerID = identity.GetContactID()
-	query.SystemMessageAllowList = s.appConfig.ResolvePolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()).ToDTO()
+	// Fail open: with the application policy unknown, system messages are not filtered.
+	if appPolicy, err := s.appConfig.ResolveAppPolicy(ctx, identity.GetDomainID(), identity.GetApplicationID()); err == nil {
+		query.SystemMessageAllowList = appPolicy.SystemMessages.ToDTO()
+	}
 
 	response, fromInternal, err := s.historyClient.SearchLeftThreads(ctx, query)
 	if err != nil {
 		log.Error("failed to fetch left threads message history", slog.Any("err", err))
+
 		return nil, err
 	}
 
 	quotedSenders := make([]string, 0)
+
 	for _, m := range response.Messages {
 		if m.ReplyTo != nil {
 			quotedSenders = append(quotedSenders, m.ReplyTo.SenderID)
@@ -205,6 +222,7 @@ func (s *messageHistory) SearchLeftThreads(ctx context.Context, query *dto.Searc
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, fromInternal, quotedSenders...)
 	if err != nil {
 		log.Error("failed to fetch participants info", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -233,6 +251,7 @@ func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessage
 	identity, ok := auth.GetIdentityFromContext(ctx)
 	if !ok {
 		log.ErrorContext(ctx, "identity not found")
+
 		return nil, auth.IdentityNotFoundErr
 	}
 
@@ -242,6 +261,7 @@ func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessage
 	revisions, err := s.historyClient.GetRevisions(ctx, query)
 	if err != nil {
 		log.Error("failed to fetch message revisions", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -255,6 +275,7 @@ func (s *messageHistory) GetRevisions(ctx context.Context, query *dto.GetMessage
 	identityMap, err := s.fetchParticipantMap(ctx, query.DomainID, nil, changers...)
 	if err != nil {
 		log.Error("failed to fetch changers info", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -296,13 +317,14 @@ func historyExtraContactIDs(messages []*dto.HistoryMessage) []string {
 // If there is an error while fetching the participants, it returns an error.
 func (s *messageHistory) fetchParticipantMap(ctx context.Context, domainID int32, internal []*threadv1.ThreadMember, internalContactIDs ...string) (map[string]*dto.MessageSender, error) {
 	if len(internal) == 0 && len(internalContactIDs) == 0 {
-		return nil, nil
+		return make(map[string]*dto.MessageSender), nil
 	}
 
 	uniqunesMap := make(map[string]*threadv1.ThreadMember)
 	for _, member := range internal {
 		uniqunesMap[member.GetContactId()] = member
 	}
+
 	ids := slices.Collect(maps.Keys(uniqunesMap))
 	concatad := slices.Concat(ids, internalContactIDs)
 

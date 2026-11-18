@@ -93,9 +93,11 @@ func Test_ThreadPreviewService_RejectsNonSystemCaller(t *testing.T) {
 	if _, err := svc.GivePreview(ctx, &gtwpreview.GivePreviewRequest{}); err == nil {
 		t.Error("GivePreview() for end user: expected error, got nil")
 	}
+
 	if _, err := svc.RemoveFromPreview(ctx, &gtwpreview.RemoveFromPreviewRequest{}); err == nil {
 		t.Error("RemoveFromPreview() for end user: expected error, got nil")
 	}
+
 	if _, err := svc.UpgradePreviewToFullMember(ctx, &gtwpreview.UpgradePreviewToFullMemberRequest{}); err == nil {
 		t.Error("UpgradePreviewToFullMember() for end user: expected error, got nil")
 	}

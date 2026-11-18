@@ -19,12 +19,15 @@ func NewAuthMiddleware(authorizer auth.Authorizer) func(http.Handler) http.Handl
 			if v := r.Header.Get("Authorization"); v != "" {
 				md["authorization"] = []string{v}
 			}
+
 			if v := r.Header.Get("X-Webitel-Access"); v != "" {
 				md["x-webitel-access"] = []string{v}
 			}
+
 			if v := r.Header.Get("X-Webitel-Device"); v != "" {
 				md["x-webitel-device"] = []string{v}
 			}
+
 			if v := r.Header.Get("X-Webitel-Client"); v != "" {
 				md["x-webitel-client"] = []string{v}
 			}
@@ -36,6 +39,7 @@ func NewAuthMiddleware(authorizer auth.Authorizer) func(http.Handler) http.Handl
 			if err != nil {
 				slog.Error("auth failed", "error", err)
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+
 				return
 			}
 

@@ -28,8 +28,10 @@ func (h *ViberBmServiceHandler) CreateViberBm(ctx context.Context, req *provider
 	resp, err := h.client.CreateViberBm(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberBmService.CreateViberBm", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -37,8 +39,10 @@ func (h *ViberBmServiceHandler) GetViberBm(ctx context.Context, req *providerv1.
 	resp, err := h.client.GetViberBm(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberBmService.GetViberBm", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -46,8 +50,10 @@ func (h *ViberBmServiceHandler) UpdateViberBm(ctx context.Context, req *provider
 	resp, err := h.client.UpdateViberBm(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberBmService.UpdateViberBm", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -55,8 +61,10 @@ func (h *ViberBmServiceHandler) DeleteViberBm(ctx context.Context, req *provider
 	resp, err := h.client.DeleteViberBm(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberBmService.DeleteViberBm", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -64,8 +72,10 @@ func (h *ViberBmServiceHandler) ListViberBm(ctx context.Context, req *providerv1
 	resp, err := h.client.ListViberBm(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberBmService.ListViberBm", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -73,7 +83,9 @@ func (h *ViberBmServiceHandler) SendViberBmTemplate(ctx context.Context, req *pr
 	resp, err := h.client.SendViberBmTemplate(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberBmService.SendViberBmTemplate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }

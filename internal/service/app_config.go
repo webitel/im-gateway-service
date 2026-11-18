@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+	"maps"
+	"slices"
 	"strconv"
 	"time"
 
@@ -11,31 +13,23 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	adminv1 "github.com/webitel/im-gateway-service/gen/go/admin/v1"
+	"github.com/webitel/im-gateway-service/infra/auth"
 	"github.com/webitel/im-gateway-service/internal/service/dto"
 )
 
 const (
-	// [SUCCESS_CACHE_TTL] Admin-service toggle changes must reach new connections within this window.
-	appConfigCacheTTL = 60 * time.Second
-	// [FAILURE_CACHE_TTL] Transient failures are cached much shorter to avoid fail-open-caching for too long.
-	appConfigFailureCacheTTL = 5 * time.Second
-	// [LOOKUP_TIMEOUT] Bounds the admin-service RPC so a hung/slow backend fails open quickly instead of blocking the caller's full deadline.
-	appConfigLookupTimeout = 300 * time.Millisecond
-	// [NOT_FOUND_CACHE_TTL] A missing/mismatched application id is a stable negative -- cache it much longer than a transient RPC failure to avoid re-querying admin-service every 5s for an id that will never resolve.
-	appConfigNotFoundCacheTTL = 5 * time.Minute
-	// [CACHE_SIZE] Distinct application IDs (not users) -- expected to be small.
-	appConfigCacheSize = 1024
+	appConfigCacheTTL         = 60 * time.Second
+	appConfigFailureCacheTTL  = 5 * time.Second
+	appConfigLookupTimeout    = 300 * time.Millisecond
+	appConfigNotFoundCacheTTL = appConfigCacheTTL
+	appConfigCacheSize        = 1024
 )
 
-// AppConfigProvider resolves per-application delivery policy for chat "system" messages.
 type AppConfigProvider interface {
-	// ResolvePolicy resolves the system message policy for an application within a domain.
-	// Caches the result by (domainID, appID) and can be called multiple times with the same
-	// (domainID, appID) pair to retrieve the cached policy. Fails open (returns allow-all policy)
-	// on error. This method is primarily for use at session Attach time; once resolved and stored,
-	// the policy should be reused without further RPC calls.
-	ResolvePolicy(ctx context.Context, domainID int64, appID string) SystemMessagePolicy
+	ResolveAppPolicy(ctx context.Context, domainID int64, appID string) (AppPolicy, error)
 }
 
 // AdminAppSearcher is a narrow interface exposing only SearchApps from the admin client.
@@ -69,10 +63,122 @@ func (p SystemMessagePolicy) ToDTO() *dto.SystemMessageAllowList {
 	return &dto.SystemMessageAllowList{Types: p.allowed}
 }
 
+// ContactPolicy mirrors the presence semantics of admin allow_contacts:
+//   - zero value: allow_contacts unset -> no restriction;
+//   - restricted with an empty set: nobody may be addressed.
+type ContactPolicy struct {
+	restricted bool
+	allowed    map[string]struct{}
+	defaultID  string
+}
+
+func NewContactPolicy(list *adminv1.ContactAllowList) ContactPolicy {
+	if list == nil {
+		return ContactPolicy{}
+	}
+
+	policy := ContactPolicy{
+		restricted: true,
+		allowed:    make(map[string]struct{}, len(list.GetRules())),
+	}
+
+	for _, rule := range list.GetRules() {
+		contactID := rule.GetContactId()
+		if contactID == "" {
+			continue
+		}
+
+		policy.allowed[contactID] = struct{}{}
+
+		if rule.GetDefault() && policy.defaultID == "" {
+			policy.defaultID = contactID
+		}
+	}
+
+	return policy
+}
+
+// NewAppContactPolicy: a WIDGET app without allow_contacts is deny-all, because its client id is
+// public and must not reach arbitrary contacts until an admin configures the list explicitly.
+func NewAppContactPolicy(app *adminv1.Application) ContactPolicy {
+	list := app.GetAllowContacts()
+	if list == nil && app.GetType() == adminv1.AppType_APP_TYPE_WIDGET {
+		list = &adminv1.ContactAllowList{}
+	}
+
+	return NewContactPolicy(list)
+}
+
+func (p ContactPolicy) Restricted() bool {
+	return p.restricted
+}
+
+func (p ContactPolicy) Allows(contactID string) bool {
+	if !p.restricted {
+		return true
+	}
+
+	_, ok := p.allowed[contactID]
+
+	return ok
+}
+
+// AllowedIDs narrows requested contact ids to the allow-list; no requested ids means the whole list.
+// Only meaningful for a restricted policy.
+func (p ContactPolicy) AllowedIDs(requested []string) []string {
+	if len(requested) == 0 {
+		return slices.Collect(maps.Keys(p.allowed))
+	}
+
+	return slices.DeleteFunc(slices.Clone(requested), func(id string) bool {
+		_, ok := p.allowed[id]
+
+		return !ok
+	})
+}
+
+func (p ContactPolicy) DefaultContactID() (string, bool) {
+	return p.defaultID, p.defaultID != ""
+}
+
+// resolveContactPolicy: callers without an AppID (operators, schema, engine) are unrestricted.
+func resolveContactPolicy(ctx context.Context, provider AppConfigProvider, session auth.Identifier) (ContactPolicy, error) {
+	if provider == nil || session.GetApplicationID() == "" {
+		return ContactPolicy{}, nil
+	}
+
+	policy, err := provider.ResolveAppPolicy(ctx, session.GetDomainID(), session.GetApplicationID())
+	if err != nil {
+		return ContactPolicy{}, err
+	}
+
+	return policy.Contacts, nil
+}
+
+// checkContactAllowed: an empty contactID means the contact does not exist. It is denied exactly like
+// a contact outside the allow-list, so a restricted (public) client cannot probe which identities
+// exist in the domain.
+func checkContactAllowed(policy ContactPolicy, contactID string) error {
+	if contactID == "" || !policy.Allows(contactID) {
+		return contactNotAllowedErr()
+	}
+
+	return nil
+}
+
+func contactNotAllowedErr() error {
+	return errors.Forbidden("contact is not allowed for this application", errors.WithID("service.contact_policy.not_allowed"))
+}
+
+type AppPolicy struct {
+	SystemMessages SystemMessagePolicy
+	Contacts       ContactPolicy
+}
+
 // AppConfigService implements AppConfigProvider using a cached, single-flighted admin lookup.
 type AppConfigService struct {
 	admin         AdminAppSearcher
-	successCache  *expirable.LRU[string, SystemMessagePolicy]
+	successCache  *expirable.LRU[string, AppPolicy]
 	failureCache  *expirable.LRU[string, struct{}]
 	notFoundCache *expirable.LRU[string, struct{}]
 	singleflight  singleflight.Group
@@ -84,22 +190,28 @@ var _ AppConfigProvider = (*AppConfigService)(nil)
 func NewAppConfigService(admin AdminAppSearcher, logger *slog.Logger) *AppConfigService {
 	return &AppConfigService{
 		admin:         admin,
-		successCache:  expirable.NewLRU[string, SystemMessagePolicy](appConfigCacheSize, nil, appConfigCacheTTL),
+		successCache:  expirable.NewLRU[string, AppPolicy](appConfigCacheSize, nil, appConfigCacheTTL),
 		failureCache:  expirable.NewLRU[string, struct{}](appConfigCacheSize, nil, appConfigFailureCacheTTL),
 		notFoundCache: expirable.NewLRU[string, struct{}](appConfigCacheSize, nil, appConfigNotFoundCacheTTL),
 		logger:        logger.With("component", "app_config_service"),
 	}
 }
 
-// ResolvePolicy resolves the system message policy for an application within a domain.
-// Returns a zero-value (allow-all) policy immediately for empty appID to fail open
-// (e.g., long-polling with no auth context). Otherwise delegates to policyFor.
-func (s *AppConfigService) ResolvePolicy(ctx context.Context, domainID int64, appID string) SystemMessagePolicy {
+func (s *AppConfigService) ResolveAppPolicy(ctx context.Context, domainID int64, appID string) (AppPolicy, error) {
 	if appID == "" {
-		return SystemMessagePolicy{}
+		return AppPolicy{}, nil
 	}
 
-	return s.policyFor(ctx, domainID, appID)
+	return s.appPolicyFor(ctx, domainID, appID)
+}
+
+// A fresh error per call: callers never share mutable error state.
+func appConfigUnavailableErr() error {
+	return errors.Unavailable("application policy is temporarily unavailable", errors.WithID("service.app_config.resolve.unavailable"))
+}
+
+func appNotFoundErr() error {
+	return errors.Forbidden("application not found", errors.WithID("service.app_config.resolve.app_not_found"))
 }
 
 // cacheKey computes a composite cache key from domainID and appID.
@@ -117,11 +229,6 @@ const (
 	xDeviceHeader     = "x-webitel-device"
 )
 
-// stripIdentityMetadata removes only the end-user identity headers (x-jwt-payload,
-// x-webitel-device) from ctx's outgoing metadata, leaving any other outgoing
-// metadata untouched. Used for the shared, singleflighted admin-service lookup so
-// it isn't attributed to (or gated by) whichever caller happened to trigger it,
-// without discarding metadata the admin-service call may legitimately need.
 func stripIdentityMetadata(ctx context.Context) context.Context {
 	md, ok := metadata.FromOutgoingContext(ctx)
 	if !ok {
@@ -135,37 +242,26 @@ func stripIdentityMetadata(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-// policyFor checks the success cache, then the failure cache, then the not-found cache, then calls resolve via singleflight.
-// This ensures at most one concurrent RPC call per (domainID, appID) even under concurrent ResolvePolicy callers.
-func (s *AppConfigService) policyFor(ctx context.Context, domainID int64, appID string) SystemMessagePolicy {
+func (s *AppConfigService) appPolicyFor(ctx context.Context, domainID int64, appID string) (AppPolicy, error) {
 	key := cacheKey(domainID, appID)
 
 	// Check success cache first
 	if policy, ok := s.successCache.Get(key); ok {
-		return policy
+		return policy, nil
 	}
 
-	// Check failure cache: a transient failure means return allow-all without re-hitting RPC
+	// Short back-off: a cached transient failure is an error without re-hitting the RPC.
 	if _, ok := s.failureCache.Get(key); ok {
-		return SystemMessagePolicy{}
+		return AppPolicy{}, appConfigUnavailableErr()
 	}
 
-	// Check not-found cache: a definitive negative (app doesn't exist) returns allow-all much longer
+	// A definitive negative (app does not exist) is cached longer than a transient failure.
 	if _, ok := s.notFoundCache.Get(key); ok {
-		return SystemMessagePolicy{}
+		return AppPolicy{}, appNotFoundErr()
 	}
 
 	// Use singleflight to call resolve exactly once even under concurrent callers
 	v, _, _ := s.singleflight.Do(key, func() (any, error) {
-		// Decouple the lookup from any single caller's deadline and request metadata.
-		// context.WithoutCancel detaches from the triggering caller's cancellation,
-		// so one caller disconnecting doesn't cancel the shared lookup for other waiters.
-		// stripIdentityMetadata removes only the end-user identity headers (x-jwt-payload,
-		// x-webitel-device) forwarded by the auth interceptor, so the shared, singleflighted
-		// lookup isn't attributed to (or gated by) whichever caller happened to trigger it.
-		// Unlike blanking the outgoing metadata wholesale, this preserves any other outgoing
-		// metadata the admin-service call may need (tracing, future service credentials, etc).
-		// context.WithTimeout bounds worst-case latency this hot-path call can add.
 		lookupCtx := context.WithoutCancel(ctx)
 		lookupCtx = stripIdentityMetadata(lookupCtx)
 
@@ -180,20 +276,28 @@ func (s *AppConfigService) policyFor(ctx context.Context, domainID int64, appID 
 				s.failureCache.Add(key, struct{}{})
 			}
 
-			return SystemMessagePolicy{}, nil
+			return result, nil
 		}
 
 		s.successCache.Add(key, result.policy)
 
-		return result.policy, nil
+		return result, nil
 	})
 
-	policy, ok := v.(SystemMessagePolicy)
+	// Every singleflight waiter shares the same lookupResult, so all of them map it identically.
+	result, ok := v.(lookupResult)
 	if !ok {
-		return SystemMessagePolicy{}
+		return AppPolicy{}, appConfigUnavailableErr()
 	}
 
-	return policy
+	switch {
+	case result.ok:
+		return result.policy, nil
+	case result.definitive:
+		return AppPolicy{}, appNotFoundErr()
+	default:
+		return AppPolicy{}, appConfigUnavailableErr()
+	}
 }
 
 // lookupResult carries the outcome of one admin-service SearchApps call,
@@ -201,12 +305,12 @@ func (s *AppConfigService) policyFor(ctx context.Context, domainID int64, appID 
 // itself soon, cached briefly) from a definitive negative (app not
 // found or id mismatch -- stable, cached much longer).
 type lookupResult struct {
-	policy     SystemMessagePolicy
+	policy     AppPolicy
 	ok         bool
 	definitive bool
 }
 
-// resolve fetches the allow-list for an application from the admin service.
+// resolve fetches the allow-lists for an application from the admin service.
 // Returns a lookupResult distinguishing transient failures (RPC/network errors)
 // from definitive negatives (app doesn't exist or id mismatch).
 //
@@ -221,7 +325,7 @@ func (s *AppConfigService) resolve(ctx context.Context, domainID int64, appID st
 	res, err := s.admin.SearchApps(ctx, &adminv1.SearchAppRequest{
 		Dc:     domainID,
 		Id:     appID,
-		Fields: []string{"id", "allow_system_messages"},
+		Fields: []string{"id", "type", "allow_system_messages", "allow_contacts"},
 	})
 	if err != nil {
 		s.logger.Warn("APP_CONFIG_LOOKUP_FAILED",
@@ -236,7 +340,7 @@ func (s *AppConfigService) resolve(ctx context.Context, domainID int64, appID st
 		// A nil response with a nil error is a protocol anomaly (e.g. the underlying
 		// RPC client returned before populating resp), not a stable "app doesn't
 		// exist" -- treat it as transient so it lands in the short-TTL failureCache
-		// instead of being cached as a 5-minute definitive negative.
+		// instead of being cached as a definitive negative (appConfigNotFoundCacheTTL).
 		s.logger.Warn("APP_CONFIG_LOOKUP_FAILED",
 			slog.Int64("domain_id", domainID),
 			slog.String("app_id", appID),
@@ -269,29 +373,39 @@ func (s *AppConfigService) resolve(ctx context.Context, domainID int64, appID st
 		return lookupResult{definitive: true}
 	}
 
-	allowList := app.GetAllowSystemMessages()
+	policy := AppPolicy{Contacts: NewAppContactPolicy(app)}
+
+	if allowList := app.GetAllowSystemMessages(); allowList != nil {
+		// Configured with types: return restricted policy with allowed list
+		policy.SystemMessages = SystemMessagePolicy{
+			restricted: true,
+			allowed:    allowList.GetTypes(),
+		}
+	}
 
 	// Not configured on admin-service: allow all. This is indistinguishable here
 	// from admin-service silently failing to honor the Fields mask (e.g. an
 	// unrecognized field name) -- log at debug so the "no policy" case is at
 	// least observable, since both cases resolve to the same fail-open policy.
-	if allowList == nil {
+	if app.GetAllowSystemMessages() == nil && !policy.Contacts.Restricted() {
 		s.logger.Debug("APP_CONFIG_NO_POLICY",
 			slog.Int64("domain_id", domainID),
 			slog.String("app_id", appID))
-
-		return lookupResult{
-			policy: SystemMessagePolicy{},
-			ok:     true,
-		}
 	}
 
-	// Configured with types: return restricted policy with allowed list
+	if policy.Contacts.Restricted() {
+		_, hasDefault := policy.Contacts.DefaultContactID()
+
+		s.logger.Debug("APP_CONFIG_CONTACTS_POLICY",
+			slog.Int64("domain_id", domainID),
+			slog.String("app_id", appID),
+			slog.Bool("restricted", true),
+			slog.Int("rules", len(app.GetAllowContacts().GetRules())),
+			slog.Bool("has_default", hasDefault))
+	}
+
 	return lookupResult{
-		policy: SystemMessagePolicy{
-			restricted: true,
-			allowed:    allowList.GetTypes(),
-		},
-		ok: true,
+		policy: policy,
+		ok:     true,
 	}
 }

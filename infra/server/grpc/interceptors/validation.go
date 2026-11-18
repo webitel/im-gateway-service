@@ -5,9 +5,10 @@ import (
 
 	"buf.build/go/protovalidate"
 	validatemiddleware "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/protovalidate"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
+
+	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 func ValidationInterceptor(validator protovalidate.Validator) grpc.UnaryServerInterceptor {

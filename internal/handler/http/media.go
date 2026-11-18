@@ -121,11 +121,10 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
 	}
 
-	if _, err := io.Copy(w, result.Body); err != nil {
+	_, err = io.Copy(w, result.Body)
+	if err != nil {
 		h.logger.Error("copying download storage result", "error", err)
 		h.writeError(w, err)
-
-		return
 	}
 }
 

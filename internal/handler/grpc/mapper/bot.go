@@ -29,7 +29,7 @@ func MapToUpdateBotRequest(in *impb.UpdateBotRequest) *dto.UpdateBotRequest {
 		Name:     in.GetName(),
 		SchemaID: in.GetSchemaId(),
 		Metadata: in.GetMetadata(),
-		Fields:   in.FieldMask.GetPaths(),
+		Fields:   in.GetFieldMask().GetPaths(),
 	}
 }
 

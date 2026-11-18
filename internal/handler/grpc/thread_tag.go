@@ -4,15 +4,17 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
 	impb "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	"github.com/webitel/im-gateway-service/internal/service"
-	"github.com/webitel/webitel-go-kit/pkg/errors"
 )
 
 var _ impb.ThreadTagManagementServer = (*ThreadTagServer)(nil)
 
 type ThreadTagServer struct {
 	impb.UnimplementedThreadTagManagementServer
+
 	log    *slog.Logger
 	tagger service.ThreadTagger
 }
@@ -29,6 +31,7 @@ func (t *ThreadTagServer) AddTag(ctx context.Context, req *impb.AddThreadTagRequ
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	return t.tagger.AddTag(ctx, req)
 }
 
@@ -37,6 +40,7 @@ func (t *ThreadTagServer) RemoveTag(ctx context.Context, req *impb.RemoveThreadT
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	return t.tagger.RemoveTag(ctx, req)
 }
 
@@ -45,6 +49,7 @@ func (t *ThreadTagServer) RemoveTagByName(ctx context.Context, req *impb.RemoveT
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	return t.tagger.RemoveTagByName(ctx, req)
 }
 
@@ -53,6 +58,7 @@ func (t *ThreadTagServer) Snooze(ctx context.Context, req *impb.SnoozeThreadRequ
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	return t.tagger.Snooze(ctx, req)
 }
 
@@ -61,6 +67,7 @@ func (t *ThreadTagServer) Unsnooze(ctx context.Context, req *impb.UnsnoozeThread
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	return t.tagger.Unsnooze(ctx, req)
 }
 
@@ -69,5 +76,6 @@ func (t *ThreadTagServer) Search(ctx context.Context, req *impb.SearchThreadTags
 	if req == nil {
 		return nil, errors.InvalidArgument("request cannot be nil")
 	}
+
 	return t.tagger.Search(ctx, req)
 }
