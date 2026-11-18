@@ -631,6 +631,15 @@ func Test_newSearchLeftRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "ids pass through",
+			req:  &gtwthread.SearchLeftRequest{Ids: []string{"11111111-1111-1111-1111-111111111111"}},
+			want: &threadv1.SearchLeftRequest{
+				MemberId: "agent-1",
+				DomainId: 1,
+				Ids:      []string{"11111111-1111-1111-1111-111111111111"},
+			},
+		},
+		{
 			name: "nil fields and empty sort stay unset",
 			req:  &gtwthread.SearchLeftRequest{},
 			want: &threadv1.SearchLeftRequest{MemberId: "agent-1", DomainId: 1},
@@ -795,5 +804,15 @@ func Test_newSearchRequest_systemCall(t *testing.T) {
 				t.Errorf("newSearchRequest().DomainIds = %v, want [1]", got.GetDomainIds())
 			}
 		})
+	}
+}
+
+func Test_convertToThread_threadID(t *testing.T) {
+	got := convertToThread(&threadv1.Thread{Id: "period-1", ThreadId: "thread-1"}, nil)
+	if got.GetId() != "period-1" {
+		t.Errorf("Id = %q, want %q", got.GetId(), "period-1")
+	}
+	if got.GetThreadId() != "thread-1" {
+		t.Errorf("ThreadId = %q, want %q", got.GetThreadId(), "thread-1")
 	}
 }
