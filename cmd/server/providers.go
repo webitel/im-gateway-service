@@ -51,6 +51,7 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
 		} else {
 			h = slog.NewTextHandler(os.Stdout, opts)
 		}
+
 		handlers = append(handlers, h)
 	}
 
@@ -62,7 +63,7 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
 		}
 
 		lc.Append(fx.Hook{
-			OnStop: func(ctx context.Context) error {
+			OnStop: func(_ context.Context) error {
 				return f.Close()
 			},
 		})
@@ -73,6 +74,7 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
 		} else {
 			h = slog.NewTextHandler(f, opts)
 		}
+
 		handlers = append(handlers, h)
 	}
 
@@ -104,11 +106,13 @@ func ProvideLogger(cfg *config.Config, lc fx.Lifecycle) (*slog.Logger, error) {
 	}
 
 	var finalHandler slog.Handler
-	if len(handlers) == 0 {
+
+	switch len(handlers) {
+	case 0:
 		finalHandler = slog.NewTextHandler(os.Stdout, opts)
-	} else if len(handlers) == 1 {
+	case 1:
 		finalHandler = handlers[0]
-	} else {
+	default:
 		finalHandler = MultiHandler(handlers...)
 	}
 

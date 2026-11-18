@@ -10,10 +10,10 @@ import (
 // MapSearchMessageHistoryRequestToDTO maps a SearchMessageHistoryRequest to a SearchMessageHistoryRequestDTO.
 func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *dto.SearchMessageHistoryRequest {
 	var cursor *dto.HistoryMessageCursor
-	if req.Cursor != nil {
+	if req.GetCursor() != nil {
 		cursor = &dto.HistoryMessageCursor{
-			ID:     req.Cursor.Id,
-			Before: req.Cursor.Before,
+			ID:     req.GetCursor().GetId(),
+			Before: req.GetCursor().GetBefore(),
 			Around: req.GetCursor().GetAround(),
 		}
 	}
@@ -32,10 +32,10 @@ func MapSearchMessageHistoryRequestToDTO(req *pb.SearchMessageHistoryRequest) *d
 // MapSearchMessagesRequestToDTO maps a SearchMessagesRequest to a SearchMessagesRequest DTO.
 func MapSearchMessagesRequestToDTO(req *pb.SearchMessagesRequest) *dto.SearchMessagesRequest {
 	var cursor *dto.HistoryMessageCursor
-	if req.Cursor != nil {
+	if req.GetCursor() != nil {
 		cursor = &dto.HistoryMessageCursor{
-			ID:     req.Cursor.Id,
-			Before: req.Cursor.Before,
+			ID:     req.GetCursor().GetId(),
+			Before: req.GetCursor().GetBefore(),
 			Around: req.GetCursor().GetAround(),
 		}
 	}
@@ -273,7 +273,7 @@ func toProtoReplyTo(replyTo *dto.HistoryReplyTo) *pb.ReplyToMessage {
 	}
 }
 
-func toProtoReactedMetadta(reactedMetadata *dto.ApiInteractiveCallbackWrapper) *pb.InteractiveCallback {
+func toProtoReactedMetadta(reactedMetadata *dto.APIInteractiveCallbackWrapper) *pb.InteractiveCallback {
 	if reactedMetadata == nil {
 		return nil
 	}
@@ -302,6 +302,7 @@ func toProtoDocuments(docs []dto.HistoryDocument) []*pb.Document {
 			Url:       d.URL,
 		}
 	}
+
 	return res
 }
 
@@ -320,6 +321,7 @@ func toProtoImages(imgs []dto.HistoryImage) []*pb.Image {
 			Url:       img.URL,
 		}
 	}
+
 	return res
 }
 
@@ -328,6 +330,7 @@ func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursorResponse
 	if c == nil {
 		return nil
 	}
+
 	return &pb.HistoryMessageCursorResponse{
 		Id: c.ID,
 	}
@@ -336,10 +339,10 @@ func toProtoCursor(c *dto.HistoryMessageCursor) *pb.HistoryMessageCursorResponse
 // MapSearchLeftThreadsMessageHistoryRequestToDTO maps a SearchLeftThreadsMessageHistoryRequest to its DTO form.
 func MapSearchLeftThreadsMessageHistoryRequestToDTO(req *pb.SearchLeftThreadsMessageHistoryRequest) *dto.SearchLeftThreadsMessageHistoryRequest {
 	var cursor *dto.HistoryMessageCursor
-	if req.Cursor != nil {
+	if req.GetCursor() != nil {
 		cursor = &dto.HistoryMessageCursor{
-			ID:     req.Cursor.Id,
-			Before: req.Cursor.Before,
+			ID:     req.GetCursor().GetId(),
+			Before: req.GetCursor().GetBefore(),
 			Around: req.GetCursor().GetAround(),
 		}
 	}

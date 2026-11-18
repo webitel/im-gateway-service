@@ -28,6 +28,7 @@ func (h *InstagramServiceHandler) CreateInstagramGate(ctx context.Context, req *
 	resp, err := h.client.CreateInstagramGate(ctx, req)
 	if err != nil {
 		h.logger.Error("InstagramService.CreateInstagramGate", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -38,6 +39,7 @@ func (h *InstagramServiceHandler) GetInstagramGate(ctx context.Context, req *pro
 	resp, err := h.client.GetInstagramGate(ctx, req)
 	if err != nil {
 		h.logger.Error("InstagramService.GetInstagramGate", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -48,6 +50,7 @@ func (h *InstagramServiceHandler) UpdateInstagramGate(ctx context.Context, req *
 	resp, err := h.client.UpdateInstagramGate(ctx, req)
 	if err != nil {
 		h.logger.Error("InstagramService.UpdateInstagramGate", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -58,6 +61,7 @@ func (h *InstagramServiceHandler) DeleteInstagramGate(ctx context.Context, req *
 	resp, err := h.client.DeleteInstagramGate(ctx, req)
 	if err != nil {
 		h.logger.Error("InstagramService.DeleteInstagramGate", slog.Any("err", err))
+
 		return nil, err
 	}
 

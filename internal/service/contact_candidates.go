@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-	"math"
 	"slices"
 	"time"
 
@@ -79,7 +77,7 @@ func (s *contactCandidates) ListContactCandidates(ctx context.Context, req *gtwt
 		return nil, errors.Wrap(auth.ForbiddenIssuerErr, errors.WithID(errID))
 	}
 
-	domainID, err := int32DomainID(identity.GetDomainID())
+	domainID, err := domainIDInt32(identity)
 	if err != nil {
 		return nil, err
 	}
@@ -244,18 +242,6 @@ func isSchemaCall(ctx context.Context) bool {
 	t, ok := auth.AuthTypeFromContext(ctx)
 
 	return ok && t == auth.XWebitelTypeSchema
-}
-
-// int32DomainID narrows the caller's domain id to the int32 im-thread contract.
-func int32DomainID(domainID int64) (int32, error) {
-	if domainID < math.MinInt32 || domainID > math.MaxInt32 {
-		return 0, errors.InvalidArgument(
-			fmt.Sprintf("domain id %d is out of int32 range", domainID),
-			errors.WithID("service.contact_candidates.domain_id"),
-		)
-	}
-
-	return int32(domainID), nil
 }
 
 func toGatewayCandidate(c *threadv1.ContactCandidate) *gtwthread.ContactCandidate {

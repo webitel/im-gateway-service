@@ -38,7 +38,9 @@ func (c *GateClient) ListGates(ctx context.Context, in *providerv1.ProviderListG
 
 	err := c.rpc.Execute(ctx, func(api providerv1.GateServiceClient) error {
 		var err error
+
 		resp, err = api.ListGates(ctx, in, opts...)
+
 		return err
 	})
 
@@ -63,5 +65,6 @@ func (c *GateClient) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }

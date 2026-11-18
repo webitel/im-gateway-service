@@ -23,7 +23,6 @@ const ServiceName string = "im-account-service"
 type Client struct {
 	logger    *slog.Logger
 	rpc       *rpc.Client[authv1.AccountClient]
-	tls       *infratls.Config
 	inMapper  mapper.InMapper
 	outMapper mapper.OutMapper
 }
@@ -61,6 +60,7 @@ func (c *Client) Inspect(ctx context.Context, opts ...grpc.CallOption) (*dto.Aut
 	if err != nil {
 		return nil, err
 	}
+
 	return c.inMapper.ToAuthorization(resp)
 }
 
@@ -107,6 +107,7 @@ func (c *Client) RegisterDevice(ctx context.Context, in *dto.RegisterDeviceReque
 
 	return c.rpc.Execute(ctx, func(api authv1.AccountClient) error {
 		_, err := api.RegisterDevice(ctx, req, opts...)
+
 		return err
 	})
 }
@@ -117,18 +118,21 @@ func (c *Client) UnregisterDevice(ctx context.Context, in *dto.UnregisterDeviceR
 
 	return c.rpc.Execute(ctx, func(api authv1.AccountClient) error {
 		_, err := api.UnregisterDevice(ctx, req, opts...)
+
 		return err
 	})
 }
 
 func (c *Client) GetAuthorizations(ctx context.Context, in *authv1.GetAuthorizationRequest, opts ...grpc.CallOption) (*authv1.AuthorizationList, error) {
 	var response *authv1.AuthorizationList
+
 	err := c.rpc.Execute(ctx, func(ac authv1.AccountClient) error {
 		var err error
-		response, err = ac.GetAuthorizations(ctx, in)
+
+		response, err = ac.GetAuthorizations(ctx, in, opts...)
+
 		return err
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -140,5 +144,6 @@ func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }

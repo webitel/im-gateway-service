@@ -70,7 +70,7 @@ func TestConvert_SourceFieldsNotInDstAreDiscarded(t *testing.T) {
 	in := &contactv1.SearchContactRequest{
 		Page:     3,
 		Q:        "bot",
-		DomainId: 999,   // not present in gateway.SearchContactRequest
+		DomainId: 999,               // not present in gateway.SearchContactRequest
 		AppId:    []string{"app-1"}, // not present in gateway.SearchContactRequest
 	}
 
@@ -97,18 +97,20 @@ func TestConvert_DstOnlyFieldsRemainZero(t *testing.T) {
 	}
 
 	// dst-only fields (AppId, IssId, Ids, DomainId) must be zero.
-	if len(got.AppId) != 0 {
-		t.Errorf("AppId should be empty, got %v", got.AppId)
+	if len(got.GetAppId()) != 0 {
+		t.Errorf("AppId should be empty, got %v", got.GetAppId())
 	}
-	if len(got.IssId) != 0 {
-		t.Errorf("IssId should be empty, got %v", got.IssId)
+
+	if len(got.GetIssId()) != 0 {
+		t.Errorf("IssId should be empty, got %v", got.GetIssId())
 	}
-	if got.DomainId != 0 {
-		t.Errorf("DomainId should be 0, got %v", got.DomainId)
+
+	if got.GetDomainId() != 0 {
+		t.Errorf("DomainId should be 0, got %v", got.GetDomainId())
 	}
 	// Shared fields must be set.
-	if got.Page != 2 || got.Size != 5 {
-		t.Errorf("shared fields incorrect: page=%d size=%d", got.Page, got.Size)
+	if got.GetPage() != 2 || got.GetSize() != 5 {
+		t.Errorf("shared fields incorrect: page=%d size=%d", got.GetPage(), got.GetSize())
 	}
 }
 
@@ -125,7 +127,8 @@ func TestConvert_OptionalBoolTrue(t *testing.T) {
 	if got.OnlyBots == nil {
 		t.Fatal("OnlyBots should not be nil")
 	}
-	if !*got.OnlyBots {
+
+	if !got.GetOnlyBots() {
 		t.Errorf("OnlyBots: got false, want true")
 	}
 }
@@ -177,12 +180,13 @@ func TestConvert_RepeatedFields(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(got.Subjects) != len(subjects) {
-		t.Fatalf("subjects len: got %d, want %d", len(got.Subjects), len(subjects))
+	if len(got.GetSubjects()) != len(subjects) {
+		t.Fatalf("subjects len: got %d, want %d", len(got.GetSubjects()), len(subjects))
 	}
+
 	for i, s := range subjects {
-		if got.Subjects[i] != s {
-			t.Errorf("subjects[%d]: got %q, want %q", i, got.Subjects[i], s)
+		if got.GetSubjects()[i] != s {
+			t.Errorf("subjects[%d]: got %q, want %q", i, got.GetSubjects()[i], s)
 		}
 	}
 }

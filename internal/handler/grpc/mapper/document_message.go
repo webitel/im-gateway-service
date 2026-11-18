@@ -32,7 +32,7 @@ func MapToSendDocumentRequest(in *impb.SendDocumentRequest) *dto.SendDocumentReq
 		To:                MapPeerFromProto(in.GetTo()),
 		SendID:            in.GetSendId(),
 		Document:          docReq,
-		SendAs:            in.SendAs,
+		SendAs:            in.GetSendAs(),
 		ReplyToMessageID:  in.ReplyToMessageId,
 		ExternalID:        in.GetExternalId(),
 		ReplyToExternalID: in.GetReplyToExternalId(),
@@ -46,6 +46,7 @@ func MapToSendDocumentResponse(out *dto.SendDocumentResponse) *impb.SendDocument
 	if out == nil {
 		return nil
 	}
+
 	return &impb.SendDocumentResponse{
 		Id: out.ID.String(),
 		To: MapPeerToProto(out.To),

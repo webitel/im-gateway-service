@@ -8,13 +8,18 @@ import (
 	"slices"
 	"testing"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/webitel/webitel-go-kit/pkg/errors"
+
+	adminv1 "github.com/webitel/im-gateway-service/gen/go/admin/v1"
 	contactv1 "github.com/webitel/im-gateway-service/gen/go/contact/v1"
 	gtwthread "github.com/webitel/im-gateway-service/gen/go/gateway/v1"
 	threadv1 "github.com/webitel/im-gateway-service/gen/go/thread/v1"
 	"github.com/webitel/im-gateway-service/infra/auth"
+	"github.com/webitel/im-gateway-service/infra/auth/standard"
 	imcontact "github.com/webitel/im-gateway-service/infra/client/im-contact"
 	imthread "github.com/webitel/im-gateway-service/infra/client/im-thread"
 	"github.com/webitel/im-gateway-service/internal/domain/model"
@@ -70,7 +75,7 @@ func equalThreadEntities(got, want []*threadv1.Entity) bool {
 			return false
 		}
 
-		if got[i].Value != nil && *got[i].Value != *want[i].Value {
+		if got[i].Value != nil && got[i].GetValue() != want[i].GetValue() {
 			return false
 		}
 	}
@@ -332,15 +337,17 @@ func Test_thread_Search(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			th := NewThread(tt.logger, tt.threadClient, tt.contactClient, nil, nil)
+			th := NewThread(tt.logger, tt.threadClient, tt.contactClient, nil, nil, nil)
 
 			got, gotErr := th.Search(context.Background(), tt.searchQuery)
 			if gotErr != nil {
 				if !tt.wantErr {
 					t.Errorf("Search() failed: %v", gotErr)
 				}
+
 				return
 			}
+
 			if tt.wantErr {
 				t.Fatal("Search() succeeded unexpectedly")
 			}
@@ -407,6 +414,7 @@ func Test_thread_collectUniqueContactsFromThread(t *testing.T) {
 	}
 
 	th := &thread{}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := th.collectUniqueContactsFromThread(tt.threads)
@@ -543,6 +551,7 @@ func Test_queueFromContext(t *testing.T) {
 			if tt.md != nil {
 				ctx = metadata.NewIncomingContext(ctx, tt.md)
 			}
+
 			got := queueFromContext(ctx, logger)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("queueFromContext() = %v, want %v", got, tt.want)
@@ -642,6 +651,7 @@ func Test_newSearchLeftRequest(t *testing.T) {
 			if err != nil {
 				t.Fatalf("newSearchLeftRequest() error = %v", err)
 			}
+
 			if !proto.Equal(got, tt.want) {
 				t.Errorf("newSearchLeftRequest() = %v, want %v", got, tt.want)
 			}
@@ -734,9 +744,11 @@ func Test_thread_withChannel_leftItem(t *testing.T) {
 		if !proto.Equal(got.GetQueue(), &gtwthread.ThreadQueue{Id: 7, Name: "Sales"}) {
 			t.Errorf("withChannel().Queue = %v, want {7 Sales}", got.GetQueue())
 		}
+
 		if !proto.Equal(got.GetChannel(), gate) {
 			t.Errorf("withChannel().Channel = %v, want %v", got.GetChannel(), gate)
 		}
+
 		if res.got != item {
 			t.Errorf("resolver got thread %p, want %p", res.got, item)
 		}
@@ -751,6 +763,7 @@ func Test_thread_withChannel_leftItem(t *testing.T) {
 		if got.GetQueue() != nil {
 			t.Errorf("withChannel().Queue = %v, want nil", got.GetQueue())
 		}
+
 		if got.GetChannel() != nil {
 			t.Errorf("withChannel().Channel = %v, want nil", got.GetChannel())
 		}
@@ -765,6 +778,7 @@ func Test_thread_withChannel_leftItem(t *testing.T) {
 		if got.GetChannel() != nil {
 			t.Errorf("withChannel().Channel = %v, want nil", got.GetChannel())
 		}
+
 		if !proto.Equal(got.GetQueue(), &gtwthread.ThreadQueue{Id: 9, Name: "Queue"}) {
 			t.Errorf("withChannel().Queue = %v, want {9 Queue}", got.GetQueue())
 		}
@@ -781,7 +795,10 @@ func Test_newSearchRequest_systemCall(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := newSearchRequest(&gtwthread.ThreadSearchRequest{Size: 10}, readCallerIdentity{contactID: "agent-1"}, tt.systemCall)
+			got, err := newSearchRequest(&gtwthread.ThreadSearchRequest{Size: 10}, readCallerIdentity{contactID: "agent-1"}, tt.systemCall)
+			if err != nil {
+				t.Fatalf("newSearchRequest() error = %v", err)
+			}
 
 			if got.SystemCall == nil || got.GetSystemCall() != tt.systemCall {
 				t.Errorf("newSearchRequest().SystemCall = %v, want %v", got.SystemCall, tt.systemCall)
@@ -793,6 +810,127 @@ func Test_newSearchRequest_systemCall(t *testing.T) {
 
 			if !slices.Equal(got.GetDomainIds(), []int32{1}) {
 				t.Errorf("newSearchRequest().DomainIds = %v, want [1]", got.GetDomainIds())
+			}
+		})
+	}
+}
+
+func Test_resolveContactPolicy(t *testing.T) {
+	restricted := AppPolicy{Contacts: NewContactPolicy(&adminv1.ContactAllowList{
+		Rules: []*adminv1.ContactAllowRule{{ContactId: "allowed"}},
+	})}
+
+	tests := []struct {
+		name      string
+		appConfig *fakeAppConfig
+		nilConfig bool
+		session   auth.Identifier
+		contactID string
+		wantCode  codes.Code
+		wantCalls int
+	}{
+		{
+			name:      "restricted app, contact in allow-list",
+			appConfig: &fakeAppConfig{policy: restricted},
+			session:   &standard.Identity{AppID: "app", DomainID: 1},
+			contactID: "allowed",
+			wantCode:  codes.OK,
+			wantCalls: 1,
+		},
+		{
+			name:      "restricted app, contact outside allow-list",
+			appConfig: &fakeAppConfig{policy: restricted},
+			session:   &standard.Identity{AppID: "app", DomainID: 1},
+			contactID: "other",
+			wantCode:  codes.PermissionDenied,
+			wantCalls: 1,
+		},
+		{
+			name:      "unrestricted app allows any contact",
+			appConfig: &fakeAppConfig{},
+			session:   &standard.Identity{AppID: "app", DomainID: 1},
+			contactID: "other",
+			wantCode:  codes.OK,
+			wantCalls: 1,
+		},
+		{
+			name:      "empty app id is not checked",
+			appConfig: &fakeAppConfig{policy: restricted},
+			session:   &standard.Identity{DomainID: 1},
+			contactID: "other",
+			wantCode:  codes.OK,
+			wantCalls: 0,
+		},
+		{
+			name:      "nil app config is unrestricted",
+			nilConfig: true,
+			session:   &standard.Identity{AppID: "app", DomainID: 1},
+			contactID: "other",
+			wantCode:  codes.OK,
+		},
+		{
+			name:      "policy lookup failure propagates unavailable",
+			appConfig: &fakeAppConfig{err: errors.Unavailable("down", errors.WithID("test"))},
+			session:   &standard.Identity{AppID: "app", DomainID: 1},
+			contactID: "allowed",
+			wantCode:  codes.Unavailable,
+			wantCalls: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var provider AppConfigProvider
+			if !tt.nilConfig {
+				provider = tt.appConfig
+			}
+
+			policy, err := resolveContactPolicy(context.Background(), provider, tt.session)
+			if err == nil {
+				err = checkContactAllowed(policy, tt.contactID)
+			}
+
+			if got := errors.Code(err); got != tt.wantCode {
+				t.Fatalf("resolveContactPolicy+checkContactAllowed code = %v, want %v (err: %v)", got, tt.wantCode, err)
+			}
+
+			if tt.appConfig != nil && tt.appConfig.calls != tt.wantCalls {
+				t.Errorf("ResolveAppPolicy calls = %d, want %d", tt.appConfig.calls, tt.wantCalls)
+			}
+		})
+	}
+}
+
+// Anti-enumeration: for a restricted application an unknown contact (empty id) must be
+// indistinguishable from a forbidden one.
+func Test_checkContactAllowed(t *testing.T) {
+	restricted := NewContactPolicy(&adminv1.ContactAllowList{
+		Rules: []*adminv1.ContactAllowRule{{ContactId: "allowed"}},
+	})
+	widgetDenyAll := NewAppContactPolicy(&adminv1.Application{Type: adminv1.AppType_APP_TYPE_WIDGET})
+
+	tests := []struct {
+		name      string
+		policy    ContactPolicy
+		contactID string
+		wantCode  codes.Code
+	}{
+		{name: "restricted, unknown contact", policy: restricted, contactID: "", wantCode: codes.PermissionDenied},
+		{name: "restricted, forbidden contact", policy: restricted, contactID: "other", wantCode: codes.PermissionDenied},
+		{name: "restricted, allowed contact", policy: restricted, contactID: "allowed", wantCode: codes.OK},
+		{name: "widget deny-all, unknown contact", policy: widgetDenyAll, contactID: "", wantCode: codes.PermissionDenied},
+		{name: "unrestricted, any contact", policy: ContactPolicy{}, contactID: "other", wantCode: codes.OK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := checkContactAllowed(tt.policy, tt.contactID)
+			if got := errors.Code(err); got != tt.wantCode {
+				t.Fatalf("checkContactAllowed() code = %v, want %v (err: %v)", got, tt.wantCode, err)
+			}
+
+			if tt.wantCode == codes.PermissionDenied && err.Error() != contactNotAllowedErr().Error() {
+				t.Fatalf("denial message %q differs from the uniform one", err.Error())
 			}
 		})
 	}

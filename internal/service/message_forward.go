@@ -112,6 +112,7 @@ func toThreadEntities(entities []model.Entity) []*threadv1.Entity {
 	if len(entities) == 0 {
 		return nil
 	}
+
 	out := make([]*threadv1.Entity, 0, len(entities))
 	for _, e := range entities {
 		out = append(out, &threadv1.Entity{
@@ -121,5 +122,6 @@ func toThreadEntities(entities []model.Entity) []*threadv1.Entity {
 			Value:  e.Value,
 		})
 	}
+
 	return out
 }

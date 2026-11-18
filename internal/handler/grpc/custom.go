@@ -28,8 +28,10 @@ func (h *CustomServiceHandler) CreateCustomGate(ctx context.Context, req *provid
 	resp, err := h.client.CreateCustomGate(ctx, req)
 	if err != nil {
 		h.logger.Error("CustomService.CreateCustomGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -37,8 +39,10 @@ func (h *CustomServiceHandler) GetCustomGate(ctx context.Context, req *providerv
 	resp, err := h.client.GetCustomGate(ctx, req)
 	if err != nil {
 		h.logger.Error("CustomService.GetCustomGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -46,8 +50,10 @@ func (h *CustomServiceHandler) UpdateCustomGate(ctx context.Context, req *provid
 	resp, err := h.client.UpdateCustomGate(ctx, req)
 	if err != nil {
 		h.logger.Error("CustomService.UpdateCustomGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -55,7 +61,9 @@ func (h *CustomServiceHandler) DeleteCustomGate(ctx context.Context, req *provid
 	resp, err := h.client.DeleteCustomGate(ctx, req)
 	if err != nil {
 		h.logger.Error("CustomService.DeleteCustomGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }

@@ -43,6 +43,7 @@ func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchReques
 	resp, err := s.threadManager.Search(ctx, req)
 	if err != nil {
 		log.Error("failed to fetch threads from provider", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -63,6 +64,7 @@ func (s *ThreadService) Get(ctx context.Context, req *impb.GetThreadRequest) (*i
 	thread, err := s.threadManager.Get(ctx, req)
 	if err != nil {
 		log.Error("fetch thread from provider", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -75,6 +77,7 @@ func (s *ThreadService) SearchLeft(ctx context.Context, req *impb.SearchLeftRequ
 	result, next, err := s.threadManager.SearchLeft(ctx, req)
 	if err != nil {
 		log.Error("list left chats", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -90,6 +93,7 @@ func (s *ThreadService) AddMember(ctx context.Context, req *impb.AddMemberReques
 	response, err := s.threadManager.AddMember(ctx, req)
 	if err != nil {
 		log.Error("failed to add member to thread", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -102,6 +106,7 @@ func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMember
 	err := s.threadManager.RemoveMember(ctx, req)
 	if err != nil {
 		log.Error("failed to remove member from thread", slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -111,6 +116,7 @@ func (s *ThreadService) RemoveMember(ctx context.Context, req *impb.RemoveMember
 func (s *ThreadService) HandBackToBot(ctx context.Context, req *impb.HandBackToBotRequest) (*impb.HandBackToBotResponse, error) {
 	if err := s.threadManager.HandBackToBot(ctx, req); err != nil {
 		s.logger.Error("failed to hand thread back to bot", slog.String("op", "ThreadService.HandBackToBot"), slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -120,6 +126,7 @@ func (s *ThreadService) HandBackToBot(ctx context.Context, req *impb.HandBackToB
 func (s *ThreadService) TakeOverFromBot(ctx context.Context, req *impb.TakeOverFromBotRequest) (*impb.TakeOverFromBotResponse, error) {
 	if err := s.threadManager.TakeOverFromBot(ctx, req); err != nil {
 		s.logger.Error("failed to take thread over from bot", slog.String("op", "ThreadService.TakeOverFromBot"), slog.Any("err", err))
+
 		return nil, err
 	}
 
@@ -143,6 +150,7 @@ func (s *ThreadService) Transfer(ctx context.Context, req *impb.TransferRequest)
 	res, err := s.threadManager.Transfer(ctx, req)
 	if err != nil {
 		log.Error("failed to transfer thread", slog.Any("err", err))
+
 		return nil, err
 	}
 

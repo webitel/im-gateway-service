@@ -22,7 +22,6 @@ var _ threadv1.MessageClient = (*Client)(nil)
 type Client struct {
 	logger *slog.Logger
 	rpc    *rpc.Client[threadv1.MessageClient]
-	tls    *infratls.Config
 }
 
 func New(logger *slog.Logger, discovery discovery.DiscoveryProvider, tls *infratls.Config) (*Client, error) {
@@ -188,6 +187,7 @@ func (c *Client) UpdateMessageDelivery(ctx context.Context, in *threadv1.UpdateM
 		c.logger.Debug("THREAD.UPDATE_MESSAGE_DELIVERY", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.UpdateMessageDelivery(ctx, in, opts...)
 
 		return err
@@ -220,6 +220,7 @@ func (c *Client) ForwardMessages(ctx context.Context, in *threadv1.ForwardMessag
 		c.logger.Debug("THREAD.FORWARD_MESSAGES", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.ForwardMessages(ctx, in, opts...)
 
 		return err
@@ -269,6 +270,7 @@ func (c *Client) SendTyping(ctx context.Context, in *threadv1.SendTypingRequest,
 		c.logger.Debug("THREAD.SEND_TYPING", slog.Any("req", in))
 
 		var err error
+
 		resp, err = api.SendTyping(ctx, in, opts...)
 
 		return err
@@ -282,5 +284,6 @@ func (c *Client) Close() error {
 	if c.rpc != nil {
 		return c.rpc.Close()
 	}
+
 	return nil
 }

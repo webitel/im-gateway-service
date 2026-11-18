@@ -28,8 +28,10 @@ func (h *ViberServiceHandler) CreateViberGate(ctx context.Context, req *provider
 	resp, err := h.client.CreateViberGate(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberService.CreateViberGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -37,8 +39,10 @@ func (h *ViberServiceHandler) GetViberGate(ctx context.Context, req *providerv1.
 	resp, err := h.client.GetViberGate(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberService.GetViberGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -46,8 +50,10 @@ func (h *ViberServiceHandler) UpdateViberGate(ctx context.Context, req *provider
 	resp, err := h.client.UpdateViberGate(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberService.UpdateViberGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }
 
@@ -55,7 +61,9 @@ func (h *ViberServiceHandler) DeleteViberGate(ctx context.Context, req *provider
 	resp, err := h.client.DeleteViberGate(ctx, req)
 	if err != nil {
 		h.logger.Error("ViberService.DeleteViberGate", slog.Any("err", err))
+
 		return nil, err
 	}
+
 	return resp, nil
 }

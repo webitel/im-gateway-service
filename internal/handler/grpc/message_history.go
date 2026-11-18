@@ -49,6 +49,7 @@ func (s *MessageHistoryService) SearchThreadMessagesHistory(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
 	mappedResp := mapper.MapToSearchHistoryProto(resp)
 
 	return mappedResp, nil

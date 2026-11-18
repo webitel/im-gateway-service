@@ -125,7 +125,6 @@ func (c *ContactService) Locate(ctx context.Context, req *impb.LocateConatctRequ
 		Id:       req.GetId(),
 		DomainId: req.GetDomainId(),
 	})
-
 	if err != nil {
 		return nil, err
 	}

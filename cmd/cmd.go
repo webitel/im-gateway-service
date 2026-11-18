@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/urfave/cli/v2"
+
 	"github.com/webitel/im-gateway-service/cmd/server"
 	"github.com/webitel/im-gateway-service/internal/model"
 )

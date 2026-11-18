@@ -12,6 +12,7 @@ var _ providerv1.WhatsAppServiceServer = (*WhatsAppServiceHandler)(nil)
 
 type WhatsAppServiceHandler struct {
 	providerv1.UnimplementedWhatsAppServiceServer
+
 	logger *slog.Logger
 	client *improviders.WhatsAppClient
 }
