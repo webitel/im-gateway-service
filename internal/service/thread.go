@@ -666,6 +666,7 @@ func newSearchLeftRequest(req *gtwthread.SearchLeftRequest, identity auth.Identi
 		MemberId: identity.GetContactID(),
 		DomainId: domainID,
 		Kinds:    gtwThreadKindToInternal(req.GetTypes()),
+		Ids:      req.GetIds(),
 		Size:     req.GetSize(),
 		Sort:     toInternalThreadSort(req.GetSort()),
 		Page:     req.GetPage(),
@@ -1007,6 +1008,7 @@ func convertToThread(thr *threadv1.Thread, contactData map[string]*contactv1.Con
 
 	return &gtwthread.Thread{
 		Id:          thr.GetId(),
+		ThreadId:    thr.GetThreadId(),
 		Subject:     thr.GetSubject(),
 		Type:        gtwthread.ThreadKind(thr.GetKind()),
 		CreatedAt:   thr.GetCreatedAt(),
