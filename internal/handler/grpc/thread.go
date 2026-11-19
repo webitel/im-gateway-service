@@ -15,13 +15,26 @@ type ThreadService struct {
 
 	logger        *slog.Logger
 	threadManager service.ThreadManager
+	candidates    service.ContactCandidates
 }
 
-func NewThreadService(logger *slog.Logger, threadManager service.ThreadManager) *ThreadService {
+func NewThreadService(logger *slog.Logger, threadManager service.ThreadManager, candidates service.ContactCandidates) *ThreadService {
 	return &ThreadService{
 		logger:        logger,
 		threadManager: threadManager,
+		candidates:    candidates,
 	}
+}
+
+func (s *ThreadService) ListContactCandidates(ctx context.Context, req *impb.ListContactCandidatesRequest) (*impb.ListContactCandidatesResponse, error) {
+	resp, err := s.candidates.ListContactCandidates(ctx, req)
+	if err != nil {
+		s.logger.Error("failed to list contact candidates", slog.String("op", "ThreadService.ListContactCandidates"), slog.Any("err", err))
+
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (s *ThreadService) Search(ctx context.Context, req *impb.ThreadSearchRequest) (*impb.SearchThreadResponse, error) {

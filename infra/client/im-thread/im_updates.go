@@ -111,6 +111,8 @@ func toThreadUpdatesDTO(t *threadv1.ThreadUpdates) *dto.ThreadUpdates {
 		ReadStates:        mapMemberReadStates(t.GetReadStates()),
 		Tags:              mapThreadTags(t.GetTags()),
 		From:              t.GetMembers(),
+
+		ContactCandidatesChanged: t.GetContactCandidatesChanged(),
 	}
 
 	if t.GetTopMessage() != nil {
@@ -141,6 +143,8 @@ func historyFromUpdated(u *threadv1.UpdatedMessage) *threadv1.HistoryMessage {
 		System:        u.GetSystem(),
 		Reactions:     u.GetReactions(),
 		Failures:      u.GetFailures(),
+
+		ReactedMetadata: u.GetReactedMetadata(),
 	}
 }
 

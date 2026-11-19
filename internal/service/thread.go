@@ -50,6 +50,20 @@ type thread struct {
 	contactClient *imcontact.Client
 	channels      ThreadChannelResolver
 	appConfig     AppConfigProvider
+	crmAccess     CRMContactAccessChecker
+	crmBinder     crmContactBinder
+}
+
+// crmContactBinder stores the CRM contact chosen for a thread in im-thread.
+type crmContactBinder interface {
+	SetCrmContact(ctx context.Context, req *threadv1.SetCrmContactRequest) (*threadv1.SetCrmContactResponse, error)
+}
+
+// CRMContactAccessChecker decides what binding a CRM contact may do for the
+// caller: it fails when the caller may not read the contact, and link reports
+// whether the caller may also change it.
+type CRMContactAccessChecker interface {
+	CheckCRMContactAccess(ctx context.Context, crmContactID string) (link bool, err error)
 }
 
 func (t *thread) prepareCreateDirectConfig(ctx context.Context, req *gtwthread.ThreadManagementCreateRequest, session auth.Identifier) (*threadv1.ThreadManagementCreateRequest, error) {
@@ -367,11 +381,20 @@ func (t *thread) SetCrmContact(ctx context.Context, req *gtwthread.SetCrmContact
 		return nil, err
 	}
 
-	resp, err := t.threadClient.SetCrmContact(ctx, &threadv1.SetCrmContactRequest{
+	// Binding needs read access to the CRM contact; linking the thread's IM
+	// contact to it changes the contact, so it needs write access.
+	link, err := t.crmAccess.CheckCRMContactAccess(ctx, req.GetCrmContactId())
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := t.crmBinder.SetCrmContact(ctx, &threadv1.SetCrmContactRequest{
 		ThreadId:           req.GetThreadId(),
 		CrmContactId:       req.GetCrmContactId(),
 		InitiatorContactId: identity.GetContactID(),
 		DomainId:           domainID,
+		Source:             threadv1.CrmContactSource(req.GetSource()),
+		LinkImContact:      link,
 	})
 	if err != nil {
 		return nil, err
@@ -466,13 +489,15 @@ func (t *thread) fetchContacts(ctx context.Context, ids []string, domainID int32
 	return contacts, nil
 }
 
-func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client, channels ThreadChannelResolver, appConfig AppConfigProvider) *thread {
+func NewThread(logger *slog.Logger, threadClient *imthread.ThreadClient, contactClient *imcontact.Client, channels ThreadChannelResolver, appConfig AppConfigProvider, crmAccess CRMContactAccessChecker) *thread {
 	o := new(thread)
 	o.logger = logger
 	o.threadClient = threadClient
 	o.contactClient = contactClient
 	o.channels = channels
 	o.appConfig = appConfig
+	o.crmAccess = crmAccess
+	o.crmBinder = threadClient
 
 	return o
 }

@@ -337,7 +337,7 @@ func Test_thread_Search(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			th := NewThread(tt.logger, tt.threadClient, tt.contactClient, nil, nil)
+			th := NewThread(tt.logger, tt.threadClient, tt.contactClient, nil, nil, nil)
 
 			got, gotErr := th.Search(context.Background(), tt.searchQuery)
 			if gotErr != nil {
@@ -829,6 +829,7 @@ func Test_convertToThread_threadID(t *testing.T) {
 	if got.GetId() != "period-1" {
 		t.Errorf("Id = %q, want %q", got.GetId(), "period-1")
 	}
+
 	if got.GetThreadId() != "thread-1" {
 		t.Errorf("ThreadId = %q, want %q", got.GetThreadId(), "thread-1")
 	}

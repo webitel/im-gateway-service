@@ -149,3 +149,36 @@ func TestMapToGetUpdatesProto_DeletedMessageReplacedBy(t *testing.T) {
 		t.Errorf("plain delete: replaced_by = %q, want empty", r)
 	}
 }
+
+// The client learns that the thread's CRM contact candidates changed.
+func TestMapToGetUpdatesProto_ContactCandidatesChanged(t *testing.T) {
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{
+		{ThreadID: "changed", ContactCandidatesChanged: true},
+		{ThreadID: "untouched"},
+	}})
+
+	if !got.GetThreads()[0].GetContactCandidatesChanged() || got.GetThreads()[1].GetContactCandidatesChanged() {
+		t.Errorf("flags = %v/%v, want true/false", got.GetThreads()[0].GetContactCandidatesChanged(), got.GetThreads()[1].GetContactCandidatesChanged())
+	}
+}
+
+// GetUpdates carries the pressed button of an interactive message.
+func TestMapToGetUpdatesProto_ReactedMetadata(t *testing.T) {
+	reactor := &pb.ThreadMember{Contact: &pb.Contact{Sub: "3", Name: "Reactor"}}
+
+	got := mapper.MapToGetUpdatesProto(&dto.GetUpdatesResponse{Threads: []*dto.ThreadUpdates{{
+		ThreadID: "t1",
+		Messages: []*dto.HistoryMessage{{
+			ID: "msg",
+			ReactedMetadata: &dto.APIInteractiveCallbackWrapper{InteractiveCallback: &pb.InteractiveCallback{
+				ReactedBy: reactor, InReplyTo: "msg", ButtonCode: "btn_code", CallbackData: "btn_data", ReactedAt: 1700,
+			}},
+		}},
+	}}})
+
+	rm := got.GetThreads()[0].GetMessages()[0].GetReactedMetadata()
+	if rm.GetButtonCode() != "btn_code" || rm.GetCallbackData() != "btn_data" || rm.GetReactedAt() != 1700 ||
+		rm.GetInReplyTo() != "msg" || rm.GetReactedBy().GetContact().GetName() != "Reactor" {
+		t.Fatalf("reacted_metadata = %+v", rm)
+	}
+}

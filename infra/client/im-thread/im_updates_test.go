@@ -100,3 +100,31 @@ func TestToUpdatesResponseDTO_DeletedMessageReplacedBy(t *testing.T) {
 		t.Fatalf("deleted messages = %+v", got)
 	}
 }
+
+// The candidates flag survives the im-thread -> gateway mapping.
+func TestToUpdatesResponseDTO_ContactCandidatesChanged(t *testing.T) {
+	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{Threads: []*threadv1.ThreadUpdates{
+		{ThreadId: "changed", ContactCandidatesChanged: true},
+		{ThreadId: "untouched"},
+	}})
+
+	if !out.Threads[0].ContactCandidatesChanged || out.Threads[1].ContactCandidatesChanged {
+		t.Fatalf("flags = %v/%v, want true/false", out.Threads[0].ContactCandidatesChanged, out.Threads[1].ContactCandidatesChanged)
+	}
+}
+
+// A pressed button reaches the DTO with its reactor's contact for the gateway to resolve.
+func TestToUpdatesResponseDTO_ReactedMetadata(t *testing.T) {
+	out := ToUpdatesResponseDTO(&threadv1.GetUpdatesResponse{Threads: []*threadv1.ThreadUpdates{{
+		ThreadId: "t1",
+		Messages: []*threadv1.UpdatedMessage{{Id: "m1", ReactedMetadata: &threadv1.InteractiveCallback{
+			ReactedBy: "c2", InReplyTo: "m1", ButtonCode: "btn_code", CallbackData: "btn_data", ReactedAt: 1700,
+		}}},
+	}}})
+
+	got := out.Threads[0].Messages[0].ReactedMetadata
+	if got == nil || got.ContactID != "c2" || got.GetInReplyTo() != "m1" || got.GetButtonCode() != "btn_code" ||
+		got.GetCallbackData() != "btn_data" || got.GetReactedAt() != 1700 {
+		t.Fatalf("reacted_metadata = %+v", got)
+	}
+}

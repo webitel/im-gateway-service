@@ -190,6 +190,8 @@ func toProtoThreadUpdates(t *dto.ThreadUpdates) *pb.ThreadUpdates {
 		DeletedMessages:   toProtoDeletedMessages(t.DeletedMessages),
 		MemberChanges:     changes,
 		ReadStates:        readStates,
+
+		ContactCandidatesChanged: t.ContactCandidatesChanged,
 	}
 
 	if t.Tags != nil {
@@ -244,6 +246,8 @@ func toProtoUpdatedMessages(messages []*dto.HistoryMessage) []*pb.UpdatedMessage
 			System:        h.GetSystem(),
 			Reactions:     h.GetReactions(),
 			Failures:      h.GetFailures(),
+
+			ReactedMetadata: h.GetReactedMetadata(),
 		})
 	}
 
