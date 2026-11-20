@@ -83,7 +83,7 @@ func (c *Client) Token(ctx context.Context, in *dto.TokenRequest, opts ...grpc.C
 		return err
 	})
 	if err != nil {
-		return nil, err
+		return nil, processTokenError(ctx, c.logger, err)
 	}
 
 	return c.inMapper.ToAuthorization(resp)
