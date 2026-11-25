@@ -90,6 +90,10 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, service.ErrEmptyBody):
 		httpCode = http.StatusBadRequest
 		id = "api.bad_args"
+	case errors.Is(err, service.ErrUploadNotStored):
+		httpCode = http.StatusInternalServerError
+		id = "api.upload_not_stored"
+		detail = uploadNotStoredDetail
 	default:
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() { //nolint:exhaustive // the remaining codes map to 500 via default
@@ -127,6 +131,8 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 
 	renderError(w, httpCode, id, detail)
 }
+
+const uploadNotStoredDetail = "File upload failed, try again later"
 
 // storageFilePolicyID is the id im-storage reports when an upload breaks the
 // domain's file policy (size limit, file type, channel).

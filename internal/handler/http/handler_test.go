@@ -13,6 +13,8 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/webitel/im-gateway-service/internal/service"
 )
 
 func withDetails(t *testing.T, st *status.Status, details ...*errdetails.ErrorInfo) error {
@@ -119,5 +121,27 @@ func TestWriteError_StorageFilePolicy(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestWriteError_UploadNotStored(t *testing.T) {
+	t.Parallel()
+
+	h := &Handler{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	rec := httptest.NewRecorder()
+
+	h.writeError(rec, fmt.Errorf("finalize: %w", service.ErrUploadNotStored))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+
+	var body apiError
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("decoding body: %v", err)
+	}
+
+	if body.ID != "api.upload_not_stored" || body.Detail != uploadNotStoredDetail {
+		t.Errorf("body = %+v, want id api.upload_not_stored with detail %q", body, uploadNotStoredDetail)
 	}
 }

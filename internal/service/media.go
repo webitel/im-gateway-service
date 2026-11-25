@@ -35,6 +35,7 @@ var (
 	ErrSessionConflict = errors.New("upload already in progress for this session")
 	ErrSessionDone     = errors.New("upload session already complete or canceled")
 	ErrEmptyBody       = errors.New("upload: empty body")
+	ErrUploadNotStored = errors.New("upload: storage did not store the file")
 )
 
 const (
@@ -279,7 +280,7 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 			if sendErr := sess.stream.Send(&storagev1.SafeUploadFileRequest{
 				Data: &storagev1.SafeUploadFileRequest_Chunk{Chunk: buf[:n]},
 			}); sendErr != nil {
-				sendErr = uploadStreamErr(sess.stream, sendErr)
+				sendErr = storeErr(uploadStreamErr(sess.stream, sendErr))
 
 				log.Debug("append content: failed to send chunk to storage",
 					slog.Int("chunk_bytes", n), slog.String("error", sendErr.Error()))
