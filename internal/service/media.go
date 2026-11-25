@@ -3,6 +3,7 @@ package service
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"mime"
@@ -36,6 +37,9 @@ var (
 	ErrSessionDone     = errors.New("upload session already complete or canceled")
 	ErrEmptyBody       = errors.New("upload: empty body")
 	ErrUploadNotStored = errors.New("upload: storage did not store the file")
+	// ErrBodyRead marks a failure reading the client's request body (a
+	// connection dropped mid-upload), as opposed to a storage failure.
+	ErrBodyRead = errors.New("upload: reading request body")
 )
 
 const (
@@ -309,7 +313,7 @@ func (s *MediaService) streamChunks(ctx context.Context, sess *uploadSession, re
 
 		log.Debug("append content: read error", slog.String("error", readErr.Error()))
 
-		return readErr
+		return fmt.Errorf("%w: %w", ErrBodyRead, readErr)
 	}
 }
 

@@ -299,3 +299,31 @@ func TestFinalize_WriteFailureBeforeLastChunk(t *testing.T) {
 		t.Fatalf("finalize: err = %v, want ErrUploadNotStored", err)
 	}
 }
+
+type failingReader struct{ err error }
+
+func (f failingReader) Read([]byte) (int, error) { return 0, f.err }
+
+// A body read failure is the client's connection, not storage.
+func TestStreamChunks_BodyReadErrorIsMarked(t *testing.T) {
+	t.Parallel()
+
+	sess := newUploadSession("a.bin")
+	if !sess.attachStream(dialFinishingStorage(t, finishingStorage{}), func() {}, func() {}, "upload-1") {
+		t.Fatal("attach stream")
+	}
+
+	t.Cleanup(sess.terminate)
+
+	s := &MediaService{chunkSize: 1024}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	err := s.streamChunks(context.Background(), sess, bufio.NewReaderSize(failingReader{err: io.ErrUnexpectedEOF}, s.chunkSize), log)
+	if !errors.Is(err, ErrBodyRead) || !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("streamChunks: err = %v, want ErrBodyRead wrapping the read error", err)
+	}
+
+	if errors.Is(err, ErrUploadNotStored) {
+		t.Errorf("err = %v: a body read failure is not a storage failure", err)
+	}
+}

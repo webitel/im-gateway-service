@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -65,7 +66,7 @@ func renderError(w http.ResponseWriter, httpCode int, id, detail string) {
 	})
 }
 
-func (h *Handler) writeError(w http.ResponseWriter, err error) {
+func (h *Handler) writeError(w http.ResponseWriter, r *http.Request, err error) {
 	var (
 		httpCode int
 		id       string
@@ -90,49 +91,120 @@ func (h *Handler) writeError(w http.ResponseWriter, err error) {
 	case errors.Is(err, service.ErrEmptyBody):
 		httpCode = http.StatusBadRequest
 		id = "api.bad_args"
+	case errors.Is(err, service.ErrBodyRead):
+		// The client dropped the connection mid-body (HTTP/1.1 unexpected
+		// EOF, HTTP/2 stream reset); the session stays resumable from the
+		// offset reported by GET /media.
+		httpCode = http.StatusBadRequest
+		id = "api.bad_args"
+		detail = bodyCutOffDetail
 	case errors.Is(err, service.ErrUploadNotStored):
 		httpCode = http.StatusInternalServerError
 		id = "api.upload_not_stored"
 		detail = uploadNotStoredDetail
 	default:
+		// Own sentinel errors above name what the caller got wrong; anything
+		// else may come from another service and carry its internals (storage
+		// error JSON, backend hosts, bucket paths), so it gets a generic text.
+		httpCode, id = http.StatusInternalServerError, "api.internal"
+		detail = genericDetail(httpCode)
+
 		if st, ok := status.FromError(err); ok {
-			switch st.Code() { //nolint:exhaustive // the remaining codes map to 500 via default
-			case codes.NotFound:
-				httpCode = http.StatusNotFound
-				id = "api.not_found"
-			case codes.Unauthenticated:
-				httpCode = http.StatusUnauthorized
-				id = "api.unauthenticated"
-			case codes.PermissionDenied:
-				httpCode = http.StatusForbidden
-				id = "api.forbidden"
-			case codes.InvalidArgument, codes.Aborted:
-				httpCode = http.StatusBadRequest
-				id = "api.bad_args"
-			case codes.AlreadyExists:
-				httpCode = http.StatusConflict
-				id = "api.conflict"
-			case codes.FailedPrecondition:
-				if rejection, ok := filePolicyRejection(st); ok {
-					httpCode, id, detail = rejection.httpCode, rejection.id, rejection.detail
-				} else {
-					httpCode = http.StatusInternalServerError
-					id = "api.internal"
-				}
-			default:
-				httpCode = http.StatusInternalServerError
-				id = "api.internal"
+			httpCode, id = statusToHTTP(st.Code())
+			detail = upstreamDetail(st, httpCode)
+
+			if rejection, ok := filePolicyRejection(st); ok {
+				httpCode, id, detail = rejection.httpCode, rejection.id, rejection.detail
 			}
-		} else {
-			httpCode = http.StatusInternalServerError
-			id = "api.internal"
 		}
 	}
 
+	h.logError(r, httpCode, id, err)
 	renderError(w, httpCode, id, detail)
 }
 
-const uploadNotStoredDetail = "File upload failed, try again later"
+// statusToHTTP maps a gRPC status from an upstream service to the HTTP status
+// and error id of the media API.
+func statusToHTTP(code codes.Code) (int, string) {
+	switch code { //nolint:exhaustive // the remaining codes map to 500 via default
+	case codes.NotFound:
+		return http.StatusNotFound, "api.not_found"
+	case codes.Unauthenticated:
+		return http.StatusUnauthorized, "api.unauthenticated"
+	case codes.PermissionDenied:
+		return http.StatusForbidden, "api.forbidden"
+	case codes.InvalidArgument, codes.Aborted:
+		return http.StatusBadRequest, "api.bad_args"
+	case codes.AlreadyExists:
+		return http.StatusConflict, "api.conflict"
+	default:
+		return http.StatusInternalServerError, "api.internal"
+	}
+}
+
+// logError keeps the cause the client does not see. A call canceled because
+// the client went away is not a server failure; a storage failure is logged
+// even when the client stopped waiting for it.
+func (h *Handler) logError(r *http.Request, httpCode int, id string, err error) {
+	if httpCode < http.StatusInternalServerError || canceled(err) {
+		return
+	}
+
+	attrs := []any{
+		slog.String("method", r.Method),
+		slog.String("path", r.URL.Path),
+		slog.String("id", id),
+		slog.String("error", err.Error()),
+	}
+	if uploadID := r.URL.Query().Get("uploadId"); uploadID != "" {
+		attrs = append(attrs, slog.String("upload_id", uploadID))
+	}
+
+	h.logger.ErrorContext(r.Context(), "media request failed", attrs...)
+}
+
+// logCopyError records a download that broke after the response had started:
+// the status line is already sent, so the client only sees a cut body. A
+// client that went away is not a server failure.
+func (h *Handler) logCopyError(r *http.Request, err error) {
+	if r.Context().Err() != nil || canceled(err) {
+		return
+	}
+
+	h.logger.WarnContext(r.Context(), "media download interrupted",
+		slog.String("method", r.Method),
+		slog.String("path", r.URL.Path),
+		slog.String("error", err.Error()))
+}
+
+// canceled reports an error caused by canceling the call.
+func canceled(err error) bool {
+	return errors.Is(err, context.Canceled) || status.Code(err) == codes.Canceled
+}
+
+func genericDetail(httpCode int) string {
+	return http.StatusText(httpCode)
+}
+
+// storageMalwareID is the id im-storage reports (as PermissionDenied) for a
+// file its antivirus check blocks, on upload and on download.
+const storageMalwareID = `"file.malware"`
+
+// upstreamDetail names the few upstream errors a user can act on; the rest
+// get the generic status text.
+func upstreamDetail(st *status.Status, httpCode int) string {
+	if st.Code() == codes.PermissionDenied && strings.Contains(st.Message(), storageMalwareID) {
+		return malwareDetail
+	}
+
+	return genericDetail(httpCode)
+}
+
+const (
+	uploadNotStoredDetail = "File upload failed, try again later"
+	bodyCutOffDetail      = "Request body ended unexpectedly"
+	malwareDetail         = "File is blocked by the antivirus check"
+)
 
 // storageFilePolicyID is the id im-storage reports when an upload breaks the
 // domain's file policy (size limit, file type, channel).
@@ -166,6 +238,10 @@ var (
 // recognized when the reason ("max size") reaches the gateway, either appended
 // to the message or carried in ErrorInfo / PreconditionFailure details.
 func filePolicyRejection(st *status.Status) (policyRejection, bool) {
+	if st.Code() != codes.FailedPrecondition {
+		return policyRejection{}, false
+	}
+
 	texts := []string{st.Message()}
 
 	for _, d := range st.Details() {

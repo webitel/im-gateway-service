@@ -28,7 +28,7 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 		Offset: 0,
 	})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(w, r, err)
 
 		return
 	}
@@ -42,7 +42,7 @@ func (h *Handler) downloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := io.Copy(w, result.Body); err != nil {
-		h.writeError(w, err)
+		h.logCopyError(r, err)
 	}
 }
 
@@ -79,7 +79,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		Offset: offset,
 	})
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(w, r, err)
 
 		return
 	}
@@ -109,7 +109,7 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 
 		reader := io.LimitReader(result.Body, bytesToRead)
 		if _, err := io.Copy(w, reader); err != nil {
-			h.logger.Error("copying result body into limit reader response", "error", err)
+			h.logCopyError(r, err)
 
 			return
 		}
@@ -121,10 +121,8 @@ func (h *Handler) streamFile(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Length", strconv.FormatInt(result.Metadata.Size, 10))
 	}
 
-	_, err = io.Copy(w, result.Body)
-	if err != nil {
-		h.logger.Error("copying download storage result", "error", err)
-		h.writeError(w, err)
+	if _, err := io.Copy(w, result.Body); err != nil {
+		h.logCopyError(r, err)
 	}
 }
 
@@ -139,8 +137,7 @@ func (h *Handler) createUploadSession(w http.ResponseWriter, r *http.Request) {
 
 	uploadID, err := h.media.CreateUploadSession(r.Context(), req.Name)
 	if err != nil {
-		h.logger.Error("failed to create upload session", slog.String("error", err.Error()))
-		h.writeError(w, err)
+		h.writeError(w, r, err)
 
 		return
 	}
@@ -163,8 +160,7 @@ func (h *Handler) getUploadFileInfo(w http.ResponseWriter, r *http.Request) {
 
 	size, err := h.media.GetUploadFileInfo(r.Context(), uploadID)
 	if err != nil {
-		h.logger.Error("failed to get upload file info", slog.String("error", err.Error()))
-		h.writeError(w, err)
+		h.writeError(w, r, err)
 
 		return
 	}
@@ -187,7 +183,7 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 	meta, err := h.media.AppendContent(r.Context(), uploadID, r.Body)
 	if err != nil {
-		h.writeError(w, err)
+		h.writeError(w, r, err)
 
 		return
 	}
@@ -214,8 +210,7 @@ func (h *Handler) terminateUploadSession(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.media.TerminateUploadSession(uploadID); err != nil {
-		h.logger.Error("failed to terminate upload session", slog.String("error", err.Error()))
-		h.writeError(w, err)
+		h.writeError(w, r, err)
 
 		return
 	}
