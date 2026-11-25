@@ -2,10 +2,14 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"strconv"
 	"sync"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/webitel/webitel-go-kit/pkg/errors"
 
@@ -163,17 +167,24 @@ func (s *uploadSession) finalize() (*dto.FileMetadata, error) {
 	if err := s.stream.Send(&storagev1.SafeUploadFileRequest{
 		Data: &storagev1.SafeUploadFileRequest_Chunk{},
 	}); err != nil {
-		return nil, uploadStreamErr(s.stream, err)
+		return nil, storeErr(uploadStreamErr(s.stream, err))
 	}
 
 	msg, err := s.stream.Recv()
 	if err != nil {
-		return nil, err
+		return nil, storeErr(err)
 	}
 
 	meta := msg.GetMetadata()
 	if meta == nil {
 		return nil, errors.New("storage: expected Metadata as final stream response")
+	}
+
+	// im-storage reports a failed write (e.g. an unreachable file backend) as
+	// Metadata without a file id rather than as a stream error; passing it on
+	// would hand the client a file that does not exist.
+	if meta.GetFileId() <= 0 || meta.GetCode() == storagev1.UploadStatusCode_Failed {
+		return nil, ErrUploadNotStored
 	}
 
 	return &dto.FileMetadata{
@@ -183,6 +194,18 @@ func (s *uploadSession) finalize() (*dto.FileMetadata, error) {
 		Size:     meta.GetSize(),
 		Hash:     meta.GetSha256Sum(),
 	}, nil
+}
+
+// storeErr marks a failure storage reports for the upload as a file that was
+// not stored. im-storage ends the stream with Internal when writing to its
+// file backend fails, mid-upload or after the last chunk; policy, malware and
+// transport errors keep their own status.
+func storeErr(err error) error {
+	if st, ok := status.FromError(err); ok && st.Code() == codes.Internal {
+		return fmt.Errorf("%w: %w", ErrUploadNotStored, err)
+	}
+
+	return err
 }
 
 // uploadStreamErr resolves a Send failure to the status storage ended the
